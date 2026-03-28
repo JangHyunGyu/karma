@@ -5,6 +5,9 @@
 // CORS & Response Helpers
 // ============================================================
 
+const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -196,7 +199,7 @@ function ohangCompatibility(saju1, saju2) {
 async function callGemini(apiKey, prompt) {
   try {
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+      `${GEMINI_URL}?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -228,7 +231,7 @@ async function callGemini(apiKey, prompt) {
 async function callGeminiVision(apiKey, prompt, imageBase64, mimeType) {
   try {
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+      `${GEMINI_URL}?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
