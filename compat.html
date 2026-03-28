@@ -8,11 +8,10 @@
 <link rel="stylesheet" href="/style.css?v=3">
 <script src="/js/browser-check.js"></script>
 <style>
-  @media (min-width: 769px) { .compat-input-grid { grid-template-columns: 1fr 1fr !important; } }
+  .compat-cols { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 769px) { .compat-cols { grid-template-columns: 1fr 1fr; } }
   .container.wide { max-width: 100%; width: 100%; }
   @media (min-width: 769px) { .container.wide { max-width: 640px; } }
-  /* 콤보 드롭다운이 잘리지 않도록 overflow 해제 */
-  .compat-input-grid { overflow: visible !important; }
   .date-selects { overflow: visible !important; }
   .date-selects .combo { margin-bottom: 0; }
 </style>
@@ -25,7 +24,7 @@
   <h1>💕 궁합 분석</h1>
   <p class="subtitle">두 사람의 사주 오행 궁합을 분석합니다</p>
 
-  <div class="compat-input-grid" style="display:grid;grid-template-columns:1fr;gap:12px">
+  <div class="compat-cols">
     <div class="card">
       <h2>Person A</h2>
       <label>생년월일</label>
