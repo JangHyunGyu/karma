@@ -7,38 +7,40 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 <style>
-  /* 사주 페이지 — 모바일 퍼스트 (기본 1열) */
-  .container.saju-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
-  .saju-grid { display: grid; gap: 14px; }
-  .saju-top-row { display: grid; gap: 14px; grid-template-columns: 1fr; }
-  .saju-ai-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
-  .saju-personality { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  /* 사주 페이지 — 모바일 퍼스트 (기본 무조건 1열) */
+  .container.saju-page {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 16px 12px !important;
+    padding-top: 48px !important;
+    overflow-x: hidden !important;
+  }
+  .saju-grid, .saju-top-row, .saju-ai-grid, .saju-personality {
+    display: grid !important;
+    gap: 14px;
+    grid-template-columns: 1fr !important;
+    max-width: 100%;
+  }
+  #result { max-width: 100%; overflow-x: hidden; }
 
   /* 태블릿 (769px+) — 2열 */
   @media (min-width: 769px) {
-    .container.saju-page { max-width: 900px; padding: 24px 20px; }
-    .saju-top-row { grid-template-columns: 1fr 1fr; }
-    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
-    .saju-personality { grid-template-columns: 1fr 1fr; }
+    .container.saju-page { max-width: 900px !important; padding: 24px 20px !important; }
+    .saju-top-row { grid-template-columns: 1fr 1fr !important; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr !important; }
+    .saju-personality { grid-template-columns: 1fr 1fr !important; }
   }
-
   /* 데스크톱 (1024px+) — 3열 */
   @media (min-width: 1024px) {
-    .container.saju-page { max-width: 1100px; }
-    .saju-top-row { grid-template-columns: 220px 1fr 1fr; }
-  }
-
-  /* 큰 데스크톱 (1400px+) */
-  @media (min-width: 1400px) {
-    .container.saju-page { max-width: 1300px; }
-    .saju-ai-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .container.saju-page { max-width: 1100px !important; }
+    .saju-top-row { grid-template-columns: 220px 1fr 1fr !important; }
   }
 
   /* 카드 내부 — 절대 잘리면 안 됨 */
-  .saju-page .card { overflow-wrap: break-word; word-break: keep-all; }
+  .saju-page .card { overflow-wrap: break-word; word-break: break-word; max-width: 100%; min-width: 0; }
   .saju-page .card h2 { font-size: clamp(0.85rem, 2vw, 1rem); }
-  .saju-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); }
-  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); max-width: 100%; }
+  .saju-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); word-break: break-word; }
+  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); max-width: 100%; word-break: break-word; }
 </style>
 </head>
 <body class="bg-saju">
