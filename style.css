@@ -168,10 +168,13 @@ select.lang-select {
   overflow-x: hidden;
   width: 100%;
 }
-/* 모든 카드/그리드 내부 요소가 부모 너비를 절대 넘지 않도록 */
-.container *, .container *::before, .container *::after {
+/* grid/flex 자식이 콘텐츠 크기 이하로 줄어들 수 있도록 */
+[style*="grid"], [class*="grid"], .pillars, .row, .row3, .date-selects, .options-row, .tags, .fortune-grid {
+  overflow: hidden;
+}
+[style*="grid"] > *, [class*="grid"] > *, .pillars > *, .row > *, .row3 > *, .date-selects > *, .tags > * {
+  min-width: 0;
   max-width: 100%;
-  box-sizing: border-box;
 }
 .container.wide { max-width: 640px; }
 
