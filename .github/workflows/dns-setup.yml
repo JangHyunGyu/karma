@@ -1,0 +1,13 @@
+name: Setup DNS
+on: workflow_dispatch
+
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create CNAME record
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/b7e996de9a2e02f1fa00d4cf941d892b/dns_records" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"CNAME","name":"karma","content":"janghyungyu.github.io","proxied":true}'
