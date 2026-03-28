@@ -155,16 +155,16 @@
     <div class="options-row">
       <div class="opt-group">
         <label>성별</label>
-        <select id="gender">
-          <option value="">선택 안함</option>
+        <select id="gender" onchange="checkReady()">
+          <option value="" disabled selected>선택하세요</option>
           <option value="남성">남성</option>
           <option value="여성">여성</option>
         </select>
       </div>
       <div class="opt-group">
         <label>나이대</label>
-        <select id="age">
-          <option value="">선택 안함</option>
+        <select id="age" onchange="checkReady()">
+          <option value="" disabled selected>선택하세요</option>
           <option value="10대">10대</option>
           <option value="20대">20대</option>
           <option value="30대">30대</option>
@@ -218,6 +218,10 @@ const fileInput = document.getElementById('fileInput');
 const analyzeBtn = document.getElementById('analyzeBtn');
 let imageData = null, imageMime = null;
 
+function checkReady() {
+  analyzeBtn.disabled = !(imageData && document.getElementById('gender').value && document.getElementById('age').value);
+}
+
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
 uploadArea.addEventListener('drop', e => {
@@ -235,7 +239,7 @@ function handleFile(file) {
     imageData = e.target.result.split(',')[1];
     uploadArea.classList.add('has-image');
     uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded">`;
-    analyzeBtn.disabled = false;
+    checkReady();
   };
   reader.readAsDataURL(file);
 }
