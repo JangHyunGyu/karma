@@ -369,7 +369,6 @@ function openDaeunModal(index, event) {
     '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || '해석 데이터가 없습니다.') + '</p>';
 
   accordion.style.display = 'block';
-  accordion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
