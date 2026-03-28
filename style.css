@@ -428,7 +428,86 @@ option { background: #1a1a2e; color: #e0e0e0; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fadeIn 0.4s; }
 
-/* 랜딩 페이지 엔트리 카드 */
+/* 언어 전환 버튼 */
+.lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1px solid rgba(201,160,68,0.3);
+  border-radius: 20px;
+  background: rgba(13,13,26,0.7);
+  backdrop-filter: blur(6px);
+  color: #c9a044;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  letter-spacing: 0.5px;
+}
+.lang-btn:hover {
+  background: rgba(201,160,68,0.15);
+  border-color: rgba(201,160,68,0.6);
+  box-shadow: 0 0 12px rgba(201,160,68,0.2);
+}
+.lang-icon { font-size: 0.9rem; }
+.lang-label { min-width: 16px; text-align: center; }
+
+/* 메인 2x2 그리드 메뉴 */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.menu-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px 16px 24px;
+  background: rgba(20,15,30,0.65);
+  border: 1px solid rgba(201,160,68,0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.25s;
+  overflow: hidden;
+}
+.menu-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 0%, rgba(201,160,68,0.08) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.menu-card:hover::before { opacity: 1; }
+.menu-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(201,160,68,0.35);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(201,160,68,0.1);
+}
+.menu-card:active { transform: translateY(-1px); }
+.menu-icon { font-size: 2.6rem; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+.menu-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.menu-desc { font-size: 0.75rem; color: #888; line-height: 1.4; }
+.menu-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.6rem;
+  background: rgba(123,94,167,0.25);
+  color: #b39ddb;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* 랜딩 페이지 엔트리 카드 (서브페이지용) */
 .entry-card {
   display: flex;
   align-items: center;
