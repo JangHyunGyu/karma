@@ -968,6 +968,57 @@ async function handleGetErrorLog(env) {
 }
 
 // ============================================================
+// R2 Image Management
+// ============================================================
+
+async function handleR2List(url, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const prefix = url.searchParams.get('prefix') || 'karma/';
+  const cursor = url.searchParams.get('cursor') || undefined;
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+
+  const listed = await env.R2_BUCKET.list({ prefix, limit, cursor });
+  const items = listed.objects.map(obj => ({
+    key: obj.key,
+    size: obj.size,
+    uploaded: obj.uploaded,
+    type: obj.httpMetadata?.contentType || 'unknown',
+  }));
+
+  return json({
+    items,
+    cursor: listed.truncated ? listed.cursor : null,
+    total: items.length,
+  });
+}
+
+async function handleR2Get(url, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const key = url.searchParams.get('key');
+  if (!key) return json({ error: 'key required' }, 400);
+
+  const obj = await env.R2_BUCKET.get(key);
+  if (!obj) return json({ error: 'not found' }, 404);
+
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg',
+      'Cache-Control': 'no-cache',
+      ...CORS_HEADERS,
+    },
+  });
+}
+
+async function handleR2Delete(request, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const { key } = await request.json();
+  if (!key) return json({ error: 'key required' }, 400);
+
+  await env.R2_BUCKET.delete(key);
+  return json({ ok: true, deleted: key });
+}
+
+// ============================================================
 // Path Parameter Helpers
 // ============================================================
 
