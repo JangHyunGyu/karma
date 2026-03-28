@@ -21,6 +21,12 @@ body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   background-repeat: no-repeat;
   background-attachment: fixed;
   min-height: 100vh;
+  min-height: 100dvh;
+}
+@supports (-webkit-touch-callout: none) {
+  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
+    min-height: -webkit-fill-available;
+  }
 }
 body.bg-main { background-image: url('/images/bg-main.webp'); }
 body.bg-saju { background-image: url('/images/bg-saju.webp'); }
