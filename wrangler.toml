@@ -1,0 +1,11 @@
+name = "karma-api"
+main = "assets/js/worker.js"
+compatibility_date = "2024-12-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "archerlab_db"
+database_id = "babeec1b-1079-4a44-aefe-e1ffaa01f7ff"
+
+[vars]
+CORS_ORIGIN = "*"

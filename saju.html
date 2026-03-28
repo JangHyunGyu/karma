@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 내 사주 분석</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<style>
+  /* 사주 페이지 레이아웃 — 디바이스별 최적화 */
+  .saju-grid { display: grid; gap: 14px; }
+  .saju-top-row { display: grid; gap: 14px; }
+  .saju-ai-grid { display: grid; gap: 14px; }
+  .saju-personality { display: grid; gap: 14px; }
+
+  /* 모바일 세로 (≤480px) — 1열 */
+  @media (max-width: 480px) {
+    .container.saju-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
+    .saju-top-row { grid-template-columns: 1fr; }
+    .saju-ai-grid { grid-template-columns: 1fr; }
+    .saju-personality { grid-template-columns: 1fr; }
+  }
+
+  /* 모바일 가로 + 작은 태블릿 (481~768px) — 2열 */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .container.saju-page { max-width: 100%; padding: 20px 16px; }
+    .saju-top-row { grid-template-columns: 1fr 1fr; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
+    .saju-personality { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* 태블릿 세로 (769~1023px) — 3열 상단, 2열 AI */
+  @media (min-width: 769px) and (max-width: 1023px) {
+    .container.saju-page { max-width: 900px; }
+    .saju-top-row { grid-template-columns: 1fr 1fr 1fr; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
+    .saju-personality { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* 태블릿 가로 + 데스크톱 (1024px+) — 넓은 3열 */
+  @media (min-width: 1024px) {
+    .container.saju-page { max-width: 1100px; }
+    .saju-top-row { grid-template-columns: 220px 1fr 1fr; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
+    .saju-personality { grid-template-columns: 3fr 2fr; }
+  }
+
+  /* 큰 데스크톱 (1400px+) */
+  @media (min-width: 1400px) {
+    .container.saju-page { max-width: 1300px; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  /* 카드 내부 글자 크기 동적 조정 */
+  .saju-page .card { overflow: visible; }
+  .saju-page .card h2 { font-size: clamp(0.85rem, 2vw, 1rem); }
+  .saju-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); }
+  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); }
+</style>
+</head>
+<body class="bg-saju">
+<a href="https://archerlab.dev" target="_blank" class="archerlab-link">🏹 ArcherLab</a>
+<nav class="top-nav"><a href="/">← 메인</a></nav>
+<div class="container saju-page">
+  <h1>🔮 내 사주 분석</h1>
+  <p class="subtitle">생년월일로 내 사주팔자를 알아보세요</p>
+
+  <div class="card" style="max-width:480px;margin:0 auto 20px">
+    <label>생년월일 (양력)</label>
+    <div class="date-selects" id="dateSelects"></div>
+    <div class="row">
+      <div>
+        <label>성별</label>
+        <select id="gender" onchange="saveInputs()">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
+      <div>
+        <label>태어난 시 (선택)</label>
+        <select id="birthTime" onchange="saveInputs()">
+          <option value="">모름</option>
+          <option value="00:00">자시 (23~01시)</option>
+          <option value="01:00">축시 (01~03시)</option>
+          <option value="03:00">인시 (03~05시)</option>
+          <option value="05:00">묘시 (05~07시)</option>
+          <option value="07:00">진시 (07~09시)</option>
+          <option value="09:00">사시 (09~11시)</option>
+          <option value="11:00">오시 (11~13시)</option>
+          <option value="13:00">미시 (13~15시)</option>
+          <option value="15:00">신시 (15~17시)</option>
+          <option value="17:00">유시 (17~19시)</option>
+          <option value="19:00">술시 (19~21시)</option>
+          <option value="21:00">해시 (21~23시)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="analyzeBtn" onclick="doAnalyze()">사주 분석하기</button>
+  </div>
+
+  <div id="loading" style="display:none" class="loading">
+    <div class="spinner"></div>
+    <p>사주를 분석하고 있습니다...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in saju-grid">
+    <!-- 상단: 일간 + 사주 + 오행 -->
+    <div class="saju-top-row">
+      <div class="card" style="text-align:center">
+        <p style="font-size:0.75rem;color:#aaa;margin-bottom:2px">나를 나타내는 글자</p>
+        <div style="margin:8px 0">
+          <span id="ilganText" style="font-size:3rem;font-weight:800;color:#ffd93d"></span>
+        </div>
+        <div id="ohangText" style="font-size:0.95rem;color:#81c784"></div>
+        <div id="ilganDesc" style="font-size:0.8rem;color:#ccc;margin-top:8px;line-height:1.5"></div>
+      </div>
+      <div class="card">
+        <h2>사주 (四柱)</h2>
+        <div class="pillars" id="pillars"></div>
+        <div id="pillarDesc" style="margin-top:10px;font-size:0.72rem;color:#888;line-height:1.5"></div>
+      </div>
+      <div class="card">
+        <h2>오행 분포</h2>
+        <div id="ohangBars"></div>
+      </div>
+    </div>
+
+    <!-- 대운 -->
+    <div id="daeunSection" style="display:none">
+      <div class="card">
+        <h2>🔄 대운 (10년 단위 인생 흐름) <span style="font-size:0.7rem;color:#888;font-weight:400">카드를 클릭하세요</span></h2>
+        <div id="daeunTimeline" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px"></div>
+        <div id="daeunAccordion" style="display:none;margin-top:12px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:12px">
+          <div id="daeunAccordionContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 분석 -->
+    <div id="aiSection" style="display:none">
+      <!-- 성격 분석 -->
+      <div class="saju-personality">
+        <div class="card">
+          <h2>🧠 성격 분석</h2>
+          <p id="aiPersonality" style="line-height:1.7"></p>
+        </div>
+        <div class="card">
+          <h2>강점 & 주의</h2>
+          <div style="margin-bottom:12px">
+            <span style="font-size:0.8rem;color:#81c784;font-weight:600">강점</span>
+            <div class="tags" id="aiStrengths"></div>
+          </div>
+          <div>
+            <span style="font-size:0.8rem;color:#ffb74d;font-weight:600">주의할 점</span>
+            <div class="tags" id="aiCautions"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2열 그리드: 연애 + 직업 -->
+      <div class="saju-ai-grid">
+        <div class="card">
+          <h2>💕 연애 스타일</h2>
+          <p id="aiLove" style="line-height:1.7"></p>
+        </div>
+        <div class="card">
+          <h2>💼 적성 & 직업</h2>
+          <p id="aiCareer" style="line-height:1.7"></p>
+        </div>
+      </div>
+
+      <!-- 조언 -->
+      <div class="card">
+        <h2>💡 조언</h2>
+        <p id="aiAdvice" style="line-height:1.7"></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script src="/js/components.js"></script>
+<script>
+createDateSelects('dateSelects', 1995, 3, 20);
+
+const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
+const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
+const ILGAN_INFO = {
+  '갑': { symbol: '큰 나무', nature: '목(木)', desc: '우직하고 곧은 성격의 리더. 한번 정하면 끝까지 밀고 나가는 추진력의 소유자' },
+  '을': { symbol: '풀과 덩굴', nature: '목(木)', desc: '부드럽고 유연한 사교가. 어떤 환경에든 잘 적응하며 사람들과 잘 어울림' },
+  '병': { symbol: '태양', nature: '화(火)', desc: '밝고 열정적인 분위기 메이커. 주변을 환하게 만들고 사람들의 주목을 받는 타입' },
+  '정': { symbol: '촛불', nature: '화(火)', desc: '조용하지만 따뜻한 배려의 사람. 겉은 차분해도 마음속에 뜨거운 열정을 품고 있음' },
+  '무': { symbol: '큰 산', nature: '토(土)', desc: '듬직하고 믿음직한 사람. 주변 사람들에게 안정감을 주고 묵묵히 자기 자리를 지킴' },
+  '기': { symbol: '논밭', nature: '토(土)', desc: '현실적이고 꼼꼼한 관리자. 실리를 잘 챙기며 세심하게 주변을 돌봄' },
+  '경': { symbol: '강철', nature: '금(金)', desc: '의지가 강하고 정의로운 사람. 옳다고 믿는 것은 반드시 지키려는 원칙주의자' },
+  '신': { symbol: '보석', nature: '금(金)', desc: '예리하고 섬세한 완벽주의자. 아름다움을 추구하며 날카로운 분석력을 가짐' },
+  '임': { symbol: '큰 바다', nature: '수(水)', desc: '넓은 마음의 자유인. 생각이 깊고 포용력이 커서 누구든 품어주는 타입' },
+  '계': { symbol: '이슬/시냇물', nature: '수(水)', desc: '감수성 풍부한 예술가 기질. 직관이 뛰어나고 겉은 잔잔하지만 내면은 깊음' },
+};
+const OHANG_EXCESS = {
+  '목': '추진력 넘치지만 고집이 강할 수 있음',
+  '화': '열정적이지만 급하고 감정 기복이 있을 수 있음',
+  '토': '안정적이지만 변화를 두려워할 수 있음',
+  '금': '완벽주의적이지만 비판적일 수 있음',
+  '수': '지혜롭지만 우유부단할 수 있음',
+};
+const OHANG_LACK = {
+  '목': '추진력/도전 정신이 부족할 수 있음',
+  '화': '열정/표현력이 약하고 소극적일 수 있음',
+  '토': '안정감이 부족하고 불안할 수 있음',
+  '금': '결단력/판단력이 약할 수 있음',
+  '수': '유연성/적응력이 부족할 수 있음',
+};
+
+async function doAnalyze() {
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'block';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/saju', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        birth_date: getBirthDate(),
+        birth_time: document.getElementById('birthTime').value,
+        gender: document.getElementById('gender').value,
+      }),
+    });
+    const data = await resp.json();
+    if (data.error) { alert(data.error); return; }
+    renderResult(data);
+  } catch(e) {
+    alert('오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderResult(d) {
+  document.getElementById('result').style.display = 'grid';
+  document.getElementById('ilganText').textContent = d.ilgan;
+  const info = ILGAN_INFO[d.ilgan] || {};
+  document.getElementById('ohangText').innerHTML =
+    OHANG_EMOJI[d.ilganOhang] + ' ' + esc(info.nature || d.ilganOhang) +
+    '<div style="font-size:0.85rem;color:#aaa;margin-top:4px">자연에 비유하면 <b style="color:#fff">' + esc(info.symbol || '') + '</b></div>';
+  document.getElementById('ilganDesc').textContent = info.desc || '';
+
+  const PILLAR_DESC = {
+    '년주': '조상/부모운, 어린 시절',
+    '월주': '부모/형제운, 사회성',
+    '일주': '나 자신, 배우자운',
+    '시주': '자녀운, 말년운',
+  };
+  document.getElementById('pillars').innerHTML = d.pillars.map(p =>
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+  ).join('');
+  // 기둥 설명 (AI 해석 전 고정 텍스트)
+  document.getElementById('pillarDesc').innerHTML = d.pillars.map(p =>
+    '<span style="color:#ffd93d">'+esc(p.name)+'</span> '+esc(p.gan+p.ji)+' — '+esc(PILLAR_DESC[p.name]||'')
+  ).join(' · ');
+  // AI 기둥별 해석은 아래에서 추가
+  window._pillarKeys = ['year','month','day','hour'];
+
+  const maxOh = Math.max(...Object.values(d.ohangCount), 1);
+  let ohangHtml = Object.entries(d.ohangCount).map(([k,v]) =>
+    '<div class="bar-item"><div class="bar-label"><span>'+OHANG_EMOJI[k]+' '+k+'</span><span>'+v+'</span></div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+OHANG_COLORS[k]+'"></div></div></div>'
+  ).join('');
+  // 과다/부족 태그
+  const ohangTags = [];
+  for (const [k,v] of Object.entries(d.ohangCount)) {
+    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + k + ' 과다: ' + esc(OHANG_EXCESS[k]) + '</span>');
+    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + k + ' 부족: ' + esc(OHANG_LACK[k]) + '</span>');
+  }
+  if (ohangTags.length) ohangHtml += '<div class="tags" style="margin-top:8px">' + ohangTags.join('') + '</div>';
+  document.getElementById('ohangBars').innerHTML = ohangHtml;
+
+  // 대운
+  if (d.daeun && d.daeun.length) {
+    document.getElementById('daeunSection').style.display = 'block';
+    const now = new Date();
+    const by = parseInt(document.getElementById('birthYear')?.value || 1995);
+    const currentAge = now.getFullYear() - by;
+
+    const daeunReadings = d.ai?.daeun_reading || [];
+    // 전역 저장 (팝업에서 사용)
+    window._daeunData = d.daeun.map((du, i) => ({ ...du, reading: daeunReadings[i] || '', isCurrent: currentAge >= du.fromAge && currentAge <= du.toAge }));
+
+    document.getElementById('daeunTimeline').innerHTML = d.daeun.map((du, i) => {
+      const isCurrent = currentAge >= du.fromAge && currentAge <= du.toAge;
+      return '<div onclick="openDaeunModal('+i+', event)" style="min-width:90px;text-align:center;padding:12px 10px;border-radius:12px;flex-shrink:0;cursor:pointer;transition:transform 0.15s;' +
+        'background:' + (isCurrent ? 'rgba(233,69,96,0.2);border:2px solid #e94560' : 'rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)') + '" ' +
+        'onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'none\'">' +
+        '<div style="font-size:0.7rem;color:' + (isCurrent ? '#ff6b6b' : '#888') + ';margin-bottom:4px">' + esc(du.label) + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:700;color:#ffd93d">' + esc(du.gan) + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:700;color:#81c784">' + esc(du.ji) + '</div>' +
+        '<div style="font-size:0.7rem;color:#aaa;margin-top:4px">' + esc(du.ohang) + '/' + esc(du.jiOhang) + '</div>' +
+        (isCurrent ? '<div style="font-size:0.6rem;color:#ff6b6b;margin-top:2px;font-weight:700">현재</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  if (d.ai) {
+    document.getElementById('aiSection').style.display = 'block';
+
+    // 기둥별 AI 해석 추가
+    if (d.ai.pillar_reading) {
+      const pr = d.ai.pillar_reading;
+      const keys = ['year','month','day','hour'];
+      const labels = { year: '년주', month: '월주', day: '일주', hour: '시주' };
+      let prHtml = '';
+      d.pillars.forEach((p, i) => {
+        const key = keys[i];
+        const reading = pr[key];
+        if (reading) {
+          prHtml += '<div style="margin-bottom:8px"><span style="color:#ffd93d;font-weight:600;font-size:0.8rem">'+esc(p.name)+' '+esc(p.gan+p.ji)+'</span> ' +
+            '<span style="color:#888;font-size:0.72rem">'+esc(PILLAR_DESC[p.name]||'')+'</span>' +
+            '<div style="color:#ccc;font-size:0.82rem;margin-top:3px;line-height:1.5">'+esc(reading)+'</div></div>';
+        }
+      });
+      if (prHtml) document.getElementById('pillarDesc').innerHTML = prHtml;
+    }
+
+    document.getElementById('aiPersonality').textContent = d.ai.personality || '';
+    document.getElementById('aiStrengths').innerHTML = (d.ai.strengths||[]).map(s => '<span class="tag tag-good">'+esc(s)+'</span>').join('');
+    document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
+    document.getElementById('aiLove').textContent = d.ai.love_style || '';
+    document.getElementById('aiCareer').textContent = d.ai.career || '';
+    document.getElementById('aiYearly').textContent = d.ai.yearly_fortune || '';
+    document.getElementById('aiAdvice').textContent = d.ai.advice || '';
+  }
+
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+let _openDaeunIndex = -1;
+
+function openDaeunModal(index, event) {
+  const du = window._daeunData[index];
+  if (!du) return;
+
+  const accordion = document.getElementById('daeunAccordion');
+  const content = document.getElementById('daeunAccordionContent');
+
+  // 같은 카드 다시 클릭 → 닫기
+  if (_openDaeunIndex === index) {
+    accordion.style.display = 'none';
+    _openDaeunIndex = -1;
+    return;
+  }
+  _openDaeunIndex = index;
+
+  content.innerHTML =
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
+      '<div>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(du.gan) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(du.ji) + '</span>' +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:0.9rem;font-weight:600;color:' + (du.isCurrent ? '#ff6b6b' : '#fff') + '">' +
+          esc(du.label) + (du.isCurrent ? ' (현재 대운)' : '') +
+        '</div>' +
+        '<div style="font-size:0.8rem;color:#aaa">' +
+          (OHANG_EMOJI[du.ohang]||'') + ' ' + esc(du.ohang) + ' / ' + (OHANG_EMOJI[du.jiOhang]||'') + ' ' + esc(du.jiOhang) +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">현재 이 대운의 영향 아래에 있습니다</div>' : '') +
+    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || '해석 데이터가 없습니다.') + '</p>';
+
+  accordion.style.display = 'block';
+  accordion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+</script>
+</body>
+</html>

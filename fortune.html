@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 올해의 운세</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .fortune-grid { display: grid; gap: 14px; }
+  .fortune-2col { display: grid; gap: 14px; }
+  @media (min-width: 769px) {
+    .container.fortune-page { max-width: 1000px; }
+    .fortune-2col { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 481px) and (max-width: 768px) {
+    .container.fortune-page { max-width: 700px; }
+    .fortune-2col { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) {
+    .container.fortune-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
+  }
+  .fortune-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); }
+</style>
+</head>
+<body class="bg-fortune">
+<a href="https://archerlab.dev" target="_blank" class="archerlab-link">🏹 ArcherLab</a>
+<nav class="top-nav"><a href="/">← 메인</a></nav>
+<div class="container fortune-page">
+  <h1>🌟 올해의 운세</h1>
+  <p class="subtitle">생년월일로 올해 운세를 상세히 분석합니다</p>
+
+  <div class="card" style="max-width:480px;margin:0 auto 20px">
+    <label>생년월일 (양력)</label>
+    <div class="date-selects" id="dateSelects"></div>
+    <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+      <div>
+        <label>성별</label>
+        <select id="gender" onchange="saveInputs()">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
+      <div>
+        <label>태어난 시</label>
+        <select id="birthTime" onchange="saveInputs()">
+          <option value="">모름</option>
+          <option value="00:00">자시 (23~01)</option>
+          <option value="01:00">축시 (01~03)</option>
+          <option value="03:00">인시 (03~05)</option>
+          <option value="05:00">묘시 (05~07)</option>
+          <option value="07:00">진시 (07~09)</option>
+          <option value="09:00">사시 (09~11)</option>
+          <option value="11:00">오시 (11~13)</option>
+          <option value="13:00">미시 (13~15)</option>
+          <option value="15:00">신시 (15~17)</option>
+          <option value="17:00">유시 (17~19)</option>
+          <option value="19:00">술시 (19~21)</option>
+          <option value="21:00">해시 (21~23)</option>
+        </select>
+      </div>
+      <div>
+        <label>운세 연도</label>
+        <select id="fortuneYear"></select>
+      </div>
+    </div>
+    <button class="btn" id="fortuneBtn" onclick="doFortune()">운세 분석하기</button>
+  </div>
+
+  <div id="loading" style="display:none" class="loading">
+    <div class="spinner"></div>
+    <p>운세를 분석하고 있습니다...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in fortune-grid">
+    <!-- 요약 -->
+    <div class="card" style="text-align:center">
+      <h2 id="fortuneYearTitle"></h2>
+      <p style="font-size:0.8rem;color:#aaa;margin-bottom:8px" id="sajuInfo"></p>
+      <p id="fortuneSummary" style="line-height:1.7;text-align:left"></p>
+    </div>
+
+    <!-- 4대 운세 -->
+    <div class="fortune-2col">
+      <div class="card">
+        <h2>💕 연애/결혼운</h2>
+        <p id="fortuneLove" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2>💰 재물운</h2>
+        <p id="fortuneMoney" style="line-height:1.7"></p>
+      </div>
+    </div>
+    <div class="fortune-2col">
+      <div class="card">
+        <h2>💼 직장/사업운</h2>
+        <p id="fortuneCareer" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2>🏥 건강운</h2>
+        <p id="fortuneHealth" style="line-height:1.7"></p>
+      </div>
+    </div>
+
+    <!-- 행운 -->
+    <div class="card">
+      <h2>🍀 올해의 행운</h2>
+      <div id="fortuneLucky" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>
+
+    <!-- 조언 -->
+    <div class="card">
+      <h2>💡 올해의 조언</h2>
+      <p id="fortuneAdvice" style="line-height:1.7"></p>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/components.js"></script>
+<script>
+createDateSelects('dateSelects', 1995, 3, 20);
+
+// 연도 옵션
+const yearSelect = document.getElementById('fortuneYear');
+const thisYear = new Date().getFullYear();
+for (let y = thisYear - 5; y <= thisYear + 4; y++) {
+  const opt = document.createElement('option');
+  opt.value = y;
+  opt.textContent = y + '년' + (y === thisYear ? ' (올해)' : '');
+  if (y === thisYear) opt.selected = true;
+  yearSelect.appendChild(opt);
+}
+
+async function doFortune() {
+  const btn = document.getElementById('fortuneBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'block';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/fortune', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        birth_date: getBirthDate(),
+        birth_time: document.getElementById('birthTime').value,
+        gender: document.getElementById('gender').value,
+        year: parseInt(document.getElementById('fortuneYear').value),
+      }),
+    });
+    const data = await resp.json();
+    if (data.error || !data.fortune) { alert(data.error || '운세 분석 실패'); return; }
+    renderFortune(data);
+  } catch(e) {
+    alert('오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderFortune(d) {
+  const f = d.fortune;
+  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+  document.getElementById('fortuneYearTitle').textContent = '📅 ' + d.year + '년 운세';
+  document.getElementById('sajuInfo').textContent = '일간: ' + d.ilgan + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
+  document.getElementById('fortuneSummary').textContent = f.year_summary || '';
+  document.getElementById('fortuneLove').textContent = f.love || '';
+  document.getElementById('fortuneMoney').textContent = f.money || '';
+  document.getElementById('fortuneCareer').textContent = f.career || '';
+  document.getElementById('fortuneHealth').textContent = f.health || '';
+  document.getElementById('fortuneAdvice').textContent = f.advice || '';
+
+  // 행운
+  if (f.lucky) {
+    document.getElementById('fortuneLucky').innerHTML =
+      (f.lucky.color ? '<span class="tag tag-good">🎨 행운의 색: ' + esc(f.lucky.color) + '</span>' : '') +
+      (f.lucky.number ? '<span class="tag tag-good">🔢 행운의 숫자: ' + esc(String(f.lucky.number)) + '</span>' : '') +
+      (f.lucky.direction ? '<span class="tag tag-good">🧭 행운의 방향: ' + esc(f.lucky.direction) + '</span>' : '') +
+      (f.lucky.month ? '<span class="tag tag-good">📅 최고의 달: ' + esc(String(f.lucky.month)) + '</span>' : '');
+  }
+
+  document.getElementById('result').style.display = 'grid';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+</body>
+</html>

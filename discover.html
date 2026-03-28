@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 탐색</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container wide">
+  <div class="nav">
+    <span class="nav-title">🔍 탐색</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font-size:0.8rem;color:#888" id="myInfo"></span>
+      <button class="btn btn-small" onclick="location.href='/matches.html'">💬 쪽지함</button>
+      <button class="btn btn-small btn-secondary" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>궁합 높은 사람을 찾고 있습니다...</p>
+  </div>
+
+  <div id="content" style="display:none">
+    <div id="matchList"></div>
+    <div id="empty" style="display:none" class="empty-state">
+      <p>아직 매칭 대상이 없습니다</p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/components.js"></script>
+<script>
+const userId = sessionStorage.getItem('user_id');
+if (!userId) location.href = '/login.html';
+
+document.getElementById('myInfo').textContent = userId;
+
+async function loadMatches() {
+  try {
+    const resp = await fetch(API_BASE + '/api/match-list/' + encodeURIComponent(userId));
+    const data = await resp.json();
+    if (data.error) { alert(data.error); return; }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    if (!data.matches.length) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+    document.getElementById('matchList').innerHTML = data.matches.map(m => `
+      <div class="match-card fade-in" onclick="location.href='/match.html?a=${esc(userId)}&b=${esc(m.user_id)}'">
+        <div class="match-info">
+          <div class="name">${esc(m.nickname)}</div>
+          <div class="meta">${m.age}세 · ${OHANG_EMOJI[m.ohang]||''} ${esc(m.ohang||'')} 타입</div>
+        </div>
+        <div class="match-scores">
+          <div class="score-badge score-saju">
+            <div class="num">${m.saju_score}</div>
+            <div class="lbl">궁합</div>
+          </div>
+          <span class="grade grade-${m.grade}">${m.grade}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    alert('오류: ' + e.message);
+  }
+}
+
+function doLogout() {
+  sessionStorage.clear();
+  location.href = '/';
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+loadMatches();
+</script>
+</body>
+</html>

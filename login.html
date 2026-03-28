@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 로그인</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="top-nav"><a href="/">← 메인</a></nav>
+<div class="container">
+  <h1>Karma</h1>
+  <p class="subtitle">프로필 매칭 로그인</p>
+
+  <div class="card">
+    <h2>로그인</h2>
+    <div class="error" id="loginError"></div>
+    <label>ID</label>
+    <input type="text" id="loginId" placeholder="영문/숫자 ID">
+    <label>비밀번호</label>
+    <input type="password" id="loginPw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn" onclick="doLogin()">로그인</button>
+    <p class="link"><a href="/register.html">계정이 없으신가요? 회원가입</a></p>
+  </div>
+
+</div>
+
+<script src="/js/components.js"></script>
+<script>
+function showError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doLogin() {
+  const user_id = document.getElementById('loginId').value.trim();
+  const password = document.getElementById('loginPw').value;
+  if (!user_id || !password) return showError('ID와 비밀번호를 입력하세요');
+
+  try {
+    const resp = await fetch(API_BASE + '/api/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id, password }),
+    });
+    const data = await resp.json();
+    if (!data.success) return showError(data.error);
+    sessionStorage.setItem('user_id', user_id);
+    sessionStorage.setItem('password', password);
+    location.href = '/discover.html';
+  } catch(e) {
+    showError('서버 오류: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 회원가입</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="top-nav"><a href="/">← 메인</a></nav>
+<div class="container">
+  <h1>Karma</h1>
+  <p class="subtitle">프로필 매칭 회원가입</p>
+
+  <div class="card">
+    <h2>기본 정보</h2>
+    <div class="error" id="regError"></div>
+    <label>ID (영문/숫자 3~20자)</label>
+    <input type="text" id="regId" placeholder="myid123">
+    <label>비밀번호</label>
+    <input type="password" id="regPw1" placeholder="비밀번호">
+    <label>비밀번호 확인</label>
+    <input type="password" id="regPw2" placeholder="비밀번호 다시 입력">
+    <label>닉네임</label>
+    <input type="text" id="regNick" placeholder="닉네임 (한글/영문 자유)">
+    <div class="row">
+      <div>
+        <label>성별</label>
+        <select id="regGender">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
+      <div>
+        <label>관심 성별</label>
+        <select id="regInterest">
+          <option value="female">여성</option>
+          <option value="male">남성</option>
+          <option value="both">모두</option>
+        </select>
+      </div>
+    </div>
+    <label>생년월일 (양력)</label>
+    <input type="date" id="regBirthDate" value="1995-03-20">
+    <label>태어난 시 (선택)</label>
+    <select id="regBirthTime">
+      <option value="">모름</option>
+      <option value="00:00">자시 (23~01시)</option>
+      <option value="01:00">축시 (01~03시)</option>
+      <option value="03:00">인시 (03~05시)</option>
+      <option value="05:00">묘시 (05~07시)</option>
+      <option value="07:00">진시 (07~09시)</option>
+      <option value="09:00">사시 (09~11시)</option>
+      <option value="11:00">오시 (11~13시)</option>
+      <option value="13:00">미시 (13~15시)</option>
+      <option value="15:00">신시 (15~17시)</option>
+      <option value="17:00">유시 (17~19시)</option>
+      <option value="19:00">술시 (19~21시)</option>
+      <option value="21:00">해시 (21~23시)</option>
+    </select>
+  </div>
+
+  <button class="btn" onclick="doRegister()">가입하기</button>
+  <p class="link"><a href="/login.html">이미 계정이 있으신가요? 로그인</a></p>
+</div>
+
+<script src="/js/components.js"></script>
+<script>
+function showError(msg) {
+  const el = document.getElementById('regError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doRegister() {
+  const user_id = document.getElementById('regId').value.trim();
+  const pw1 = document.getElementById('regPw1').value;
+  const pw2 = document.getElementById('regPw2').value;
+  const nickname = document.getElementById('regNick').value.trim();
+  const gender = document.getElementById('regGender').value;
+  const interest_gender = document.getElementById('regInterest').value;
+  const birth_date = document.getElementById('regBirthDate').value;
+  const birth_time = document.getElementById('regBirthTime').value;
+
+  if (!user_id || !pw1 || !nickname || !birth_date) return showError('필수 항목을 모두 입력하세요');
+  if (pw1 !== pw2) return showError('비밀번호가 일치하지 않습니다');
+  if (!/^[a-zA-Z0-9]{3,20}$/.test(user_id)) return showError('ID는 영문/숫자 3~20자');
+
+  try {
+    const resp = await fetch(API_BASE + '/api/register', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id, password: pw1, nickname, gender, interest_gender, birth_date, birth_time }),
+    });
+    const data = await resp.json();
+    if (!data.success) return showError(data.error);
+    sessionStorage.setItem('user_id', user_id);
+    sessionStorage.setItem('password', pw1);
+    location.href = '/discover.html';
+  } catch(e) {
+    showError('서버 오류: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>
