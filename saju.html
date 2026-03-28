@@ -332,7 +332,6 @@ function renderResult(d) {
     document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
     document.getElementById('aiLove').textContent = d.ai.love_style || '';
     document.getElementById('aiCareer').textContent = d.ai.career || '';
-    document.getElementById('aiYearly').textContent = d.ai.yearly_fortune || '';
     document.getElementById('aiAdvice').textContent = d.ai.advice || '';
   }
 
