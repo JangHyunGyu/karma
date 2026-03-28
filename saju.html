@@ -7,42 +7,25 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 <style>
-  /* 사주 페이지 레이아웃 — 디바이스별 최적화 */
+  /* 사주 페이지 — 모바일 퍼스트 (기본 1열) */
+  .container.saju-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
   .saju-grid { display: grid; gap: 14px; }
-  .saju-top-row { display: grid; gap: 14px; }
-  .saju-ai-grid { display: grid; gap: 14px; }
-  .saju-personality { display: grid; gap: 14px; }
+  .saju-top-row { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  .saju-ai-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  .saju-personality { display: grid; gap: 14px; grid-template-columns: 1fr; }
 
-  /* 모바일 세로 (≤480px) — 1열 */
-  @media (max-width: 480px) {
-    .container.saju-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
-    .saju-top-row { grid-template-columns: 1fr; }
-    .saju-ai-grid { grid-template-columns: 1fr; }
-    .saju-personality { grid-template-columns: 1fr; }
-  }
-
-  /* 모바일 가로 + 작은 태블릿 (481~768px) — 2열 */
-  @media (min-width: 481px) and (max-width: 768px) {
-    .container.saju-page { max-width: 100%; padding: 20px 16px; }
+  /* 태블릿 (769px+) — 2열 */
+  @media (min-width: 769px) {
+    .container.saju-page { max-width: 900px; padding: 24px 20px; }
     .saju-top-row { grid-template-columns: 1fr 1fr; }
     .saju-ai-grid { grid-template-columns: 1fr 1fr; }
     .saju-personality { grid-template-columns: 1fr 1fr; }
   }
 
-  /* 태블릿 세로 (769~1023px) — 3열 상단, 2열 AI */
-  @media (min-width: 769px) and (max-width: 1023px) {
-    .container.saju-page { max-width: 900px; }
-    .saju-top-row { grid-template-columns: 1fr 1fr 1fr; }
-    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
-    .saju-personality { grid-template-columns: 1fr 1fr; }
-  }
-
-  /* 태블릿 가로 + 데스크톱 (1024px+) — 넓은 3열 */
+  /* 데스크톱 (1024px+) — 3열 */
   @media (min-width: 1024px) {
     .container.saju-page { max-width: 1100px; }
     .saju-top-row { grid-template-columns: 220px 1fr 1fr; }
-    .saju-ai-grid { grid-template-columns: 1fr 1fr; }
-    .saju-personality { grid-template-columns: 3fr 2fr; }
   }
 
   /* 큰 데스크톱 (1400px+) */
@@ -51,11 +34,11 @@
     .saju-ai-grid { grid-template-columns: 1fr 1fr 1fr; }
   }
 
-  /* 카드 내부 글자 크기 동적 조정 */
-  .saju-page .card { overflow: hidden; }
+  /* 카드 내부 — 절대 잘리면 안 됨 */
+  .saju-page .card { overflow-wrap: break-word; word-break: keep-all; }
   .saju-page .card h2 { font-size: clamp(0.85rem, 2vw, 1rem); }
   .saju-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); }
-  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); }
+  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); max-width: 100%; }
 </style>
 </head>
 <body class="bg-saju">

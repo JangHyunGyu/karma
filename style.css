@@ -279,9 +279,9 @@ h1 {
   padding: 22px;
   margin-bottom: 14px;
   backdrop-filter: blur(10px);
-  overflow: hidden;
   overflow-wrap: break-word;
   word-break: keep-all;
+  max-width: 100%;
 }
 .card h2 {
   font-size: 1rem;
@@ -422,8 +422,8 @@ option { background: #1a1a2e; color: #e0e0e0; }
 .bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
 
 /* 태그 */
-.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.tag { padding: 4px 10px; border-radius: 16px; font-size: 0.78rem; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; max-width: 100%; }
+.tag { padding: 4px 10px; border-radius: 16px; font-size: 0.78rem; max-width: 100%; overflow-wrap: break-word; }
 .tag-good { background: rgba(76,175,80,0.2); color: #81c784; border: 1px solid rgba(76,175,80,0.3); }
 .tag-warn { background: rgba(255,152,0,0.2); color: #ffb74d; border: 1px solid rgba(255,152,0,0.3); }
 
@@ -446,14 +446,14 @@ option { background: #1a1a2e; color: #e0e0e0; }
 }
 
 /* 사주 기둥 */
-.pillars { display: flex; gap: 6px; margin-top: 8px; width: 100%; }
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; width: 100%; }
 .pillar {
   text-align: center;
   padding: 8px 4px;
   background: rgba(255,255,255,0.05);
   border-radius: 10px;
-  flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .pillar .gan { font-size: 1.1rem; font-weight: 700; color: #ffd93d; }
 .pillar .ji { font-size: 1.1rem; font-weight: 700; color: #81c784; }
