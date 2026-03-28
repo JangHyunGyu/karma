@@ -277,7 +277,9 @@ h1 {
   padding: 22px;
   margin-bottom: 14px;
   backdrop-filter: blur(10px);
-  overflow: visible;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 .card h2 {
   font-size: 1rem;
