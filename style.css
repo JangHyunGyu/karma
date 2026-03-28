@@ -21,24 +21,7 @@ body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   background-attachment: fixed;
   min-height: 100vh;
 }
-/* 모바일: 세로 배경 + scroll */
-@media (max-width: 768px) {
-  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
-    background-attachment: scroll;
-  }
-  body.bg-main {
-    background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main-mobile.webp');
-  }
-  body.bg-saju {
-    background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju-mobile.webp');
-  }
-  body.bg-fortune {
-    background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune-mobile.webp');
-  }
-  body.bg-compat {
-    background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat-mobile.webp');
-  }
-}
+/* PC: 가로 배경 (기본) */
 body.bg-main {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main.webp');
 }
