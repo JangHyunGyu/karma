@@ -131,56 +131,56 @@
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container">
-  <h1>🧑 관상 분석</h1>
-  <p class="subtitle">분석 엔진이 얼굴의 관상을 분석합니다</p>
+  <h1 data-ko="🧑 관상 분석" data-en="🧑 Face Reading">🧑 관상 분석</h1>
+  <p class="subtitle" data-ko="분석 엔진이 얼굴의 관상을 분석합니다" data-en="AI analyzes your facial features">분석 엔진이 얼굴의 관상을 분석합니다</p>
 
   <div class="card">
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
       <div class="upload-visual">🧑</div>
-      <div class="upload-text">얼굴 사진 업로드</div>
-      <div class="upload-hint">탭하여 사진을 선택하세요</div>
+      <div class="upload-text" data-ko="얼굴 사진 업로드" data-en="Upload Face Photo">얼굴 사진 업로드</div>
+      <div class="upload-hint" data-ko="탭하여 사진을 선택하세요" data-en="Tap to select a photo">탭하여 사진을 선택하세요</div>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <div style="font-size:0.72rem;color:#888;line-height:1.6;padding:0 4px;margin-bottom:16px">
-      <div style="color:#c9a044;font-weight:600;margin-bottom:4px">📌 주의사항</div>
-      • 정면 얼굴이 잘 보이는 사진을 사용하세요<br>
-      • 모자, 선글라스, 마스크 없이 촬영해주세요<br>
-      • 조명이 밝고 그림자가 적을수록 정확합니다<br>
-      • 1인 사진만 가능합니다 (단체 사진 불가)<br>
-      <span style="color:#e07070">⚠ 보정/필터 적용된 사진은 결과가 부정확합니다</span>
+      <div style="color:#c9a044;font-weight:600;margin-bottom:4px" data-ko="📌 주의사항" data-en="📌 Caution">📌 주의사항</div>
+      <span data-ko="• 정면 얼굴이 잘 보이는 사진을 사용하세요" data-en="• Use a photo with a clear front-facing view">• 정면 얼굴이 잘 보이는 사진을 사용하세요</span><br>
+      <span data-ko="• 모자, 선글라스, 마스크 없이 촬영해주세요" data-en="• No hats, sunglasses, or masks">• 모자, 선글라스, 마스크 없이 촬영해주세요</span><br>
+      <span data-ko="• 조명이 밝고 그림자가 적을수록 정확합니다" data-en="• Bright lighting with minimal shadows works best">• 조명이 밝고 그림자가 적을수록 정확합니다</span><br>
+      <span data-ko="• 1인 사진만 가능합니다 (단체 사진 불가)" data-en="• Single person photos only (no group photos)">• 1인 사진만 가능합니다 (단체 사진 불가)</span><br>
+      <span style="color:#e07070" data-ko="⚠ 보정/필터 적용된 사진은 결과가 부정확합니다" data-en="⚠ Filtered or retouched photos may give inaccurate results">⚠ 보정/필터 적용된 사진은 결과가 부정확합니다</span>
     </div>
     <div class="options-row">
       <div class="opt-group">
-        <label>성별</label>
+        <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="checkReady()">
-          <option value="" disabled selected>선택하세요</option>
-          <option value="남성">남성</option>
-          <option value="여성">여성</option>
+          <option value="" disabled selected data-ko="선택하세요" data-en="Select">선택하세요</option>
+          <option value="남성" data-ko="남성" data-en="Male">남성</option>
+          <option value="여성" data-ko="여성" data-en="Female">여성</option>
         </select>
       </div>
       <div class="opt-group">
-        <label>나이대</label>
+        <label data-ko="나이대" data-en="Age Group">나이대</label>
         <select id="age" onchange="checkReady()">
-          <option value="" disabled selected>선택하세요</option>
-          <option value="10대">10대</option>
-          <option value="20대">20대</option>
-          <option value="30대">30대</option>
-          <option value="40대">40대</option>
-          <option value="50대">50대</option>
-          <option value="60대 이상">60대 이상</option>
+          <option value="" disabled selected data-ko="선택하세요" data-en="Select">선택하세요</option>
+          <option value="10대" data-ko="10대" data-en="Teens">10대</option>
+          <option value="20대" data-ko="20대" data-en="20s">20대</option>
+          <option value="30대" data-ko="30대" data-en="30s">30대</option>
+          <option value="40대" data-ko="40대" data-en="40s">40대</option>
+          <option value="50대" data-ko="50대" data-en="50s">50대</option>
+          <option value="60대 이상" data-ko="60대 이상" data-en="60s+">60대 이상</option>
         </select>
       </div>
     </div>
-    <button class="btn" id="analyzeBtn" disabled>관상 분석하기</button>
+    <button class="btn" id="analyzeBtn" disabled data-ko="관상 분석하기" data-en="Analyze Face">관상 분석하기</button>
   </div>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">관상을 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">분석 엔진이 얼굴 특징을 읽고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="관상을 분석하고 있습니다" data-en="Analyzing your face reading">관상을 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="분석 엔진이 얼굴 특징을 읽고 있어요..." data-en="The analysis engine is reading facial features...">분석 엔진이 얼굴 특징을 읽고 있어요...</p>
   </div>
 
   <div class="error" id="error"></div>
@@ -198,17 +198,17 @@
     <div class="card" id="categories" style="padding:22px"></div>
 
     <div class="card">
-      <h2>🔮 운세 풀이</h2>
+      <h2 data-ko="🔮 운세 풀이" data-en="🔮 Fortune Reading">🔮 운세 풀이</h2>
       <div class="fortune-grid" id="fortune"></div>
     </div>
 
     <div class="card">
-      <h2>💡 조언</h2>
+      <h2 data-ko="💡 조언" data-en="💡 Advice">💡 조언</h2>
       <p id="advice" style="font-size:0.88rem;color:#bbb;line-height:1.7"></p>
       <div class="celeb-box" id="celeb" style="display:none"></div>
     </div>
 
-    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">다시 분석하기</button>
+    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px" data-ko="다시 분석하기" data-en="Analyze Again">다시 분석하기</button>
   </div>
 </div>
 
@@ -336,14 +336,32 @@ function getGrade(s) {
 
 function resetForm() {
   imageData = null; imageMime = null;
+  const lang = document.documentElement.lang || 'ko';
+  const uploadText = lang === 'en' ? 'Upload Face Photo' : '얼굴 사진 업로드';
+  const hintText = lang === 'en' ? 'Tap to select a photo' : '탭하여 사진을 선택하세요';
   uploadArea.classList.remove('has-image');
-  uploadArea.innerHTML = '<div class="upload-visual">🧑</div><div class="upload-text">얼굴 사진 업로드</div><div class="upload-hint">정면 사진이 가장 정확합니다<br>탭하여 사진을 선택하세요</div><input type="file" id="fileInput" accept="image/*">';
+  uploadArea.innerHTML = '<div class="upload-visual">🧑</div><div class="upload-text" data-ko="얼굴 사진 업로드" data-en="Upload Face Photo">'+uploadText+'</div><div class="upload-hint" data-ko="탭하여 사진을 선택하세요" data-en="Tap to select a photo">'+hintText+'</div><input type="file" id="fileInput" accept="image/*">';
   document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
   analyzeBtn.disabled = true;
   document.getElementById('result').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>
+function changeLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang];
+  });
+  localStorage.setItem('karma_lang', lang);
+}
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
+})();
+</script>
 </body>
 </html>

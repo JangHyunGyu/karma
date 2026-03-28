@@ -54,56 +54,56 @@
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container saju-page">
-  <h1>🔮 내 사주 분석</h1>
-  <p class="subtitle">생년월일로 내 사주팔자를 알아보세요</p>
+  <h1 data-ko="🔮 내 사주 분석" data-en="🔮 My Saju Analysis">🔮 내 사주 분석</h1>
+  <p class="subtitle" data-ko="생년월일로 내 사주팔자를 알아보세요" data-en="Discover your Four Pillars of Destiny by date of birth">생년월일로 내 사주팔자를 알아보세요</p>
 
   <div class="card" style="max-width:480px;margin:0 auto 20px">
-    <label>생년월일 (양력)</label>
+    <label data-ko="생년월일 (양력)" data-en="Date of Birth (Solar)">생년월일 (양력)</label>
     <div class="date-selects" id="dateSelects"></div>
     <div class="row">
       <div>
-        <label>성별</label>
+        <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="saveInputs()">
-          <option value="male">남성</option>
-          <option value="female">여성</option>
+          <option value="male" data-ko="남성" data-en="Male">남성</option>
+          <option value="female" data-ko="여성" data-en="Female">여성</option>
         </select>
       </div>
       <div>
-        <label>태어난 시 (선택)</label>
+        <label data-ko="태어난 시 (선택)" data-en="Birth Hour (Optional)">태어난 시 (선택)</label>
         <select id="birthTime" onchange="saveInputs()">
-          <option value="">모름</option>
-          <option value="00:00">자시 (23~01시)</option>
-          <option value="01:00">축시 (01~03시)</option>
-          <option value="03:00">인시 (03~05시)</option>
-          <option value="05:00">묘시 (05~07시)</option>
-          <option value="07:00">진시 (07~09시)</option>
-          <option value="09:00">사시 (09~11시)</option>
-          <option value="11:00">오시 (11~13시)</option>
-          <option value="13:00">미시 (13~15시)</option>
-          <option value="15:00">신시 (15~17시)</option>
-          <option value="17:00">유시 (17~19시)</option>
-          <option value="19:00">술시 (19~21시)</option>
-          <option value="21:00">해시 (21~23시)</option>
+          <option value="" data-ko="모름" data-en="Unknown">모름</option>
+          <option value="00:00" data-ko="자시 (23~01시)" data-en="자시 Ja (23~01)">자시 (23~01시)</option>
+          <option value="01:00" data-ko="축시 (01~03시)" data-en="축시 Chuk (01~03)">축시 (01~03시)</option>
+          <option value="03:00" data-ko="인시 (03~05시)" data-en="인시 In (03~05)">인시 (03~05시)</option>
+          <option value="05:00" data-ko="묘시 (05~07시)" data-en="묘시 Myo (05~07)">묘시 (05~07시)</option>
+          <option value="07:00" data-ko="진시 (07~09시)" data-en="진시 Jin (07~09)">진시 (07~09시)</option>
+          <option value="09:00" data-ko="사시 (09~11시)" data-en="사시 Sa (09~11)">사시 (09~11시)</option>
+          <option value="11:00" data-ko="오시 (11~13시)" data-en="오시 O (11~13)">오시 (11~13시)</option>
+          <option value="13:00" data-ko="미시 (13~15시)" data-en="미시 Mi (13~15)">미시 (13~15시)</option>
+          <option value="15:00" data-ko="신시 (15~17시)" data-en="신시 Sin (15~17)">신시 (15~17시)</option>
+          <option value="17:00" data-ko="유시 (17~19시)" data-en="유시 Yu (17~19)">유시 (17~19시)</option>
+          <option value="19:00" data-ko="술시 (19~21시)" data-en="술시 Sul (19~21)">술시 (19~21시)</option>
+          <option value="21:00" data-ko="해시 (21~23시)" data-en="해시 Hae (21~23)">해시 (21~23시)</option>
         </select>
       </div>
     </div>
-    <button class="btn" id="analyzeBtn" onclick="doAnalyze()">사주 분석하기</button>
+    <button class="btn" id="analyzeBtn" onclick="doAnalyze()" data-ko="사주 분석하기" data-en="Analyze Saju">사주 분석하기</button>
   </div>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">사주를 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">사주팔자를 해석하고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="사주를 분석하고 있습니다" data-en="Analyzing your Saju...">사주를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="사주팔자를 해석하고 있어요..." data-en="Interpreting your Four Pillars of Destiny...">사주팔자를 해석하고 있어요...</p>
   </div>
 
   <div id="result" class="fade-in saju-grid" style="display:none">
     <!-- 상단: 일간 + 사주 + 오행 -->
     <div class="saju-top-row">
       <div class="card" style="text-align:center">
-        <p style="font-size:0.75rem;color:#aaa;margin-bottom:2px">나를 나타내는 글자</p>
+        <p style="font-size:0.75rem;color:#aaa;margin-bottom:2px" data-ko="나를 나타내는 글자" data-en="The character that represents me">나를 나타내는 글자</p>
         <div style="margin:8px 0">
           <span id="ilganText" style="font-size:3rem;font-weight:800;color:#ffd93d"></span>
         </div>
@@ -111,12 +111,12 @@
         <div id="ilganDesc" style="font-size:0.8rem;color:#ccc;margin-top:8px;line-height:1.5"></div>
       </div>
       <div class="card">
-        <h2>사주 (四柱)</h2>
+        <h2 data-ko="사주 (四柱)" data-en="Four Pillars (四柱)">사주 (四柱)</h2>
         <div class="pillars" id="pillars"></div>
         <div id="pillarDesc" style="margin-top:10px;font-size:0.72rem;color:#888;line-height:1.5"></div>
       </div>
       <div class="card">
-        <h2>오행 분포</h2>
+        <h2 data-ko="오행 분포" data-en="Five Elements Distribution">오행 분포</h2>
         <div id="ohangBars"></div>
       </div>
     </div>
@@ -124,7 +124,7 @@
     <!-- 대운 -->
     <div id="daeunSection" style="display:none">
       <div class="card">
-        <h2>🔄 대운 (10년 단위 인생 흐름) <span style="font-size:0.7rem;color:#888;font-weight:400">카드를 클릭하세요</span></h2>
+        <h2><span data-ko="🔄 대운 (10년 단위 인생 흐름)" data-en="🔄 Major Luck Cycles (10-Year Life Flow)">🔄 대운 (10년 단위 인생 흐름)</span> <span style="font-size:0.7rem;color:#888;font-weight:400" data-ko="카드를 클릭하세요" data-en="Click a card">카드를 클릭하세요</span></h2>
         <div id="daeunTimeline" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px"></div>
         <div id="daeunAccordion" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;margin-top:12px;background:rgba(255,255,255,0.03);border:1px solid transparent;border-radius:12px">
           <div id="daeunAccordionContent" style="padding:14px"></div>
@@ -137,17 +137,17 @@
       <!-- 성격 분석 -->
       <div class="saju-personality">
         <div class="card">
-          <h2>🧠 성격 분석</h2>
+          <h2 data-ko="🧠 성격 분석" data-en="🧠 Personality Analysis">🧠 성격 분석</h2>
           <p id="aiPersonality" style="line-height:1.7"></p>
         </div>
         <div class="card">
-          <h2>강점 & 주의</h2>
+          <h2 data-ko="강점 & 주의" data-en="Strengths & Cautions">강점 & 주의</h2>
           <div style="margin-bottom:12px">
-            <span style="font-size:0.8rem;color:#81c784;font-weight:600">강점</span>
+            <span style="font-size:0.8rem;color:#81c784;font-weight:600" data-ko="강점" data-en="Strengths">강점</span>
             <div class="tags" id="aiStrengths"></div>
           </div>
           <div>
-            <span style="font-size:0.8rem;color:#ffb74d;font-weight:600">주의할 점</span>
+            <span style="font-size:0.8rem;color:#ffb74d;font-weight:600" data-ko="주의할 점" data-en="Cautions">주의할 점</span>
             <div class="tags" id="aiCautions"></div>
           </div>
         </div>
@@ -156,18 +156,18 @@
       <!-- 2열 그리드: 연애 + 직업 -->
       <div class="saju-ai-grid">
         <div class="card">
-          <h2>💕 연애 스타일</h2>
+          <h2 data-ko="💕 연애 스타일" data-en="💕 Love Style">💕 연애 스타일</h2>
           <p id="aiLove" style="line-height:1.7"></p>
         </div>
         <div class="card">
-          <h2>💼 적성 & 직업</h2>
+          <h2 data-ko="💼 적성 & 직업" data-en="💼 Career & Aptitude">💼 적성 & 직업</h2>
           <p id="aiCareer" style="line-height:1.7"></p>
         </div>
       </div>
 
       <!-- 조언 -->
       <div class="card">
-        <h2>💡 조언</h2>
+        <h2 data-ko="💡 조언" data-en="💡 Advice">💡 조언</h2>
         <p id="aiAdvice" style="line-height:1.7"></p>
       </div>
     </div>
@@ -381,6 +381,21 @@ function openDaeunModal(index, event) {
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>
+function changeLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang];
+  });
+  localStorage.setItem('karma_lang', lang);
+}
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
+})();
+</script>
 </body>
 </html>

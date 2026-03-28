@@ -21,78 +21,78 @@
 </head>
 <body class="bg-compat">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container wide">
-  <h1>💕 궁합 분석</h1>
-  <p class="subtitle">두 사람의 사주 오행 궁합을 분석합니다</p>
+  <h1 data-ko="💕 궁합 분석" data-en="💕 Compatibility Analysis">💕 궁합 분석</h1>
+  <p class="subtitle" data-ko="두 사람의 사주 오행 궁합을 분석합니다" data-en="Analyze the Five Elements compatibility between two people">두 사람의 사주 오행 궁합을 분석합니다</p>
 
   <div class="compat-cols">
     <div class="card">
       <h2>Person A</h2>
-      <label>생년월일</label>
+      <label data-ko="생년월일" data-en="Date of Birth">생년월일</label>
       <div class="date-selects" id="dateSelectsA"></div>
-      <label>성별</label>
+      <label data-ko="성별" data-en="Gender">성별</label>
       <select id="genderA">
-        <option value="male">남성</option>
-        <option value="female">여성</option>
+        <option value="male" data-ko="남성" data-en="Male">남성</option>
+        <option value="female" data-ko="여성" data-en="Female">여성</option>
       </select>
-      <label>태어난 시</label>
+      <label data-ko="태어난 시" data-en="Birth Hour">태어난 시</label>
       <select id="timeA">
-        <option value="">모름</option>
-        <option value="00:00">자시 (23~01)</option>
-        <option value="01:00">축시 (01~03)</option>
-        <option value="03:00">인시 (03~05)</option>
-        <option value="05:00">묘시 (05~07)</option>
-        <option value="07:00">진시 (07~09)</option>
-        <option value="09:00">사시 (09~11)</option>
-        <option value="11:00">오시 (11~13)</option>
-        <option value="13:00">미시 (13~15)</option>
-        <option value="15:00">신시 (15~17)</option>
-        <option value="17:00">유시 (17~19)</option>
-        <option value="19:00">술시 (19~21)</option>
-        <option value="21:00">해시 (21~23)</option>
+        <option value="" data-ko="모름" data-en="Unknown">모름</option>
+        <option value="00:00" data-ko="자시 (23~01)" data-en="Ja (23~01)">자시 (23~01)</option>
+        <option value="01:00" data-ko="축시 (01~03)" data-en="Chuk (01~03)">축시 (01~03)</option>
+        <option value="03:00" data-ko="인시 (03~05)" data-en="In (03~05)">인시 (03~05)</option>
+        <option value="05:00" data-ko="묘시 (05~07)" data-en="Myo (05~07)">묘시 (05~07)</option>
+        <option value="07:00" data-ko="진시 (07~09)" data-en="Jin (07~09)">진시 (07~09)</option>
+        <option value="09:00" data-ko="사시 (09~11)" data-en="Sa (09~11)">사시 (09~11)</option>
+        <option value="11:00" data-ko="오시 (11~13)" data-en="O (11~13)">오시 (11~13)</option>
+        <option value="13:00" data-ko="미시 (13~15)" data-en="Mi (13~15)">미시 (13~15)</option>
+        <option value="15:00" data-ko="신시 (15~17)" data-en="Sin (15~17)">신시 (15~17)</option>
+        <option value="17:00" data-ko="유시 (17~19)" data-en="Yu (17~19)">유시 (17~19)</option>
+        <option value="19:00" data-ko="술시 (19~21)" data-en="Sul (19~21)">술시 (19~21)</option>
+        <option value="21:00" data-ko="해시 (21~23)" data-en="Hae (21~23)">해시 (21~23)</option>
       </select>
     </div>
     <div class="card">
       <h2>Person B</h2>
-      <label>생년월일</label>
+      <label data-ko="생년월일" data-en="Date of Birth">생년월일</label>
       <div class="date-selects" id="dateSelectsB"></div>
-      <label>성별</label>
+      <label data-ko="성별" data-en="Gender">성별</label>
       <select id="genderB">
-        <option value="female">여성</option>
-        <option value="male">남성</option>
+        <option value="female" data-ko="여성" data-en="Female">여성</option>
+        <option value="male" data-ko="남성" data-en="Male">남성</option>
       </select>
-      <label>태어난 시</label>
+      <label data-ko="태어난 시" data-en="Birth Hour">태어난 시</label>
       <select id="timeB">
-        <option value="">모름</option>
-        <option value="00:00">자시 (23~01)</option>
-        <option value="01:00">축시 (01~03)</option>
-        <option value="03:00">인시 (03~05)</option>
-        <option value="05:00">묘시 (05~07)</option>
-        <option value="07:00">진시 (07~09)</option>
-        <option value="09:00">사시 (09~11)</option>
-        <option value="11:00">오시 (11~13)</option>
-        <option value="13:00">미시 (13~15)</option>
-        <option value="15:00">신시 (15~17)</option>
-        <option value="17:00">유시 (17~19)</option>
-        <option value="19:00">술시 (19~21)</option>
-        <option value="21:00">해시 (21~23)</option>
+        <option value="" data-ko="모름" data-en="Unknown">모름</option>
+        <option value="00:00" data-ko="자시 (23~01)" data-en="Ja (23~01)">자시 (23~01)</option>
+        <option value="01:00" data-ko="축시 (01~03)" data-en="Chuk (01~03)">축시 (01~03)</option>
+        <option value="03:00" data-ko="인시 (03~05)" data-en="In (03~05)">인시 (03~05)</option>
+        <option value="05:00" data-ko="묘시 (05~07)" data-en="Myo (05~07)">묘시 (05~07)</option>
+        <option value="07:00" data-ko="진시 (07~09)" data-en="Jin (07~09)">진시 (07~09)</option>
+        <option value="09:00" data-ko="사시 (09~11)" data-en="Sa (09~11)">사시 (09~11)</option>
+        <option value="11:00" data-ko="오시 (11~13)" data-en="O (11~13)">오시 (11~13)</option>
+        <option value="13:00" data-ko="미시 (13~15)" data-en="Mi (13~15)">미시 (13~15)</option>
+        <option value="15:00" data-ko="신시 (15~17)" data-en="Sin (15~17)">신시 (15~17)</option>
+        <option value="17:00" data-ko="유시 (17~19)" data-en="Yu (17~19)">유시 (17~19)</option>
+        <option value="19:00" data-ko="술시 (19~21)" data-en="Sul (19~21)">술시 (19~21)</option>
+        <option value="21:00" data-ko="해시 (21~23)" data-en="Hae (21~23)">해시 (21~23)</option>
       </select>
     </div>
   </div>
 
-  <button class="btn" id="compatBtn" onclick="doCompat()">궁합 분석하기</button>
+  <button class="btn" id="compatBtn" onclick="doCompat()" data-ko="궁합 분석하기" data-en="Analyze Compatibility">궁합 분석하기</button>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">궁합을 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">사주 오행 궁합을 해석하고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="궁합을 분석하고 있습니다" data-en="Analyzing compatibility">궁합을 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="사주 오행 궁합을 해석하고 있어요..." data-en="Interpreting Five Elements compatibility...">사주 오행 궁합을 해석하고 있어요...</p>
   </div>
 
   <div id="result" style="display:none" class="fade-in">
     <div class="card" style="text-align:center">
-      <p style="font-size:0.85rem;color:#aaa;margin-bottom:8px">사주 오행 궁합</p>
+      <p style="font-size:0.85rem;color:#aaa;margin-bottom:8px" data-ko="사주 오행 궁합" data-en="Five Elements Compatibility">사주 오행 궁합</p>
       <div style="margin:16px 0">
         <span id="scoreNum" style="font-size:4rem;font-weight:800;background:linear-gradient(135deg,#ffd93d,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent"></span>
         <span class="grade" id="gradeTag" style="margin-left:10px;font-size:1.3rem"></span>
@@ -100,7 +100,7 @@
     </div>
 
     <div class="card">
-      <h2>사주 비교</h2>
+      <h2 data-ko="사주 비교" data-en="Saju Comparison">사주 비교</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div>
           <p style="font-size:0.82rem;color:#ffd93d;margin-bottom:6px" id="labelA"></p>
@@ -114,20 +114,20 @@
     </div>
 
     <div class="card" id="relationsCard">
-      <h2>오행 관계</h2>
+      <h2 data-ko="오행 관계" data-en="Five Elements Relations">오행 관계</h2>
       <div id="relationsContent"></div>
     </div>
 
     <div id="aiSection" style="display:none">
       <div class="card">
-        <h2>궁합 분석</h2>
+        <h2 data-ko="궁합 분석" data-en="Compatibility Analysis">궁합 분석</h2>
         <p id="aiSummary" style="font-size:1rem;font-weight:600;margin-bottom:12px"></p>
         <div style="margin-bottom:8px">
-          <span style="font-size:0.8rem;color:#81c784">강점</span>
+          <span style="font-size:0.8rem;color:#81c784" data-ko="강점" data-en="Strengths">강점</span>
           <div class="tags" id="aiStrengths"></div>
         </div>
         <div style="margin-bottom:8px">
-          <span style="font-size:0.8rem;color:#ffb74d">주의</span>
+          <span style="font-size:0.8rem;color:#ffb74d" data-ko="주의" data-en="Cautions">주의</span>
           <div class="tags" id="aiCautions"></div>
         </div>
         <div class="saju-box" id="aiReading"></div>
@@ -146,17 +146,21 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const c = document.getElementById(containerId);
   if (!c) return;
   const thisYear = new Date().getFullYear();
+  const lang = document.documentElement.lang || 'ko';
+  const yearLabel = lang === 'en' ? 'Year' : '년';
+  const monthLabel = lang === 'en' ? 'Month' : '월';
+  const dayLabel = lang === 'en' ? 'Day' : '일';
   let html = '';
   // 년
-  html += '<div class="date-select-group"><label>년</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
+  html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
   html += '</select></div>';
   // 월
-  html += '<div class="date-select-group"><label>월</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
+  html += '<div class="date-select-group"><label data-ko="월" data-en="Month">'+monthLabel+'</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let m = 1; m <= 12; m++) html += '<option value="'+m+'" '+(m==defM?'selected':'')+'>'+m+'</option>';
   html += '</select></div>';
   // 일
-  html += '<div class="date-select-group"><label>일</label><select id="'+prefix+'Day">';
+  html += '<div class="date-select-group"><label data-ko="일" data-en="Day">'+dayLabel+'</label><select id="'+prefix+'Day">';
   const days = new Date(defY, defM, 0).getDate();
   for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d==defD?'selected':'')+'>'+d+'</option>';
   html += '</select></div>';
@@ -283,6 +287,21 @@ function renderPillars(pillars) {
 function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'}[oh] || ''; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>
+function changeLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang];
+  });
+  localStorage.setItem('karma_lang', lang);
+}
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
+})();
+</script>
 </body>
 </html>

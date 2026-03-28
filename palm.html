@@ -130,51 +130,51 @@
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Main">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container">
-  <h1>🤚 수상 (손금) 분석</h1>
-  <p class="subtitle">분석 엔진이 손금을 분석합니다</p>
+  <h1 data-ko="🤚 수상 (손금) 분석" data-en="🤚 Palm Reading">🤚 수상 (손금) 분석</h1>
+  <p class="subtitle" data-ko="분석 엔진이 손금을 분석합니다" data-en="AI analyzes your palm lines">분석 엔진이 손금을 분석합니다</p>
 
   <div class="card">
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
       <div class="upload-visual">🤚</div>
-      <div class="upload-text">손바닥 사진 업로드</div>
-      <div class="upload-hint">탭하여 사진을 선택하세요</div>
+      <div class="upload-text" data-ko="손바닥 사진 업로드" data-en="Upload Palm Photo">손바닥 사진 업로드</div>
+      <div class="upload-hint" data-ko="탭하여 사진을 선택하세요" data-en="Tap to select a photo">탭하여 사진을 선택하세요</div>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <div style="font-size:0.72rem;color:#888;line-height:1.6;padding:0 4px;margin-bottom:16px">
-      <div style="color:#c9a044;font-weight:600;margin-bottom:4px">📌 주의사항</div>
-      • 손바닥을 활짝 펴서 촬영해주세요<br>
-      • 손금이 선명하게 보이도록 밝은 곳에서 촬영<br>
-      • 손바닥만 나오도록 가까이 촬영해주세요<br>
-      • 왼손 = 선천적 운명, 오른손 = 후천적 노력<br>
-      • 손가락까지 나오면 더 정확한 분석이 가능합니다
+      <div style="color:#c9a044;font-weight:600;margin-bottom:4px" data-ko="📌 주의사항" data-en="📌 Caution">📌 주의사항</div>
+      <span data-ko="• 손바닥을 활짝 펴서 촬영해주세요" data-en="• Spread your palm wide open for the photo">• 손바닥을 활짝 펴서 촬영해주세요</span><br>
+      <span data-ko="• 손금이 선명하게 보이도록 밝은 곳에서 촬영" data-en="• Take the photo in a bright area so palm lines are clearly visible">• 손금이 선명하게 보이도록 밝은 곳에서 촬영</span><br>
+      <span data-ko="• 손바닥만 나오도록 가까이 촬영해주세요" data-en="• Take a close-up photo showing only the palm">• 손바닥만 나오도록 가까이 촬영해주세요</span><br>
+      <span data-ko="• 왼손 = 선천적 운명, 오른손 = 후천적 노력" data-en="• Left hand = innate destiny, Right hand = acquired effort">• 왼손 = 선천적 운명, 오른손 = 후천적 노력</span><br>
+      <span data-ko="• 손가락까지 나오면 더 정확한 분석이 가능합니다" data-en="• Including fingers allows for more accurate analysis">• 손가락까지 나오면 더 정확한 분석이 가능합니다</span>
     </div>
     <div class="options-row">
       <div class="opt-group">
-        <label>촬영한 손</label>
+        <label data-ko="촬영한 손" data-en="Which Hand">촬영한 손</label>
         <select id="hand">
-          <option value="왼손">왼손 (선천운)</option>
-          <option value="오른손">오른손 (후천운)</option>
+          <option value="왼손" data-ko="왼손 (선천운)" data-en="Left Hand (Innate)">왼손 (선천운)</option>
+          <option value="오른손" data-ko="오른손 (후천운)" data-en="Right Hand (Acquired)">오른손 (후천운)</option>
         </select>
       </div>
       <div class="opt-group">
-        <label>성별</label>
+        <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="checkReady()">
-          <option value="" disabled selected>선택하세요</option>
-          <option value="남성">남성</option>
-          <option value="여성">여성</option>
+          <option value="" disabled selected data-ko="선택하세요" data-en="Select">선택하세요</option>
+          <option value="남성" data-ko="남성" data-en="Male">남성</option>
+          <option value="여성" data-ko="여성" data-en="Female">여성</option>
         </select>
       </div>
     </div>
-    <button class="btn" id="analyzeBtn" disabled>손금 분석하기</button>
+    <button class="btn" id="analyzeBtn" disabled data-ko="손금 분석하기" data-en="Analyze Palm">손금 분석하기</button>
   </div>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">손금을 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">분석 엔진이 손금 라인을 읽고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="손금을 분석하고 있습니다" data-en="Analyzing your palm lines">손금을 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="분석 엔진이 손금 라인을 읽고 있어요..." data-en="The analysis engine is reading your palm lines...">분석 엔진이 손금 라인을 읽고 있어요...</p>
   </div>
 
   <div class="error" id="error"></div>
@@ -192,21 +192,21 @@
     <div class="card" id="lines" style="padding:22px"></div>
 
     <div class="card">
-      <h2>🖐️ 손의 형태</h2>
+      <h2 data-ko="🖐️ 손의 형태" data-en="🖐️ Hand Shape">🖐️ 손의 형태</h2>
       <div class="hand-shape-box" id="handShape"></div>
     </div>
 
     <div class="card">
-      <h2>🔮 운세 풀이</h2>
+      <h2 data-ko="🔮 운세 풀이" data-en="🔮 Fortune Reading">🔮 운세 풀이</h2>
       <div class="fortune-grid" id="fortune"></div>
     </div>
 
     <div class="card">
-      <h2>💡 조언</h2>
+      <h2 data-ko="💡 조언" data-en="💡 Advice">💡 조언</h2>
       <p id="advice" style="font-size:0.88rem;color:#bbb;line-height:1.7"></p>
     </div>
 
-    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">다시 분석하기</button>
+    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px" data-ko="다시 분석하기" data-en="Analyze Again">다시 분석하기</button>
   </div>
 </div>
 
@@ -216,6 +216,10 @@ const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
 const analyzeBtn = document.getElementById('analyzeBtn');
 let imageData = null, imageMime = null;
+
+function getLang() {
+  return document.documentElement.lang || 'ko';
+}
 
 function checkReady() {
   analyzeBtn.disabled = !(imageData && document.getElementById('gender').value);
@@ -233,7 +237,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   if (file.size > 15 * 1024 * 1024) {
-    alert('이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.');
+    alert(getLang() === 'en' ? 'Image size exceeds 15MB. Please use a smaller photo.' : '이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.');
     return;
   }
   imageMime = file.type;
@@ -270,7 +274,7 @@ analyzeBtn.addEventListener('click', async () => {
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
-    err.textContent = e.message || '분석 중 오류가 발생했습니다';
+    err.textContent = e.message || (getLang() === 'en' ? 'An error occurred during analysis' : '분석 중 오류가 발생했습니다');
     err.style.display = 'block';
   } finally {
     document.getElementById('loading').style.display = 'none';
@@ -332,14 +336,33 @@ function getGrade(s) {
 
 function resetForm() {
   imageData = null; imageMime = null;
+  const lang = getLang();
+  const uploadText = lang === 'en' ? 'Upload Palm Photo' : '손바닥 사진 업로드';
+  const hintLine1 = lang === 'en' ? 'Take a photo with palm lines clearly visible' : '손금이 잘 보이게 손을 펴서 촬영하세요';
+  const hintLine2 = lang === 'en' ? 'Tap to select a photo' : '탭하여 사진을 선택하세요';
   uploadArea.classList.remove('has-image');
-  uploadArea.innerHTML = '<div class="upload-visual">🤚</div><div class="upload-text">손바닥 사진 업로드</div><div class="upload-hint">손금이 잘 보이게 손을 펴서 촬영하세요<br>탭하여 사진을 선택하세요</div><input type="file" id="fileInput" accept="image/*">';
+  uploadArea.innerHTML = `<div class="upload-visual">🤚</div><div class="upload-text" data-ko="손바닥 사진 업로드" data-en="Upload Palm Photo">${uploadText}</div><div class="upload-hint" data-ko="탭하여 사진을 선택하세요" data-en="Tap to select a photo">${hintLine1}<br>${hintLine2}</div><input type="file" id="fileInput" accept="image/*">`;
   document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
   analyzeBtn.disabled = true;
   document.getElementById('result').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>
+function changeLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang];
+  });
+  localStorage.setItem('karma_lang', lang);
+}
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
+})();
+</script>
 </body>
 </html>

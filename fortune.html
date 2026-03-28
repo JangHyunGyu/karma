@@ -20,53 +20,53 @@
 </head>
 <body class="bg-fortune">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container fortune-page">
-  <h1>🌟 올해의 운세</h1>
-  <p class="subtitle">생년월일로 올해 운세를 상세히 분석합니다</p>
+  <h1 data-ko="🌟 올해의 운세" data-en="🌟 This Year's Fortune">🌟 올해의 운세</h1>
+  <p class="subtitle" data-ko="생년월일로 올해 운세를 상세히 분석합니다" data-en="Get a detailed fortune analysis by date of birth">생년월일로 올해 운세를 상세히 분석합니다</p>
 
   <div class="card" style="max-width:480px;margin:0 auto 20px">
-    <label>생년월일 (양력)</label>
+    <label data-ko="생년월일 (양력)" data-en="Date of Birth (Solar)">생년월일 (양력)</label>
     <div class="date-selects" id="dateSelects"></div>
     <div class="row" style="grid-template-columns:1fr 1fr 1fr">
       <div>
-        <label>성별</label>
+        <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="saveInputs()">
-          <option value="male">남성</option>
-          <option value="female">여성</option>
+          <option value="male" data-ko="남성" data-en="Male">남성</option>
+          <option value="female" data-ko="여성" data-en="Female">여성</option>
         </select>
       </div>
       <div>
-        <label>태어난 시</label>
+        <label data-ko="태어난 시" data-en="Birth Hour">태어난 시</label>
         <select id="birthTime" onchange="saveInputs()">
-          <option value="">모름</option>
-          <option value="00:00">자시 (23~01)</option>
-          <option value="01:00">축시 (01~03)</option>
-          <option value="03:00">인시 (03~05)</option>
-          <option value="05:00">묘시 (05~07)</option>
-          <option value="07:00">진시 (07~09)</option>
-          <option value="09:00">사시 (09~11)</option>
-          <option value="11:00">오시 (11~13)</option>
-          <option value="13:00">미시 (13~15)</option>
-          <option value="15:00">신시 (15~17)</option>
-          <option value="17:00">유시 (17~19)</option>
-          <option value="19:00">술시 (19~21)</option>
-          <option value="21:00">해시 (21~23)</option>
+          <option value="" data-ko="모름" data-en="Unknown">모름</option>
+          <option value="00:00" data-ko="자시 (23~01)" data-en="자시 Ja (23~01)">자시 (23~01)</option>
+          <option value="01:00" data-ko="축시 (01~03)" data-en="축시 Chuk (01~03)">축시 (01~03)</option>
+          <option value="03:00" data-ko="인시 (03~05)" data-en="인시 In (03~05)">인시 (03~05)</option>
+          <option value="05:00" data-ko="묘시 (05~07)" data-en="묘시 Myo (05~07)">묘시 (05~07)</option>
+          <option value="07:00" data-ko="진시 (07~09)" data-en="진시 Jin (07~09)">진시 (07~09)</option>
+          <option value="09:00" data-ko="사시 (09~11)" data-en="사시 Sa (09~11)">사시 (09~11)</option>
+          <option value="11:00" data-ko="오시 (11~13)" data-en="오시 O (11~13)">오시 (11~13)</option>
+          <option value="13:00" data-ko="미시 (13~15)" data-en="미시 Mi (13~15)">미시 (13~15)</option>
+          <option value="15:00" data-ko="신시 (15~17)" data-en="신시 Sin (15~17)">신시 (15~17)</option>
+          <option value="17:00" data-ko="유시 (17~19)" data-en="유시 Yu (17~19)">유시 (17~19)</option>
+          <option value="19:00" data-ko="술시 (19~21)" data-en="술시 Sul (19~21)">술시 (19~21)</option>
+          <option value="21:00" data-ko="해시 (21~23)" data-en="해시 Hae (21~23)">해시 (21~23)</option>
         </select>
       </div>
       <div>
-        <label>운세 연도</label>
+        <label data-ko="운세 연도" data-en="Fortune Year">운세 연도</label>
         <select id="fortuneYear"></select>
       </div>
     </div>
-    <button class="btn" id="fortuneBtn" onclick="doFortune()">운세 분석하기</button>
+    <button class="btn" id="fortuneBtn" onclick="doFortune()" data-ko="운세 분석하기" data-en="Analyze Fortune">운세 분석하기</button>
   </div>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">운세를 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">올해의 운세를 풀이하고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="운세를 분석하고 있습니다" data-en="Analyzing your fortune...">운세를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="올해의 운세를 풀이하고 있어요..." data-en="Reading this year's fortune for you...">올해의 운세를 풀이하고 있어요...</p>
   </div>
 
   <div id="result" style="display:none" class="fade-in fortune-grid">
@@ -80,34 +80,34 @@
     <!-- 4대 운세 -->
     <div class="fortune-2col">
       <div class="card">
-        <h2>💕 연애/결혼운</h2>
+        <h2 data-ko="💕 연애/결혼운" data-en="💕 Love & Marriage">💕 연애/결혼운</h2>
         <p id="fortuneLove" style="line-height:1.7"></p>
       </div>
       <div class="card">
-        <h2>💰 재물운</h2>
+        <h2 data-ko="💰 재물운" data-en="💰 Wealth & Finance">💰 재물운</h2>
         <p id="fortuneMoney" style="line-height:1.7"></p>
       </div>
     </div>
     <div class="fortune-2col">
       <div class="card">
-        <h2>💼 직장/사업운</h2>
+        <h2 data-ko="💼 직장/사업운" data-en="💼 Career & Business">💼 직장/사업운</h2>
         <p id="fortuneCareer" style="line-height:1.7"></p>
       </div>
       <div class="card">
-        <h2>🏥 건강운</h2>
+        <h2 data-ko="🏥 건강운" data-en="🏥 Health">🏥 건강운</h2>
         <p id="fortuneHealth" style="line-height:1.7"></p>
       </div>
     </div>
 
     <!-- 행운 -->
     <div class="card">
-      <h2>🍀 올해의 행운</h2>
+      <h2 data-ko="🍀 올해의 행운" data-en="🍀 This Year's Lucky Items">🍀 올해의 행운</h2>
       <div id="fortuneLucky" style="display:flex;flex-wrap:wrap;gap:10px"></div>
     </div>
 
     <!-- 조언 -->
     <div class="card">
-      <h2>💡 올해의 조언</h2>
+      <h2 data-ko="💡 올해의 조언" data-en="💡 This Year's Advice">💡 올해의 조언</h2>
       <p id="fortuneAdvice" style="line-height:1.7"></p>
     </div>
   </div>
@@ -187,6 +187,21 @@ function renderFortune(d) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>
+function changeLang(lang) {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang];
+  });
+  localStorage.setItem('karma_lang', lang);
+}
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
+})();
+</script>
 </body>
 </html>
