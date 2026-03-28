@@ -14,7 +14,8 @@
   @media (min-width: 769px) { .container.wide { max-width: 640px; } }
   .date-selects { overflow: visible !important; }
   .date-selects .combo { margin-bottom: 0; }
-  html:has(.combo.open) { overflow: hidden; }
+  /* container의 overflow-x:hidden이 overflow-y:auto를 유발 → 콤보 드롭다운에 스크롤바 생김 */
+  body.bg-compat .container { overflow: visible; }
 </style>
 </head>
 <body class="bg-compat">
