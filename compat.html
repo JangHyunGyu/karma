@@ -264,7 +264,7 @@ function getDateFor(prefix) {
     if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
     return solar.year + '-' + String(solar.month).padStart(2,'0') + '-' + String(solar.day).padStart(2,'0');
   }
-  return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+  return y + '-' + String(mVal).padStart(2,'0') + '-' + String(d).padStart(2,'0');
 }
 
 // localStorage 저장/복원
