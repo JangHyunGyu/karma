@@ -8,67 +8,123 @@
 <link rel="stylesheet" href="/style.css">
 <style>
 .upload-area {
-  border: 2px dashed rgba(201,160,68,0.3);
-  border-radius: 12px;
-  padding: 40px 20px;
+  border: 2px dashed rgba(201,160,68,0.25);
+  border-radius: 16px;
+  padding: 48px 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   position: relative;
-  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, rgba(201,160,68,0.06) 0%, transparent 70%);
 }
 .upload-area:hover, .upload-area.dragover {
   border-color: #c9a044;
-  background: rgba(201,160,68,0.08);
+  background: radial-gradient(circle at 50% 40%, rgba(201,160,68,0.12) 0%, transparent 70%);
+  box-shadow: 0 0 30px rgba(201,160,68,0.08);
 }
-.upload-area.has-image { padding: 0; border-style: solid; }
-.upload-area .upload-icon { font-size: 3rem; margin-bottom: 12px; }
-.upload-area .upload-text { color: #888; font-size: 0.85rem; }
-.upload-area .upload-hint { color: #666; font-size: 0.75rem; margin-top: 6px; }
+.upload-area.has-image {
+  padding: 0;
+  border-style: solid;
+  border-color: rgba(201,160,68,0.3);
+  background: none;
+}
+.upload-area .upload-visual {
+  width: 80px; height: 80px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201,160,68,0.15), rgba(123,94,167,0.15));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+  box-shadow: 0 4px 20px rgba(201,160,68,0.1);
+}
+.upload-area .upload-text {
+  color: #c9a044;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.upload-area .upload-hint {
+  color: #666;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
 .upload-area img {
   width: 100%;
-  max-height: 360px;
-  object-fit: contain;
+  max-height: 320px;
+  object-fit: cover;
   display: block;
-  border-radius: 10px;
+  border-radius: 14px;
 }
 .upload-area input[type="file"] { display: none; }
-.options-row { display: flex; gap: 10px; margin-bottom: 16px; }
-.options-row .combo { flex: 1; }
-.result-section { margin-top: 20px; }
-.score-header {
-  text-align: center;
-  padding: 24px;
-  margin-bottom: 16px;
+
+.options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
 }
-.score-header .big-score { font-size: 3.5rem; font-weight: 900; color: #c9a044; }
-.score-header .big-grade { font-size: 1.5rem; margin-left: 8px; vertical-align: super; }
-.score-header .summary-text { color: #aaa; font-size: 0.9rem; margin-top: 8px; }
-.category-item {
+.opt-group label {
+  font-size: 0.72rem;
+  color: #888;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.opt-group select {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.result-section { margin-top: 24px; }
+.score-ring {
+  width: 120px; height: 120px;
+  margin: 0 auto 16px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.score-ring .score-num { font-size: 2.8rem; font-weight: 900; color: #c9a044; z-index: 1; }
+.score-ring .score-grade {
+  position: absolute;
+  bottom: -4px; right: -4px;
+  z-index: 2;
+}
+.score-header { text-align: center; padding: 28px 20px; margin-bottom: 16px; }
+.score-header .summary-text { color: #aaa; font-size: 0.88rem; margin-top: 12px; line-height: 1.5; }
+
+.cat-item {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.cat-item:last-child { border-bottom: none; }
+.cat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.cat-name { font-weight: 700; color: #e8e0d0; font-size: 0.92rem; }
+.cat-score { color: #c9a044; font-weight: 700; font-size: 1rem; }
+.cat-desc { font-size: 0.82rem; color: #999; line-height: 1.6; margin-top: 8px; }
+
+.fortune-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.fort-card {
   padding: 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  transition: background 0.2s;
 }
-.category-item:last-child { border-bottom: none; }
-.category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.category-name { font-weight: 700; color: #e8e0d0; }
-.category-score { color: #c9a044; font-weight: 700; font-size: 1.1rem; }
-.category-desc { font-size: 0.85rem; color: #999; line-height: 1.6; }
-.fortune-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-.fortune-item {
-  padding: 14px;
-  background: rgba(255,255,255,0.04);
-  border-radius: 8px;
-}
-.fortune-item .f-label { font-size: 0.75rem; color: #c9a044; margin-bottom: 6px; font-weight: 600; }
-.fortune-item .f-text { font-size: 0.82rem; color: #bbb; line-height: 1.5; }
+.fort-card:hover { background: rgba(255,255,255,0.06); }
+.fort-icon { font-size: 1.4rem; margin-bottom: 6px; }
+.fort-label { font-size: 0.7rem; color: #c9a044; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.fort-text { font-size: 0.8rem; color: #bbb; line-height: 1.5; }
+
 .celeb-box {
-  margin-top: 12px;
-  padding: 12px 16px;
-  background: rgba(123,94,167,0.12);
-  border-radius: 8px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(123,94,167,0.12), rgba(201,160,68,0.08));
+  border: 1px solid rgba(123,94,167,0.2);
+  border-radius: 12px;
   font-size: 0.85rem;
   color: #b39ddb;
+  display: flex; align-items: center; gap: 8px;
 }
 </style>
 </head>
@@ -77,17 +133,17 @@
 <div class="lang-select-wrap"><select class="lang-select" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container">
   <h1>🧑 관상 분석</h1>
-  <p class="subtitle">얼굴 사진으로 관상을 분석합니다</p>
+  <p class="subtitle">AI가 얼굴의 관상을 분석합니다</p>
 
   <div class="card">
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-      <div class="upload-icon">📸</div>
-      <div class="upload-text">얼굴 사진을 업로드하세요</div>
-      <div class="upload-hint">정면 사진이 가장 정확합니다</div>
+      <div class="upload-visual">🧑</div>
+      <div class="upload-text">얼굴 사진 업로드</div>
+      <div class="upload-hint">정면 사진이 가장 정확합니다<br>탭하여 사진을 선택하세요</div>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <div class="options-row">
-      <div>
+      <div class="opt-group">
         <label>성별</label>
         <select id="gender">
           <option value="">선택 안함</option>
@@ -95,7 +151,7 @@
           <option value="여성">여성</option>
         </select>
       </div>
-      <div>
+      <div class="opt-group">
         <label>나이대</label>
         <select id="age">
           <option value="">선택 안함</option>
@@ -120,12 +176,15 @@
 
   <div class="result-section" id="result" style="display:none">
     <div class="card score-header">
-      <span class="big-score" id="totalScore"></span>
-      <span class="big-grade" id="totalGrade"></span>
+      <div class="score-ring">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/><circle id="scoreCircle" cx="60" cy="60" r="52" fill="none" stroke="#c9a044" stroke-width="8" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327"/></svg>
+        <span class="score-num" id="totalScore"></span>
+        <span class="score-grade" id="totalGrade"></span>
+      </div>
       <div class="summary-text" id="summary"></div>
     </div>
 
-    <div class="card" id="categories"></div>
+    <div class="card" id="categories" style="padding:22px"></div>
 
     <div class="card">
       <h2>🔮 운세 풀이</h2>
@@ -134,7 +193,7 @@
 
     <div class="card">
       <h2>💡 조언</h2>
-      <p id="advice" style="font-size:0.9rem;color:#bbb;line-height:1.6"></p>
+      <p id="advice" style="font-size:0.88rem;color:#bbb;line-height:1.7"></p>
       <div class="celeb-box" id="celeb" style="display:none"></div>
     </div>
 
@@ -163,8 +222,7 @@ function handleFile(file) {
   imageMime = file.type;
   const reader = new FileReader();
   reader.onload = e => {
-    const base64 = e.target.result.split(',')[1];
-    imageData = base64;
+    imageData = e.target.result.split(',')[1];
     uploadArea.classList.add('has-image');
     uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded">`;
     analyzeBtn.disabled = false;
@@ -184,8 +242,7 @@ analyzeBtn.addEventListener('click', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        image: imageData,
-        mimeType: imageMime,
+        image: imageData, mimeType: imageMime,
         gender: document.getElementById('gender').value,
         age: document.getElementById('age').value,
       }),
@@ -204,21 +261,25 @@ analyzeBtn.addEventListener('click', async () => {
 });
 
 function renderResult(d) {
-  document.getElementById('totalScore').textContent = d.overall_score;
-  const grade = d.overall_grade || getGrade(d.overall_score);
-  document.getElementById('totalGrade').textContent = grade;
-  document.getElementById('totalGrade').className = `big-grade grade grade-${grade}`;
+  const score = d.overall_score || 0;
+  document.getElementById('totalScore').textContent = score;
+  const grade = d.overall_grade || getGrade(score);
+  document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
   document.getElementById('summary').textContent = d.summary || '';
+
+  // 원형 프로그레스
+  const offset = 327 - (327 * score / 100);
+  document.getElementById('scoreCircle').style.strokeDashoffset = offset;
 
   const cats = document.getElementById('categories');
   cats.innerHTML = '<h2>📋 상세 분석</h2>' + (d.categories || []).map(c => `
-    <div class="category-item">
-      <div class="category-header">
-        <span class="category-name">${c.name}</span>
-        <span class="category-score">${c.score}점</span>
+    <div class="cat-item">
+      <div class="cat-top">
+        <span class="cat-name">${c.name}</span>
+        <span class="cat-score">${c.score}점</span>
       </div>
       <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${c.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
-      <div class="category-desc">${c.desc}</div>
+      <div class="cat-desc">${c.desc}</div>
     </div>
   `).join('');
 
@@ -229,17 +290,18 @@ function renderResult(d) {
     ['❤️', '연애운', fort.love],
     ['🏥', '건강운', fort.health],
   ].map(([icon, label, text]) => `
-    <div class="fortune-item">
-      <div class="f-label">${icon} ${label}</div>
-      <div class="f-text">${text || '-'}</div>
+    <div class="fort-card">
+      <div class="fort-icon">${icon}</div>
+      <div class="fort-label">${label}</div>
+      <div class="fort-text">${text || '-'}</div>
     </div>
   `).join('');
 
   document.getElementById('advice').textContent = d.advice || '';
   const celeb = document.getElementById('celeb');
   if (d.celebrity_resemblance) {
-    celeb.textContent = '⭐ 닮은 유명인: ' + d.celebrity_resemblance;
-    celeb.style.display = '';
+    celeb.innerHTML = '⭐ <span>닮은 유명인: <b>' + d.celebrity_resemblance + '</b></span>';
+    celeb.style.display = 'flex';
   } else {
     celeb.style.display = 'none';
   }
@@ -255,7 +317,7 @@ function getGrade(s) {
 function resetForm() {
   imageData = null; imageMime = null;
   uploadArea.classList.remove('has-image');
-  uploadArea.innerHTML = '<div class="upload-icon">📸</div><div class="upload-text">얼굴 사진을 업로드하세요</div><div class="upload-hint">정면 사진이 가장 정확합니다</div><input type="file" id="fileInput" accept="image/*">';
+  uploadArea.innerHTML = '<div class="upload-visual">🧑</div><div class="upload-text">얼굴 사진 업로드</div><div class="upload-hint">정면 사진이 가장 정확합니다<br>탭하여 사진을 선택하세요</div><input type="file" id="fileInput" accept="image/*">';
   document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
   analyzeBtn.disabled = true;
   document.getElementById('result').style.display = 'none';

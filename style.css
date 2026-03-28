@@ -121,14 +121,14 @@ body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, bo
   right: 20px;
   z-index: 60;
 }
-.lang-select {
-  width: auto;
+select.lang-select {
+  width: auto !important;
   min-width: 80px;
-  padding: 6px 28px 6px 10px;
-  margin: 0;
-  border: 1px solid rgba(201,160,68,0.3);
-  border-radius: 20px;
-  background: rgba(13,13,26,0.7);
+  padding: 6px 28px 6px 10px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(201,160,68,0.3) !important;
+  border-radius: 20px !important;
+  background: rgba(13,13,26,0.7) !important;
   backdrop-filter: blur(6px);
   color: #c9a044;
   font-family: 'Noto Serif KR', serif;
