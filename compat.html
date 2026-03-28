@@ -148,11 +148,11 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const thisYear = new Date().getFullYear();
   let html = '';
   // 년
-  html += '<div class="date-select-group"><label>년</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\')">';
+  html += '<div class="date-select-group"><label>년</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
   html += '</select></div>';
   // 월
-  html += '<div class="date-select-group"><label>월</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\')">';
+  html += '<div class="date-select-group"><label>월</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let m = 1; m <= 12; m++) html += '<option value="'+m+'" '+(m==defM?'selected':'')+'>'+m+'</option>';
   html += '</select></div>';
   // 일
@@ -183,8 +183,34 @@ function getDateFor(prefix) {
   return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
 }
 
-createDateSelectsFor('dateSelectsA', 'a', 1995, 3, 20);
-createDateSelectsFor('dateSelectsB', 'b', 1998, 7, 11);
+// localStorage 저장/복원
+const COMPAT_KEY = 'karma_compat_input';
+function saveCompatInputs() {
+  const data = {};
+  ['aYear','aMonth','aDay','genderA','timeA','bYear','bMonth','bDay','genderB','timeB'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  localStorage.setItem(COMPAT_KEY, JSON.stringify(data));
+}
+function restoreCompatInputs() {
+  try {
+    const data = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
+    if (!data.aYear) return false;
+    Object.entries(data).forEach(([id, val]) => setComboValue(id, val));
+    return true;
+  } catch { return false; }
+}
+
+const saved = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
+createDateSelectsFor('dateSelectsA', 'a', +saved.aYear || 1995, +saved.aMonth || 3, +saved.aDay || 20);
+createDateSelectsFor('dateSelectsB', 'b', +saved.bYear || 1998, +saved.bMonth || 7, +saved.bDay || 11);
+restoreCompatInputs();
+
+// 변경 시 자동 저장 (콤보 클릭 이벤트 위임)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.combo-option')) setTimeout(saveCompatInputs, 50);
+});
 
 async function doCompat() {
   const btn = document.getElementById('compatBtn');
