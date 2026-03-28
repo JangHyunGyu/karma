@@ -15,13 +15,21 @@
     padding-top: 48px !important;
     overflow-x: hidden !important;
   }
-  .saju-grid, .saju-top-row, .saju-ai-grid, .saju-personality {
-    display: grid !important;
+  .saju-top-row, .saju-ai-grid, .saju-personality {
+    display: grid;
     gap: 14px;
     grid-template-columns: 1fr !important;
     max-width: 100%;
   }
-  #result { max-width: 100%; overflow-x: hidden; }
+  #result {
+    gap: 14px;
+    grid-template-columns: 1fr !important;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  #result[style*="display: grid"], #result[style*="display:grid"] {
+    grid-template-columns: 1fr !important;
+  }
 
   /* 태블릿 (769px+) — 2열 */
   @media (min-width: 769px) {
@@ -90,7 +98,7 @@
     <p>사주를 분석하고 있습니다...</p>
   </div>
 
-  <div id="result" style="display:none" class="fade-in saju-grid">
+  <div id="result" class="fade-in saju-grid" style="display:none">
     <!-- 상단: 일간 + 사주 + 오행 -->
     <div class="saju-top-row">
       <div class="card" style="text-align:center">
