@@ -71,23 +71,98 @@ const JIJI_OHANG = {
 const SANGSAENG = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };
 const SANGGEUK = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };
 
+// --- 절기 (Solar Terms) for Saju month/year boundaries ---
+// The 12 절기 that mark saju month boundaries:
+//  0: 소한 (~Jan 5-6)  - start of 축월(12th saju month, prev saju year)
+//  1: 입춘 (~Feb 3-5)  - start of 인월(1st saju month, new saju year)
+//  2: 경칩 (~Mar 5-7)  - start of 묘월(2nd)
+//  3: 청명 (~Apr 4-6)  - start of 진월(3rd)
+//  4: 입하 (~May 5-7)  - start of 사월(4th)
+//  5: 망종 (~Jun 5-7)  - start of 오월(5th)
+//  6: 소서 (~Jul 6-8)  - start of 미월(6th)
+//  7: 입추 (~Aug 7-8)  - start of 신월(7th)
+//  8: 백로 (~Sep 7-9)  - start of 유월(8th)
+//  9: 한로 (~Oct 7-9)  - start of 술월(9th)
+// 10: 입동 (~Nov 7-8)  - start of 해월(10th)
+// 11: 대설 (~Dec 6-8)  - start of 자월(11th)
+// Order: [소한, 입춘, 경칩, 청명, 입하, 망종, 소서, 입추, 백로, 한로, 입동, 대설]
+// Each entry: [month, day] in Gregorian calendar
+const SOLAR_TERMS_APPROX = [
+  [1, 6],   // 소한 (Small Cold) ~Jan 5-6
+  [2, 4],   // 입춘 (Start of Spring) ~Feb 3-5
+  [3, 6],   // 경칩 (Awakening of Insects) ~Mar 5-7
+  [4, 5],   // 청명 (Clear and Bright) ~Apr 4-6
+  [5, 6],   // 입하 (Start of Summer) ~May 5-7
+  [6, 6],   // 망종 (Grain in Ear) ~Jun 5-7
+  [7, 7],   // 소서 (Minor Heat) ~Jul 6-8
+  [8, 7],   // 입추 (Start of Autumn) ~Aug 7-8
+  [9, 8],   // 백로 (White Dew) ~Sep 7-9
+  [10, 8],  // 한로 (Cold Dew) ~Oct 7-9
+  [11, 7],  // 입동 (Start of Winter) ~Nov 7-8
+  [12, 7],  // 대설 (Major Snow) ~Dec 6-8
+];
+
+// Saju month index (1-12) corresponding to each 절기 boundary:
+// After 소한 → 축월(12), after 입춘 → 인월(1), after 경칩 → 묘월(2), ...
+const SAJU_MONTH_BY_TERM = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+// Get the saju month (1-12) for a given Gregorian date.
+// sajuMonth 1=인월, 2=묘월, ..., 11=자월, 12=축월
+function getSajuMonth(year, month, day) {
+  // Walk the 절기 boundaries in reverse for the current year
+  // to find which saju month the date falls in.
+  // Check 대설(Dec) down to 입춘(Feb) of current year, then 소한(Jan) of current year.
+  for (let i = 11; i >= 0; i--) {
+    const [tm, td] = SOLAR_TERMS_APPROX[i];
+    if (month > tm || (month === tm && day >= td)) {
+      return SAJU_MONTH_BY_TERM[i];
+    }
+  }
+  // Before 소한 of this year → still in 자월(11) from 대설 of prev year
+  return 11;
+}
+
+// Get the 입춘-adjusted year for saju year pillar.
+// Before 입춘 (~Feb 4), saju year is previous Gregorian year.
+function getSajuYear(year, month, day) {
+  const [ipchunMonth, ipchunDay] = SOLAR_TERMS_APPROX[1]; // 입춘
+  if (month < ipchunMonth || (month === ipchunMonth && day < ipchunDay)) {
+    return year - 1;
+  }
+  return year;
+}
+
 function yearCheongan(year) { return CHEONGAN[(year - 4) % 10]; }
 function yearJiji(year) { return JIJI[(year - 4) % 12]; }
 
-function monthCheongan(yearGan, month) {
-  const base = { 갑: 2, 을: 4, 병: 6, 정: 8, 무: 0, 기: 2, 경: 4, 신: 6, 임: 8, 계: 0 };
-  return CHEONGAN[(base[yearGan] + month) % 10];
+// Month 천간: based on year's heavenly stem and saju month (1-12)
+// Formula: ((yearGanIndex % 5) * 2 + 2 + (sajuMonth - 1)) % 10
+// sajuMonth 1=인월 starts the cycle for each year stem group
+function monthCheongan(yearGanIndex, sajuMonth) {
+  return CHEONGAN[((yearGanIndex % 5) * 2 + 2 + (sajuMonth - 1)) % 10];
 }
 
-function monthJiji(month) { return JIJI[(month + 1) % 12]; }
+// Month 지지: sajuMonth 1=인(index 2), 2=묘(3), ..., 11=자(0), 12=축(1)
+function monthJiji(sajuMonth) { return JIJI[(sajuMonth + 1) % 12]; }
 
+// Julian Day Number (Meeus algorithm for Gregorian calendar)
+function julianDayNumber(year, month, day) {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  return day + Math.floor((153 * m + 2) / 5) + 365 * y
+    + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+}
+
+// Day pillar using Julian Day Number.
+// Verified anchor: 2019-01-27 (JDN 2458511) = 甲子 (갑자, gan=0, ji=0)
+// Formula from ytliu0 Chinese Calendar:
+//   T = 1 + mod(JDN - 1, 10)  (1-indexed stem, 甲=1)
+//   B = 1 + mod(JDN + 1, 12)  (1-indexed branch, 子=1)
 function dayPillar(year, month, day) {
-  const base = new Date(2000, 0, 1);
-  const target = new Date(year, month - 1, day);
-  const diff = Math.floor((target - base) / 86400000);
-  const adjusted = diff + 6;
-  const gan = ((adjusted % 10) + 10) % 10;
-  const ji = ((adjusted % 12) + 12) % 12;
+  const jdn = julianDayNumber(year, month, day);
+  const gan = ((jdn - 1) % 10 + 10) % 10;  // 0-indexed: 갑=0
+  const ji = ((jdn + 1) % 12 + 12) % 12;    // 0-indexed: 자=0
   return { gan: CHEONGAN[gan], ji: JIJI[ji] };
 }
 
@@ -100,8 +175,9 @@ function hourPillar(dayGan, hour) {
 }
 
 function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex) {
-  const [year] = birthDate.split('-').map(Number);
-  const yearGan = yearCheongan(year);
+  const [year, month, day] = birthDate.split('-').map(Number);
+  const sajuYear = getSajuYear(year, month, day);
+  const yearGan = yearCheongan(sajuYear);
   const yearGanIndex = CHEONGAN.indexOf(yearGan);
 
   const isYangGan = yearGanIndex % 2 === 0;
@@ -137,10 +213,16 @@ function calculateSaju(birthDate, birthTime, gender) {
   const hasTime = birthTime && birthTime.length >= 4;
   const hour = hasTime ? parseInt(birthTime.split(':')[0], 10) : null;
 
-  const yGan = yearCheongan(year);
-  const yJi = yearJiji(year);
-  const mGan = monthCheongan(yGan, month);
-  const mJi = monthJiji(month);
+  // 입춘-adjusted year for year pillar (saju year changes at 입춘, not Jan 1)
+  const sajuYear = getSajuYear(year, month, day);
+  // 절기-based month for month pillar (saju month changes at each 절기, not 1st)
+  const sajuMonth = getSajuMonth(year, month, day);
+
+  const yGan = yearCheongan(sajuYear);
+  const yJi = yearJiji(sajuYear);
+  const yearGanIndex = CHEONGAN.indexOf(yGan);
+  const mGan = monthCheongan(yearGanIndex, sajuMonth);
+  const mJi = monthJiji(sajuMonth);
   const { gan: dGan, ji: dJi } = dayPillar(year, month, day);
 
   const pillars = [
