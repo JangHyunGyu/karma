@@ -264,6 +264,47 @@ h1 {
   right: 8px;
   font-size: 0.7rem;
 }
+/* 양력/음력 토글 */
+.calendar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  grid-column: 1 / -1;
+}
+.cal-btn {
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cal-btn.active {
+  background: rgba(201,160,68,0.2);
+  border-color: #c9a044;
+  color: #c9a044;
+  font-weight: 600;
+}
+.cal-btn:hover { background: rgba(255,255,255,0.08); }
+.cal-btn.active:hover { background: rgba(201,160,68,0.3); }
+.leap-month-label {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  color: #aaa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.leap-month-label input[type="checkbox"] {
+  accent-color: #c9a044;
+  width: 14px;
+  height: 14px;
+}
+
 .date-select-group label {
   font-size: 0.72rem;
   color: #888;

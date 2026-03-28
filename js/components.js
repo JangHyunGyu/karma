@@ -46,6 +46,8 @@ function saveInputs() {
   const t = document.getElementById('birthTime');
   if (g) data.gender = g.value;
   if (t) data.birthTime = t.value;
+  data.calendarType = _calendarType;
+  data.isLeapMonth = document.getElementById('isLeapMonth')?.checked || false;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -57,6 +59,12 @@ function restoreInputs() {
     if (data.day) setComboValue('birthDay', data.day);
     if (data.gender) setComboValue('gender', data.gender);
     if (data.birthTime) setComboValue('birthTime', data.birthTime);
+    if (data.calendarType === 'lunar') {
+      const lunarBtn = document.querySelector('.cal-btn[data-cal="lunar"]');
+      if (lunarBtn) setCalendarType(lunarBtn, 'lunar');
+      const leapCb = document.getElementById('isLeapMonth');
+      if (leapCb && data.isLeapMonth) leapCb.checked = true;
+    }
   } catch {}
 }
 
@@ -82,6 +90,12 @@ function getBirthDate() {
   const m = document.getElementById('birthMonth')?.value;
   const d = document.getElementById('birthDay')?.value;
   if (!y || !m || !d) return '';
+  if (_calendarType === 'lunar' && typeof lunarToSolar === 'function') {
+    const isLeap = document.getElementById('isLeapMonth')?.checked || false;
+    const solar = lunarToSolar(+y, +m, +d, isLeap);
+    if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
+    return `${solar.year}-${String(solar.month).padStart(2,'0')}-${String(solar.day).padStart(2,'0')}`;
+  }
   return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
@@ -188,7 +202,12 @@ function createDateSelects(containerId, defY, defM, defD) {
   const thisYear = new Date().getFullYear();
   defY = defY || 1995; defM = defM || 1; defD = defD || 1;
 
-  let html = '';
+  // 양력/음력 토글
+  let html = '<div class="calendar-toggle">';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCalendarType(this,\'solar\')">양력</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCalendarType(this,\'lunar\')">음력</button>';
+  html += '<label class="leap-month-label" style="display:none"><input type="checkbox" id="isLeapMonth"> <span data-ko="윤달" data-en="Leap">윤달</span></label>';
+  html += '</div>';
   // 년
   html += '<div class="date-select-group"><label>년</label><select id="birthYear" onchange="updateDays();saveInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += `<option value="${y}" ${y==defY?'selected':''}>${y}</option>`;
@@ -209,6 +228,29 @@ function createDateSelects(containerId, defY, defM, defD) {
   container.querySelectorAll('select').forEach(s => createCombo(s));
 }
 
+// 양력/음력 토글
+let _calendarType = 'solar';
+function setCalendarType(btn, type) {
+  _calendarType = type;
+  const wrap = btn.closest('.calendar-toggle');
+  wrap.querySelectorAll('.cal-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const leapLabel = wrap.querySelector('.leap-month-label');
+  if (leapLabel) leapLabel.style.display = type === 'lunar' ? '' : 'none';
+  // 라벨 업데이트
+  const card = btn.closest('.card');
+  if (card) {
+    const label = card.querySelector('label[data-ko]');
+    if (label) {
+      label.setAttribute('data-ko', type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)');
+      label.setAttribute('data-en', type === 'lunar' ? 'Date of Birth (Lunar)' : 'Date of Birth (Solar)');
+      label.textContent = type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)';
+    }
+  }
+  updateDays();
+  saveInputs();
+}
+
 function updateDays() {
   const y = parseInt(document.getElementById('birthYear')?.value || 2000);
   const m = parseInt(document.getElementById('birthMonth')?.value || 1);
@@ -217,7 +259,8 @@ function updateDays() {
   if (!daySelect) return;
 
   const curDay = parseInt(daySelect.value) || 1;
-  const daysInMonth = new Date(y, m, 0).getDate();
+  // 음력이면 음력 일수 사용 (기본 30일)
+  const daysInMonth = (_calendarType === 'lunar') ? 30 : new Date(y, m, 0).getDate();
   const newDay = Math.min(curDay, daysInMonth);
 
   // select 옵션 재생성

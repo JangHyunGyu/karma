@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Karma - 궁합 분석</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=5">
 <script src="/js/browser-check.js"></script>
 <style>
   .compat-cols { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -146,9 +146,11 @@
 
 </div>
 
-<script src="/js/components.js?v=2"></script>
+<script src="/js/lunar.js?v=1"></script>
+<script src="/js/components.js?v=3"></script>
 <script>
 // 궁합용 날짜 셀렉트 (A/B 별도)
+const _compatCalType = { a: 'solar', b: 'solar' };
 function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const c = document.getElementById(containerId);
   if (!c) return;
@@ -158,6 +160,12 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const monthLabel = lang === 'en' ? 'Month' : '월';
   const dayLabel = lang === 'en' ? 'Day' : '일';
   let html = '';
+  // 양력/음력 토글
+  html += '<div class="calendar-toggle">';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">양력</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">음력</button>';
+  html += '<label class="leap-month-label" style="display:none"><input type="checkbox" id="'+prefix+'LeapMonth"> <span data-ko="윤달" data-en="Leap">윤달</span></label>';
+  html += '</div>';
   // 년
   html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
@@ -175,6 +183,15 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   // 커스텀 콤보로 변환
   c.querySelectorAll('select').forEach(s => createCombo(s));
 }
+function setCompatCalType(btn, prefix, type) {
+  _compatCalType[prefix] = type;
+  const wrap = btn.closest('.calendar-toggle');
+  wrap.querySelectorAll('.cal-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const leapLabel = wrap.querySelector('.leap-month-label');
+  if (leapLabel) leapLabel.style.display = type === 'lunar' ? '' : 'none';
+  saveCompatInputs();
+}
 function updateDaysFor(prefix) {
   const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
   const m = parseInt(document.getElementById(prefix+'Month')?.value || 1);
@@ -191,6 +208,12 @@ function getDateFor(prefix) {
   const m = document.getElementById(prefix+'Month')?.value;
   const d = document.getElementById(prefix+'Day')?.value;
   if (!y || !m || !d) return '';
+  if (_compatCalType[prefix] === 'lunar' && typeof lunarToSolar === 'function') {
+    const isLeap = document.getElementById(prefix+'LeapMonth')?.checked || false;
+    const solar = lunarToSolar(+y, +m, +d, isLeap);
+    if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
+    return solar.year + '-' + String(solar.month).padStart(2,'0') + '-' + String(solar.day).padStart(2,'0');
+  }
   return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
 }
 
