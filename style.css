@@ -45,7 +45,7 @@ body.bg-fortune::before {
   background-image: url('/images/bg-fortune.webp');
 }
 body.bg-compat::before {
-  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat.webp');
+  background-image: url('/images/bg-compat.webp');
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
   position: relative;
