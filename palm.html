@@ -231,6 +231,10 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('이미지 크기가 10MB를 초과합니다. 더 작은 사진을 사용해주세요.');
+    return;
+  }
   imageMime = file.type;
   const reader = new FileReader();
   reader.onload = e => {
