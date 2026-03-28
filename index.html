@@ -9,12 +9,12 @@
 </head>
 <body class="bg-main">
 <a href="https://archerlab.dev" target="_blank" rel="noopener noreferrer" class="archerlab-link">🏹 ArcherLab</a>
-<nav class="top-nav">
-  <button class="lang-btn" onclick="toggleLang()" title="Switch language">
-    <span class="lang-icon">🌐</span>
-    <span class="lang-label" id="langLabel">EN</span>
-  </button>
-</nav>
+<div class="lang-select-wrap">
+  <select class="lang-select" id="langSelect" onchange="changeLang(this.value)">
+    <option value="ko">🌐 한국어</option>
+    <option value="en">🌐 English</option>
+  </select>
+</div>
 <div class="container">
   <h1>Karma</h1>
   <p class="subtitle" data-ko="사주 & 궁합 기반 매칭 플랫폼" data-en="Saju & Compatibility Matching Platform">사주 & 궁합 기반 매칭 플랫폼</p>
@@ -57,19 +57,19 @@
 
 </div>
 <script>
-function toggleLang() {
-  const html = document.documentElement;
-  const cur = html.lang === 'ko' ? 'en' : 'ko';
-  html.lang = cur;
-  document.getElementById('langLabel').textContent = cur === 'ko' ? 'EN' : '한';
+function changeLang(lang) {
+  document.documentElement.lang = lang;
   document.querySelectorAll('[data-ko][data-en]').forEach(el => {
-    el.textContent = el.dataset[cur];
+    el.textContent = el.dataset[lang];
   });
-  localStorage.setItem('karma_lang', cur);
+  localStorage.setItem('karma_lang', lang);
 }
 (function() {
   const saved = localStorage.getItem('karma_lang');
-  if (saved && saved !== 'ko') toggleLang();
+  if (saved) {
+    document.getElementById('langSelect').value = saved;
+    if (saved !== 'ko') changeLang(saved);
+  }
 })();
 </script>
 </body>

@@ -59,7 +59,8 @@
 </style>
 </head>
 <body class="bg-saju">
-<nav class="top-nav"><a href="/">🏠 메인</a><button class="lang-btn" onclick="toggleLang()"><span class="lang-icon">🌐</span><span class="lang-label" id="langLabel">EN</span></button></nav>
+<nav class="home-nav"><a href="/">🏠 메인</a></nav>
+<div class="lang-select-wrap"><select class="lang-select" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container saju-page">
   <h1>🔮 내 사주 분석</h1>
   <p class="subtitle">생년월일로 내 사주팔자를 알아보세요</p>
@@ -379,5 +380,6 @@ function openDaeunModal(index, event) {
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 </script>
+<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
 </body>
 </html>
