@@ -63,9 +63,10 @@
     <button class="btn" id="fortuneBtn" onclick="doFortune()">운세 분석하기</button>
   </div>
 
-  <div id="loading" style="display:none" class="loading">
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p>운세를 분석하고 있습니다...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">운세를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">AI가 올해의 운세를 풀이하고 있어요...</p>
   </div>
 
   <div id="result" style="display:none" class="fade-in fortune-grid">

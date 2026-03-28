@@ -93,9 +93,10 @@
     <button class="btn" id="analyzeBtn" onclick="doAnalyze()">사주 분석하기</button>
   </div>
 
-  <div id="loading" style="display:none" class="loading">
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p>사주를 분석하고 있습니다...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">사주를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">AI가 사주팔자를 해석하고 있어요...</p>
   </div>
 
   <div id="result" class="fade-in saju-grid" style="display:none">
@@ -213,7 +214,7 @@ async function doAnalyze() {
   const loading = document.getElementById('loading');
   const result = document.getElementById('result');
   btn.disabled = true;
-  loading.style.display = 'block';
+  loading.style.display = 'flex';
   result.style.display = 'none';
 
   try {

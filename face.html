@@ -177,9 +177,10 @@
     <button class="btn" id="analyzeBtn" disabled>관상 분석하기</button>
   </div>
 
-  <div class="loading" id="loading" style="display:none">
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p>관상을 분석하고 있습니다...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">관상을 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">AI가 얼굴 특징을 읽고 있어요...</p>
   </div>
 
   <div class="error" id="error"></div>
@@ -252,7 +253,7 @@ function handleFile(file) {
 analyzeBtn.addEventListener('click', async () => {
   if (!imageData) return;
   analyzeBtn.disabled = true;
-  document.getElementById('loading').style.display = '';
+  document.getElementById('loading').style.display = 'flex';
   document.getElementById('result').style.display = 'none';
   document.getElementById('error').style.display = 'none';
 
