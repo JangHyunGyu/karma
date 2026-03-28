@@ -238,7 +238,7 @@ function updateDays() {
 // ===== 전체 select 자동 커스텀화 =====
 function initAllCombos() {
   document.querySelectorAll('select:not([data-combo-init])').forEach(s => {
-    if (!s.closest('.combo') && !s.closest('.date-selects') && !s.classList.contains('lang-select')) {
+    if (!s.closest('.combo') && !s.closest('.date-selects') && !s.classList.contains('lang-select') && !s.closest('.lang-select-wrap')) {
       createCombo(s);
     }
   });
