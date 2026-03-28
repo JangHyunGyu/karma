@@ -290,20 +290,6 @@ h1 {
 }
 .cal-btn:hover { background: rgba(255,255,255,0.08); }
 .cal-btn.active:hover { background: rgba(201,160,68,0.3); }
-.leap-month-label {
-  margin-left: 8px;
-  font-size: 0.78rem;
-  color: #aaa;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.leap-month-label input[type="checkbox"] {
-  accent-color: #c9a044;
-  width: 14px;
-  height: 14px;
-}
 
 .date-select-group label {
   font-size: 0.72rem;

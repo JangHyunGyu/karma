@@ -584,7 +584,13 @@ function getLunarYearInfo(year) {
   };
 }
 
+// 해당 음력 년/월에 윤달이 있는지 확인
+function hasLeapMonth(year, month) {
+  if (year < LUNAR_START_YEAR || year > LUNAR_END_YEAR) return false;
+  return getLeapMonth(year) === month;
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { lunarToSolar, getLunarYearInfo };
+  module.exports = { lunarToSolar, getLunarYearInfo, hasLeapMonth };
 }

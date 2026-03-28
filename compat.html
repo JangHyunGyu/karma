@@ -164,10 +164,9 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   html += '<div class="calendar-toggle">';
   html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">양력</button>';
   html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">음력</button>';
-  html += '<label class="leap-month-label" style="display:none"><input type="checkbox" id="'+prefix+'LeapMonth"> <span data-ko="윤달" data-en="Leap">윤달</span></label>';
   html += '</div>';
   // 년
-  html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
+  html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateMonthsFor(\''+prefix+'\');updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
   html += '</select></div>';
   // 월
@@ -188,29 +187,80 @@ function setCompatCalType(btn, prefix, type) {
   const wrap = btn.closest('.calendar-toggle');
   wrap.querySelectorAll('.cal-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const leapLabel = wrap.querySelector('.leap-month-label');
-  if (leapLabel) leapLabel.style.display = type === 'lunar' ? '' : 'none';
+  updateMonthsFor(prefix);
+  updateDaysFor(prefix);
   saveCompatInputs();
+}
+function updateMonthsFor(prefix) {
+  const monthSelect = document.getElementById(prefix+'Month');
+  if (!monthSelect) return;
+  const curVal = monthSelect.value;
+  const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
+  monthSelect.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = String(m);
+    opt.textContent = m;
+    monthSelect.appendChild(opt);
+    if (_compatCalType[prefix] === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
+      const leapOpt = document.createElement('option');
+      leapOpt.value = 'leap_' + m;
+      leapOpt.textContent = '윤' + m;
+      monthSelect.appendChild(leapOpt);
+    }
+  }
+  if (monthSelect.querySelector('option[value="'+curVal+'"]')) {
+    monthSelect.value = curVal;
+  } else {
+    monthSelect.value = monthSelect.options[0]?.value || '1';
+  }
+  // 커스텀 콤보 재생성
+  const combo = monthSelect.closest('.combo');
+  if (combo) {
+    const dropdown = combo.querySelector('.combo-dropdown');
+    const trigger = combo.querySelector('.combo-trigger span:first-child');
+    dropdown.innerHTML = '';
+    Array.from(monthSelect.options).forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
+      div.textContent = opt.textContent;
+      div.dataset.value = opt.value;
+      div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        monthSelect.value = opt.value;
+        trigger.textContent = opt.textContent;
+        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
+        div.classList.add('selected');
+        combo.classList.remove('open');
+        updateDaysFor(prefix);
+        saveCompatInputs();
+      });
+      dropdown.appendChild(div);
+    });
+    const selOpt = monthSelect.options[monthSelect.selectedIndex];
+    if (trigger && selOpt) trigger.textContent = selOpt.textContent;
+  }
 }
 function updateDaysFor(prefix) {
   const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
-  const m = parseInt(document.getElementById(prefix+'Month')?.value || 1);
+  const mVal = document.getElementById(prefix+'Month')?.value || '1';
   const sel = document.getElementById(prefix+'Day');
   if (!sel) return;
   const cur = parseInt(sel.value) || 1;
-  const days = new Date(y, m, 0).getDate();
+  const days = (_compatCalType[prefix] === 'lunar') ? 30 : new Date(y, parseInt(mVal), 0).getDate();
   let html = '';
   for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d===Math.min(cur,days)?'selected':'')+'>'+d+'</option>';
   sel.innerHTML = html;
 }
 function getDateFor(prefix) {
   const y = document.getElementById(prefix+'Year')?.value;
-  const m = document.getElementById(prefix+'Month')?.value;
+  const mVal = document.getElementById(prefix+'Month')?.value;
   const d = document.getElementById(prefix+'Day')?.value;
-  if (!y || !m || !d) return '';
+  if (!y || !mVal || !d) return '';
   if (_compatCalType[prefix] === 'lunar' && typeof lunarToSolar === 'function') {
-    const isLeap = document.getElementById(prefix+'LeapMonth')?.checked || false;
-    const solar = lunarToSolar(+y, +m, +d, isLeap);
+    const isLeap = mVal.startsWith('leap_');
+    const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
+    const solar = lunarToSolar(+y, m, +d, isLeap);
     if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
     return solar.year + '-' + String(solar.month).padStart(2,'0') + '-' + String(solar.day).padStart(2,'0');
   }

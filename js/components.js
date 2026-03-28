@@ -47,7 +47,6 @@ function saveInputs() {
   if (g) data.gender = g.value;
   if (t) data.birthTime = t.value;
   data.calendarType = _calendarType;
-  data.isLeapMonth = document.getElementById('isLeapMonth')?.checked || false;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -62,8 +61,6 @@ function restoreInputs() {
     if (data.calendarType === 'lunar') {
       const lunarBtn = document.querySelector('.cal-btn[data-cal="lunar"]');
       if (lunarBtn) setCalendarType(lunarBtn, 'lunar');
-      const leapCb = document.getElementById('isLeapMonth');
-      if (leapCb && data.isLeapMonth) leapCb.checked = true;
     }
   } catch {}
 }
@@ -87,16 +84,17 @@ function setComboValue(id, value) {
 
 function getBirthDate() {
   const y = document.getElementById('birthYear')?.value;
-  const m = document.getElementById('birthMonth')?.value;
+  const mVal = document.getElementById('birthMonth')?.value;
   const d = document.getElementById('birthDay')?.value;
-  if (!y || !m || !d) return '';
+  if (!y || !mVal || !d) return '';
   if (_calendarType === 'lunar' && typeof lunarToSolar === 'function') {
-    const isLeap = document.getElementById('isLeapMonth')?.checked || false;
-    const solar = lunarToSolar(+y, +m, +d, isLeap);
+    const isLeap = mVal.startsWith('leap_');
+    const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
+    const solar = lunarToSolar(+y, m, +d, isLeap);
     if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
     return `${solar.year}-${String(solar.month).padStart(2,'0')}-${String(solar.day).padStart(2,'0')}`;
   }
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  return `${y}-${String(mVal).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
 // ===== 커스텀 콤보박스 =====
@@ -206,10 +204,9 @@ function createDateSelects(containerId, defY, defM, defD) {
   let html = '<div class="calendar-toggle">';
   html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCalendarType(this,\'solar\')">양력</button>';
   html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCalendarType(this,\'lunar\')">음력</button>';
-  html += '<label class="leap-month-label" style="display:none"><input type="checkbox" id="isLeapMonth"> <span data-ko="윤달" data-en="Leap">윤달</span></label>';
   html += '</div>';
   // 년
-  html += '<div class="date-select-group"><label>년</label><select id="birthYear" onchange="updateDays();saveInputs()">';
+  html += '<div class="date-select-group"><label>년</label><select id="birthYear" onchange="updateMonths();updateDays();saveInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += `<option value="${y}" ${y==defY?'selected':''}>${y}</option>`;
   html += '</select></div>';
   // 월
@@ -230,13 +227,12 @@ function createDateSelects(containerId, defY, defM, defD) {
 
 // 양력/음력 토글
 let _calendarType = 'solar';
+
 function setCalendarType(btn, type) {
   _calendarType = type;
   const wrap = btn.closest('.calendar-toggle');
   wrap.querySelectorAll('.cal-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const leapLabel = wrap.querySelector('.leap-month-label');
-  if (leapLabel) leapLabel.style.display = type === 'lunar' ? '' : 'none';
   // 라벨 업데이트
   const card = btn.closest('.card');
   if (card) {
@@ -247,8 +243,65 @@ function setCalendarType(btn, type) {
       label.textContent = type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)';
     }
   }
+  updateMonths();
   updateDays();
   saveInputs();
+}
+
+// 음력일 때 윤달을 월 드롭다운에 자동 추가
+function updateMonths() {
+  const monthSelect = document.getElementById('birthMonth');
+  if (!monthSelect) return;
+  const curVal = monthSelect.value;
+  const y = parseInt(document.getElementById('birthYear')?.value || 2000);
+
+  monthSelect.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = String(m);
+    opt.textContent = m;
+    monthSelect.appendChild(opt);
+    // 음력이고 이 달에 윤달이 있으면 추가
+    if (_calendarType === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
+      const leapOpt = document.createElement('option');
+      leapOpt.value = 'leap_' + m;
+      leapOpt.textContent = '윤' + m;
+      monthSelect.appendChild(leapOpt);
+    }
+  }
+  // 이전 선택 복원
+  if (monthSelect.querySelector(`option[value="${curVal}"]`)) {
+    monthSelect.value = curVal;
+  } else {
+    monthSelect.value = monthSelect.options[0]?.value || '1';
+  }
+
+  // 커스텀 콤보 드롭다운 재생성
+  const combo = monthSelect.closest('.combo');
+  if (combo) {
+    const dropdown = combo.querySelector('.combo-dropdown');
+    const trigger = combo.querySelector('.combo-trigger span:first-child');
+    dropdown.innerHTML = '';
+    Array.from(monthSelect.options).forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
+      div.textContent = opt.textContent;
+      div.dataset.value = opt.value;
+      div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        monthSelect.value = opt.value;
+        trigger.textContent = opt.textContent;
+        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
+        div.classList.add('selected');
+        combo.classList.remove('open');
+        updateDays();
+        saveInputs();
+      });
+      dropdown.appendChild(div);
+    });
+    const selOpt = monthSelect.options[monthSelect.selectedIndex];
+    if (trigger && selOpt) trigger.textContent = selOpt.textContent;
+  }
 }
 
 function updateDays() {
