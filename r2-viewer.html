@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Karma R2 이미지 뷰어</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0a0a1e; color:#e8e0d0; min-height:100vh; padding:20px; }
+h1 { text-align:center; color:#c9a044; margin-bottom:8px; font-size:1.5rem; }
+.subtitle { text-align:center; color:#888; font-size:0.8rem; margin-bottom:24px; }
+.tabs { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+.tab { padding:8px 20px; border:1px solid rgba(201,160,68,0.3); border-radius:20px; background:transparent; color:#c9a044; cursor:pointer; font-size:0.85rem; transition:all 0.2s; }
+.tab.active, .tab:hover { background:rgba(201,160,68,0.2); border-color:#c9a044; }
+.stats { display:flex; gap:16px; justify-content:center; margin-bottom:20px; font-size:0.8rem; color:#888; }
+.stats span { color:#c9a044; font-weight:600; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; }
+@media (max-width:480px) { .grid { grid-template-columns:repeat(2, 1fr); gap:8px; } }
+.card { position:relative; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); background:rgba(20,15,30,0.6); cursor:pointer; transition:all 0.2s; }
+.card:hover { border-color:rgba(201,160,68,0.3); transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+.card img { width:100%; height:200px; object-fit:cover; display:block; }
+.card-info { padding:8px 10px; }
+.card-type { font-size:0.65rem; color:#7b5ea7; text-transform:uppercase; letter-spacing:1px; }
+.card-date { font-size:0.7rem; color:#666; margin-top:2px; }
+.card-size { font-size:0.65rem; color:#555; }
+.card-del { position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%; background:rgba(180,60,60,0.8); border:none; color:#fff; font-size:14px; cursor:pointer; display:none; align-items:center; justify-content:center; }
+.card:hover .card-del { display:flex; }
+.empty { text-align:center; padding:60px 20px; color:#555; font-size:0.9rem; }
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:999; justify-content:center; align-items:center; }
+.modal.show { display:flex; }
+.modal img { max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px; }
+.modal-close { position:absolute; top:16px; right:20px; color:#fff; font-size:2rem; cursor:pointer; z-index:1000; }
+.loading { text-align:center; padding:40px; color:#888; }
+</style>
+</head>
+<body>
+<h1>🔮 Karma R2 이미지 뷰어</h1>
+<p class="subtitle">관상/수상 분석에 업로드된 이미지</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="loadImages('karma/', this)">전체</button>
+  <button class="tab" onclick="loadImages('karma/face/', this)">🧑 관상</button>
+  <button class="tab" onclick="loadImages('karma/palm/', this)">🤚 수상</button>
+</div>
+
+<div class="stats" id="stats"></div>
+<div class="grid" id="grid"></div>
+<div id="loadMore" style="text-align:center;margin-top:16px;display:none">
+  <button class="tab" onclick="loadMore()">더 보기</button>
+</div>
+
+<div class="modal" id="modal" onclick="closeModal()">
+  <span class="modal-close">&times;</span>
+  <img id="modalImg">
+</div>
+
+<script>
+const API = 'https://karma-api.yama5993.workers.dev';
+let currentPrefix = 'karma/';
+let currentCursor = null;
+let allItems = [];
+
+async function loadImages(prefix, btn) {
+  currentPrefix = prefix;
+  currentCursor = null;
+  allItems = [];
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  document.getElementById('grid').innerHTML = '<div class="loading">로딩 중...</div>';
+  await fetchPage();
+}
+
+async function fetchPage() {
+  let url = `${API}/api/r2/list?prefix=${encodeURIComponent(currentPrefix)}&limit=50`;
+  if (currentCursor) url += `&cursor=${encodeURIComponent(currentCursor)}`;
+
+  const resp = await fetch(url);
+  const data = await resp.json();
+
+  allItems = allItems.concat(data.items || []);
+  currentCursor = data.cursor;
+
+  renderGrid();
+  document.getElementById('loadMore').style.display = currentCursor ? 'block' : 'none';
+}
+
+function loadMore() { fetchPage(); }
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const faceCount = allItems.filter(i => i.key.includes('/face/')).length;
+  const palmCount = allItems.filter(i => i.key.includes('/palm/')).length;
+
+  document.getElementById('stats').innerHTML =
+    `전체 <span>${allItems.length}</span>장 · 관상 <span>${faceCount}</span> · 수상 <span>${palmCount}</span>`;
+
+  if (!allItems.length) {
+    grid.innerHTML = '<div class="empty">업로드된 이미지가 없습니다</div>';
+    return;
+  }
+
+  grid.innerHTML = allItems.map((item, i) => {
+    const type = item.key.includes('/face/') ? '관상' : item.key.includes('/palm/') ? '수상' : '기타';
+    const date = new Date(item.uploaded).toLocaleString('ko-KR');
+    const size = (item.size / 1024).toFixed(0) + 'KB';
+    const imgUrl = `${API}/api/r2/image?key=${encodeURIComponent(item.key)}`;
+    return `<div class="card" onclick="openModal('${imgUrl}')">
+      <img src="${imgUrl}" alt="${type}" loading="lazy">
+      <button class="card-del" onclick="event.stopPropagation();deleteImage('${item.key}',${i})" title="삭제">&times;</button>
+      <div class="card-info">
+        <div class="card-type">${type}</div>
+        <div class="card-date">${date}</div>
+        <div class="card-size">${size}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(url) {
+  document.getElementById('modalImg').src = url;
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+async function deleteImage(key, index) {
+  if (!confirm('이 이미지를 삭제하시겠습니까?')) return;
+  await fetch(`${API}/api/r2/delete`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  });
+  allItems.splice(index, 1);
+  renderGrid();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+loadImages('karma/');
+</script>
+</body>
+</html>
