@@ -7,5 +7,9 @@ binding = "DB"
 database_name = "archerlab_db"
 database_id = "babeec1b-1079-4a44-aefe-e1ffaa01f7ff"
 
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "archerlab-r2"
+
 [vars]
 CORS_ORIGIN = "*"

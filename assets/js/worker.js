@@ -225,6 +225,162 @@ async function callGemini(apiKey, prompt) {
   }
 }
 
+async function callGeminiVision(apiKey, prompt, imageBase64, mimeType) {
+  try {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: imageBase64 } },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
+        }),
+      }
+    );
+    const data = await resp.json();
+    if (data.error) { console.error('Gemini Vision error:', JSON.stringify(data.error)); return null; }
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
+    if (!allText) return null;
+    const jsonMatch = allText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try { return JSON.parse(jsonMatch[0]); } catch { return null; }
+  } catch (e) {
+    console.error('Gemini Vision call failed:', e.message || e);
+    return null;
+  }
+}
+
+async function saveImageToR2(env, image, mimeType, type) {
+  if (!env.R2_BUCKET) return null;
+  try {
+    const ext = mimeType === 'image/png' ? 'png' : 'jpg';
+    const key = `karma/${type}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const buf = Uint8Array.from(atob(image), c => c.charCodeAt(0));
+    await env.R2_BUCKET.put(key, buf, { httpMetadata: { contentType: mimeType } });
+    return key;
+  } catch (e) {
+    console.error('R2 save failed:', e.message);
+    return null;
+  }
+}
+
+async function handleFaceReading(request, env) {
+  const { image, mimeType, gender, age } = await request.json();
+  if (!image) return json({ error: '이미지가 필요합니다' }, 400);
+
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+
+  // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
+  const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
+
+  const prompt = `당신은 동양 관상학(面相學) 전문가입니다. 첨부된 사진을 분석하여 관상 감정을 해주세요.
+
+중요: 먼저 사진에 사람의 얼굴이 있는지 확인하세요. 얼굴이 없거나 사람이 아닌 사진이면 반드시 다음 JSON만 반환하세요:
+{"error": "얼굴 사진이 아닙니다. 사람의 정면 얼굴이 보이는 사진을 업로드해주세요."}
+
+얼굴이 확인되면 관상 감정을 진행하세요.
+${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
+
+다음 항목을 분석하세요:
+1. 이마(천정) - 지혜, 초년운
+2. 눈(눈매) - 성격, 대인관계
+3. 코(준두) - 재물운, 자존심
+4. 입(입술) - 언변, 식복
+5. 턱/광대 - 의지력, 중년~말년운
+6. 전체 인상 - 종합 관상
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+  "overall_score": 85,
+  "overall_grade": "A",
+  "summary": "전체 한줄 요약",
+  "categories": [
+    {"name": "이마 (천정)", "score": 80, "desc": "분석 내용 2~3문장"},
+    {"name": "눈 (눈매)", "score": 85, "desc": "분석 내용"},
+    {"name": "코 (준두)", "score": 75, "desc": "분석 내용"},
+    {"name": "입 (입술)", "score": 90, "desc": "분석 내용"},
+    {"name": "턱/광대", "score": 80, "desc": "분석 내용"},
+    {"name": "전체 인상", "score": 85, "desc": "분석 내용"}
+  ],
+  "fortune": {
+    "wealth": "재물운 해석",
+    "career": "직업/사업운",
+    "love": "연애/결혼운",
+    "health": "건강운"
+  },
+  "advice": "관상 기반 조언 2~3문장",
+  "celebrity_resemblance": "닮은 유명인 (있으면)"
+}`;
+
+  const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
+  if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
+  if (result.error) return json({ error: result.error }, 400);
+  return json({ ...result, r2_key: r2Key });
+}
+
+async function handlePalmReading(request, env) {
+  const { image, mimeType, hand, gender } = await request.json();
+  if (!image) return json({ error: '이미지가 필요합니다' }, 400);
+
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+
+  const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
+
+  const prompt = `당신은 동양 수상학(手相學) 전문가입니다. 첨부된 사진을 분석하여 손금 감정을 해주세요.
+
+중요: 먼저 사진에 사람의 손바닥이 있는지 확인하세요. 손바닥이 없거나 손금이 보이지 않는 사진이면 반드시 다음 JSON만 반환하세요:
+{"error": "손바닥 사진이 아닙니다. 손금이 잘 보이도록 손을 펴서 촬영한 사진을 업로드해주세요."}
+
+손바닥이 확인되면 손금 감정을 진행하세요.
+${hand ? `촬영한 손: ${hand}` : ''}${gender ? `, 성별: ${gender}` : ''}
+
+다음 주요 손금을 분석하세요:
+1. 생명선 - 건강, 활력, 수명
+2. 두뇌선 (지능선) - 사고방식, 판단력
+3. 감정선 - 감정, 연애, 대인관계
+4. 운명선 - 직업운, 인생 방향
+5. 태양선 (성공선) - 명예, 성공
+6. 결혼선 - 결혼, 인연
+7. 손의 형태 - 손가락 길이, 손바닥 모양
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+  "overall_score": 82,
+  "overall_grade": "A",
+  "summary": "전체 한줄 요약",
+  "lines": [
+    {"name": "생명선", "score": 85, "length": "길다/보통/짧다", "desc": "분석 내용 2~3문장"},
+    {"name": "두뇌선", "score": 78, "length": "길다/보통/짧다", "desc": "분석 내용"},
+    {"name": "감정선", "score": 88, "length": "길다/보통/짧다", "desc": "분석 내용"},
+    {"name": "운명선", "score": 75, "length": "뚜렷/보통/희미", "desc": "분석 내용"},
+    {"name": "태양선", "score": 70, "length": "있음/희미/없음", "desc": "분석 내용"},
+    {"name": "결혼선", "score": 80, "length": "1개/2개/여러개", "desc": "분석 내용"}
+  ],
+  "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "손 형태 분석"},
+  "fortune": {
+    "wealth": "재물운",
+    "career": "직업운",
+    "love": "연애/결혼운",
+    "health": "건강운"
+  },
+  "advice": "손금 기반 조언 2~3문장"
+}`;
+
+  const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
+  if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
+  if (result.error) return json({ error: result.error }, 400);
+  return json({ ...result, r2_key: r2Key });
+}
+
 function getOhangRelations(ohangA, ohangB) {
   const relations = { sangsaeng: [], sanggeuk: [], same: false };
   if (SANGSAENG[ohangA] === ohangB) relations.sangsaeng.push(`${ohangA}→${ohangB}`);
@@ -871,6 +1027,12 @@ export default {
       }
       if (path === '/api/quick-saju' && method === 'POST') {
         return handleQuickSaju(request, env);
+      }
+      if (path === '/api/face-reading' && method === 'POST') {
+        return handleFaceReading(request, env);
+      }
+      if (path === '/api/palm-reading' && method === 'POST') {
+        return handlePalmReading(request, env);
       }
 
       // ---- Match Routes ----

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 관상 분석</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<style>
+.upload-area {
+  border: 2px dashed rgba(201,160,68,0.3);
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: #c9a044;
+  background: rgba(201,160,68,0.08);
+}
+.upload-area.has-image { padding: 0; border-style: solid; }
+.upload-area .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+.upload-area .upload-text { color: #888; font-size: 0.85rem; }
+.upload-area .upload-hint { color: #666; font-size: 0.75rem; margin-top: 6px; }
+.upload-area img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+  border-radius: 10px;
+}
+.upload-area input[type="file"] { display: none; }
+.options-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.options-row .combo { flex: 1; }
+.result-section { margin-top: 20px; }
+.score-header {
+  text-align: center;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.score-header .big-score { font-size: 3.5rem; font-weight: 900; color: #c9a044; }
+.score-header .big-grade { font-size: 1.5rem; margin-left: 8px; vertical-align: super; }
+.score-header .summary-text { color: #aaa; font-size: 0.9rem; margin-top: 8px; }
+.category-item {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.category-item:last-child { border-bottom: none; }
+.category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.category-name { font-weight: 700; color: #e8e0d0; }
+.category-score { color: #c9a044; font-weight: 700; font-size: 1.1rem; }
+.category-desc { font-size: 0.85rem; color: #999; line-height: 1.6; }
+.fortune-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.fortune-item {
+  padding: 14px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+}
+.fortune-item .f-label { font-size: 0.75rem; color: #c9a044; margin-bottom: 6px; font-weight: 600; }
+.fortune-item .f-text { font-size: 0.82rem; color: #bbb; line-height: 1.5; }
+.celeb-box {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(123,94,167,0.12);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #b39ddb;
+}
+</style>
+</head>
+<body class="bg-saju">
+<nav class="top-nav"><a href="/">🏠 메인</a><button class="lang-btn" onclick="toggleLang()"><span class="lang-icon">🌐</span><span class="lang-label" id="langLabel">EN</span></button></nav>
+<div class="container">
+  <h1>🧑 관상 분석</h1>
+  <p class="subtitle">얼굴 사진으로 관상을 분석합니다</p>
+
+  <div class="card">
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📸</div>
+      <div class="upload-text">얼굴 사진을 업로드하세요</div>
+      <div class="upload-hint">정면 사진이 가장 정확합니다</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="options-row">
+      <div>
+        <label>성별</label>
+        <select id="gender">
+          <option value="">선택 안함</option>
+          <option value="남성">남성</option>
+          <option value="여성">여성</option>
+        </select>
+      </div>
+      <div>
+        <label>나이대</label>
+        <select id="age">
+          <option value="">선택 안함</option>
+          <option value="10대">10대</option>
+          <option value="20대">20대</option>
+          <option value="30대">30대</option>
+          <option value="40대">40대</option>
+          <option value="50대">50대</option>
+          <option value="60대 이상">60대 이상</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="analyzeBtn" disabled>관상 분석하기</button>
+  </div>
+
+  <div class="loading" id="loading" style="display:none">
+    <div class="spinner"></div>
+    <p>관상을 분석하고 있습니다...</p>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="result-section" id="result" style="display:none">
+    <div class="card score-header">
+      <span class="big-score" id="totalScore"></span>
+      <span class="big-grade" id="totalGrade"></span>
+      <div class="summary-text" id="summary"></div>
+    </div>
+
+    <div class="card" id="categories"></div>
+
+    <div class="card">
+      <h2>🔮 운세 풀이</h2>
+      <div class="fortune-grid" id="fortune"></div>
+    </div>
+
+    <div class="card">
+      <h2>💡 조언</h2>
+      <p id="advice" style="font-size:0.9rem;color:#bbb;line-height:1.6"></p>
+      <div class="celeb-box" id="celeb" style="display:none"></div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">다시 분석하기</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://karma-api.archerlab.workers.dev';
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const analyzeBtn = document.getElementById('analyzeBtn');
+let imageData = null, imageMime = null;
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  imageMime = file.type;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(',')[1];
+    imageData = base64;
+    uploadArea.classList.add('has-image');
+    uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded">`;
+    analyzeBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!imageData) return;
+  analyzeBtn.disabled = true;
+  document.getElementById('loading').style.display = '';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const resp = await fetch(`${API}/api/face-reading`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: imageData,
+        mimeType: imageMime,
+        gender: document.getElementById('gender').value,
+        age: document.getElementById('age').value,
+      }),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderResult(data);
+  } catch (e) {
+    const err = document.getElementById('error');
+    err.textContent = e.message || '분석 중 오류가 발생했습니다';
+    err.style.display = 'block';
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    analyzeBtn.disabled = false;
+  }
+});
+
+function renderResult(d) {
+  document.getElementById('totalScore').textContent = d.overall_score;
+  const grade = d.overall_grade || getGrade(d.overall_score);
+  document.getElementById('totalGrade').textContent = grade;
+  document.getElementById('totalGrade').className = `big-grade grade grade-${grade}`;
+  document.getElementById('summary').textContent = d.summary || '';
+
+  const cats = document.getElementById('categories');
+  cats.innerHTML = '<h2>📋 상세 분석</h2>' + (d.categories || []).map(c => `
+    <div class="category-item">
+      <div class="category-header">
+        <span class="category-name">${c.name}</span>
+        <span class="category-score">${c.score}점</span>
+      </div>
+      <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${c.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
+      <div class="category-desc">${c.desc}</div>
+    </div>
+  `).join('');
+
+  const fort = d.fortune || {};
+  document.getElementById('fortune').innerHTML = [
+    ['💰', '재물운', fort.wealth],
+    ['💼', '직업운', fort.career],
+    ['❤️', '연애운', fort.love],
+    ['🏥', '건강운', fort.health],
+  ].map(([icon, label, text]) => `
+    <div class="fortune-item">
+      <div class="f-label">${icon} ${label}</div>
+      <div class="f-text">${text || '-'}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('advice').textContent = d.advice || '';
+  const celeb = document.getElementById('celeb');
+  if (d.celebrity_resemblance) {
+    celeb.textContent = '⭐ 닮은 유명인: ' + d.celebrity_resemblance;
+    celeb.style.display = '';
+  } else {
+    celeb.style.display = 'none';
+  }
+
+  document.getElementById('result').style.display = '';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function getGrade(s) {
+  if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
+}
+
+function resetForm() {
+  imageData = null; imageMime = null;
+  uploadArea.classList.remove('has-image');
+  uploadArea.innerHTML = '<div class="upload-icon">📸</div><div class="upload-text">얼굴 사진을 업로드하세요</div><div class="upload-hint">정면 사진이 가장 정확합니다</div><input type="file" id="fileInput" accept="image/*">';
+  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  analyzeBtn.disabled = true;
+  document.getElementById('result').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

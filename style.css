@@ -87,11 +87,16 @@ body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, bo
 .top-nav {
   position: fixed;
   top: 14px;
-  right: 20px;
+  left: 20px;
   z-index: 60;
   display: flex;
   gap: 8px;
   align-items: center;
+}
+/* 메인 페이지: archerlab이 좌측이므로 nav는 우측 */
+.bg-main .top-nav {
+  left: auto;
+  right: 20px;
 }
 .top-nav a, .top-nav .home-btn {
   display: inline-flex;
