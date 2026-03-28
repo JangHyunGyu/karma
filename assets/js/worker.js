@@ -244,16 +244,27 @@ async function callGeminiVision(apiKey, prompt, imageBase64, mimeType) {
       }
     );
     const data = await resp.json();
-    if (data.error) { console.error('Gemini Vision error:', JSON.stringify(data.error)); return null; }
-    const parts = data.candidates?.[0]?.content?.parts || [];
+    if (data.error) {
+      console.error('Gemini Vision error:', JSON.stringify(data.error));
+      return { _apiError: data.error.message || JSON.stringify(data.error) };
+    }
+    // 안전 필터 차단 확인
+    const candidate = data.candidates?.[0];
+    if (candidate?.finishReason === 'SAFETY') {
+      return { _apiError: '이미지가 안전 필터에 의해 차단되었습니다. 다른 사진을 시도해주세요.' };
+    }
+    const parts = candidate?.content?.parts || [];
     const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
-    if (!allText) return null;
+    if (!allText) {
+      console.error('Gemini Vision: empty response, candidates:', JSON.stringify(data.candidates));
+      return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
+    }
     const jsonMatch = allText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    try { return JSON.parse(jsonMatch[0]); } catch { return null; }
+    if (!jsonMatch) return { _apiError: 'AI 응답 형식 오류' };
+    try { return JSON.parse(jsonMatch[0]); } catch { return { _apiError: 'AI 응답 파싱 실패' }; }
   } catch (e) {
     console.error('Gemini Vision call failed:', e.message || e);
-    return null;
+    return { _apiError: 'Gemini API 호출 실패: ' + (e.message || '') };
   }
 }
 
@@ -322,6 +333,7 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 
   const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
+  if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
   return json({ ...result, r2_key: r2Key });
 }
@@ -377,6 +389,7 @@ ${hand ? `촬영한 손: ${hand}` : ''}${gender ? `, 성별: ${gender}` : ''}
 
   const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
+  if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
   return json({ ...result, r2_key: r2Key });
 }

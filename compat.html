@@ -139,7 +139,7 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const c = document.getElementById(containerId);
   if (!c) return;
   const thisYear = new Date().getFullYear();
-  let html = '<div class="date-selects">';
+  let html = '';
   // 년
   html += '<div class="date-select-group"><label>년</label><select id="'+prefix+'Year" onchange="updateDaysFor(\''+prefix+'\')">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
@@ -153,7 +153,6 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   const days = new Date(defY, defM, 0).getDate();
   for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d==defD?'selected':'')+'>'+d+'</option>';
   html += '</select></div>';
-  html += '</div>';
   c.innerHTML = html;
   // 커스텀 콤보로 변환
   c.querySelectorAll('select').forEach(s => createCombo(s));
