@@ -16,30 +16,26 @@ body {
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
   background-color: #1a1a2e;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-body.bg-main::before, body.bg-saju::before, body.bg-fortune::before, body.bg-compat::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%;
-  height: 100%;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  z-index: 0;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
-body.bg-main::before { background-image: url('/images/bg-main.webp'); }
-body.bg-saju::before { background-image: url('/images/bg-saju.webp'); }
-body.bg-fortune::before { background-image: url('/images/bg-fortune.webp'); }
-body.bg-compat::before { background-image: url('/images/bg-compat.webp'); }
+body.bg-main { background-image: url('/images/bg-main.webp'); }
+body.bg-saju { background-image: url('/images/bg-saju.webp'); }
+body.bg-fortune { background-image: url('/images/bg-fortune.webp'); }
+body.bg-compat { background-image: url('/images/bg-compat.webp'); }
+/* iOS에서 background-attachment:fixed 미지원 대비 */
+@supports (-webkit-touch-callout: none) {
+  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
+    background-attachment: scroll;
+  }
+}
 body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
   content: '';
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(10, 10, 30, 0.85);
   z-index: 0;
 }
