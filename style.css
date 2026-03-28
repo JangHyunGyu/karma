@@ -8,15 +8,17 @@ body {
   color: #e8e0d0;
   min-height: 100vh;
 }
-body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat { position: relative; }
-body.bg-main { background-color: #1a1a2e; }
-body.bg-saju { background-color: #1a1a2e; }
-body.bg-fortune { background-color: #1a1a2e; }
-body.bg-compat { background-color: #1a1a2e; }
+body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
+  position: relative;
+  background-color: #1a1a2e;
+}
 body.bg-main::before, body.bg-saju::before, body.bg-fortune::before, body.bg-compat::before {
   content: '';
   position: fixed;
-  inset: 0;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -29,13 +31,20 @@ body.bg-compat::before { background-image: url('/images/bg-compat.webp'); }
 body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
   content: '';
   position: fixed;
-  inset: 0;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background: rgba(10, 10, 30, 0.85);
   z-index: 0;
 }
-body.bg-main > *, body.bg-saju > *, body.bg-fortune > *, body.bg-compat > * {
+body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
   position: relative;
   z-index: 1;
+}
+.archerlab-link, .top-nav {
+  z-index: 60 !important;
+  position: fixed !important;
 }
 /* 콤보 드롭다운이 다른 카드 위로 올라가도록 */
 .card.combo-active {
@@ -77,28 +86,35 @@ body.bg-main > *, body.bg-saju > *, body.bg-fortune > *, body.bg-compat > * {
 /* 상단 네비 (메인으로 + 언어) */
 .top-nav {
   position: fixed;
-  top: 16px;
+  top: 14px;
   right: 20px;
   z-index: 60;
   display: flex;
   gap: 8px;
   align-items: center;
 }
-.top-nav a {
-  color: #9a8e7e;
+.top-nav a, .top-nav .home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #c9a044;
   text-decoration: none;
   font-size: 0.75rem;
-  padding: 5px 12px;
-  border: 1px solid rgba(201,160,68,0.25);
-  border-radius: 4px;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid rgba(201,160,68,0.3);
+  border-radius: 20px;
+  transition: all 0.25s;
   background: rgba(13,13,26,0.7);
   backdrop-filter: blur(6px);
+  cursor: pointer;
+  letter-spacing: 0.3px;
 }
-.top-nav a:hover {
-  color: #c9a044;
-  border-color: rgba(201,160,68,0.5);
-  background: rgba(201,160,68,0.1);
+.top-nav a:hover, .top-nav .home-btn:hover {
+  color: #f0d48a;
+  border-color: rgba(201,160,68,0.6);
+  background: rgba(201,160,68,0.15);
+  box-shadow: 0 0 12px rgba(201,160,68,0.2);
 }
 
 /* 레이아웃 */
