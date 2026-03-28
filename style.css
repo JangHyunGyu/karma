@@ -4,8 +4,7 @@
 html { overflow-x: hidden; max-width: 100vw; }
 body {
   font-family: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
-  background: linear-gradient(135deg, #0d0d1a 0%, #1a1020 50%, #0f0a1e 100%);
-  background-attachment: fixed;
+  background-color: #0a0a1e;
   color: #e8e0d0;
   min-height: 100vh;
   overflow-x: hidden;
@@ -16,36 +15,29 @@ body {
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
   background-color: #0a0a1e;
-  min-height: 100vh;
-}
-/* 배경을 ::before로 분리하여 fixed 고정 (스크롤해도 안 움직임) */
-body.bg-main::before, body.bg-saju::before, body.bg-fortune::before, body.bg-compat::before {
-  content: '';
-  position: fixed;
-  inset: 0;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  z-index: -2;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
-body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(10,10,30,0.85);
-  z-index: -1;
+/* 모바일: fixed 미지원 대비 scroll 폴백 */
+@media (max-width: 1024px) {
+  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
+    background-attachment: scroll;
+  }
 }
-body.bg-main::before {
-  background-image: url('/images/bg-main.webp');
+body.bg-main {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main.webp');
 }
-body.bg-saju::before {
-  background-image: url('/images/bg-saju.webp');
+body.bg-saju {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju.webp');
 }
-body.bg-fortune::before {
-  background-image: url('/images/bg-fortune.webp');
+body.bg-fortune {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune.webp');
 }
-body.bg-compat::before {
-  background-image: url('/images/bg-compat.webp');
+body.bg-compat {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat.webp');
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
   position: relative;
