@@ -146,6 +146,7 @@ async function doFortune() {
         birth_time: document.getElementById('birthTime').value,
         gender: document.getElementById('gender').value,
         year: parseInt(document.getElementById('fortuneYear').value),
+        lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
     const data = await resp.json();

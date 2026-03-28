@@ -286,7 +286,7 @@ async function saveImageToR2(env, image, mimeType, type) {
 }
 
 async function handleFaceReading(request, env) {
-  const { image, mimeType, gender, age } = await request.json();
+  const { image, mimeType, gender, age, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
   const apiKey = env.GEMINI_API_KEY;
@@ -332,7 +332,7 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
   },
   "advice": "관상 기반 조언 2~3문장",
   "celebrity_resemblance": "닮은 유명인 (있으면)"
-}`;
+}` + langInstruction(lang);
 
   const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
@@ -342,7 +342,7 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 }
 
 async function handlePalmReading(request, env) {
-  const { image, mimeType, hand, gender } = await request.json();
+  const { image, mimeType, hand, gender, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
   const apiKey = env.GEMINI_API_KEY;
@@ -388,7 +388,7 @@ ${hand ? `촬영한 손: ${hand}` : ''}${gender ? `, 성별: ${gender}` : ''}
     "health": "건강운"
   },
   "advice": "손금 기반 조언 2~3문장"
-}`;
+}` + langInstruction(lang);
 
   const result = await callGeminiVision(apiKey, prompt, image, mimeType || 'image/jpeg');
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
@@ -441,7 +441,12 @@ function getOhangAnalysis(ohangCount) {
   return { excess, lack };
 }
 
-function buildSajuPrompt(saju, gender) {
+function langInstruction(lang) {
+  if (lang === 'en') return '\n\nIMPORTANT: You MUST respond entirely in English. All text values in the JSON must be in English. Keep Korean Saju terms (like 갑, 을, 목, 화 etc.) but add English translations in parentheses.';
+  return '';
+}
+
+function buildSajuPrompt(saju, gender, lang) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const { excess, lack } = getOhangAnalysis(saju.ohangCount);
   const yinYang = ilganInfo.yin ? '음(陰)' : '양(陽)';
@@ -498,10 +503,10 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
   "career": "(적합한 직업 3~4개를 구체적으로. 왜 이 직업이 맞는지 이유도 함께. 예: '분석력이 뛰어나서 데이터 분석가, 연구원에 적합하고...')",
   "daeun_reading": ["대운 8개 각각 2~3문장 해석. 배열 순서 = 대운 순서. '이 시기에는 어떤 일이 일어나기 쉽고, 어떻게 보내면 좋다' 식으로 구체적 조언 포함"],
   "advice": "(이 사주를 가진 사람에게 주는 인생 조언 3~4문장. 추상적 말 대신 '이럴 때는 이렇게 해보세요' 같은 실천 가능한 조언)"
-}`;
+}` + langInstruction(lang);
 }
 
-function buildFortunePrompt(saju, gender, year) {
+function buildFortunePrompt(saju, gender, year, lang) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
 
@@ -537,10 +542,10 @@ ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
     "month": "(올해 가장 좋은 달)"
   },
   "advice": "(올해를 잘 보내기 위한 핵심 조언 2~3문장)"
-}`;
+}` + langInstruction(lang);
 }
 
-function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB) {
+function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
   const genderTextA = genderA === 'male' ? '남성' : genderA === 'female' ? '여성' : '';
   const genderTextB = genderB === 'male' ? '남성' : genderB === 'female' ? '여성' : '';
   const ilganA = CHEONGAN_INFO[sajuA.ilgan] || {};
@@ -599,7 +604,7 @@ ${OHANG_RELATIONS}
   "saju_reading": "(일간 관계와 오행 조합에서 오는 궁합의 핵심을 3~4문장으로 구체적으로 해석)",
   "conflict_pattern": "(이 커플이 갈등할 때의 패턴과 해결 방법을 2문장으로)",
   "advice": "(이 커플에게 주는 구체적인 관계 발전 조언 2~3문장)"
-}`;
+}` + langInstruction(lang);
 }
 
 // ============================================================
@@ -678,19 +683,19 @@ async function handleDeleteProfile(request, env) {
 // --- Saju Routes (from routes/saju.js) ---
 
 async function handleSajuAnalysis(request, env) {
-  const { birth_date, birth_time, gender } = await request.json();
+  const { birth_date, birth_time, gender, lang } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '');
 
   const apiKey = env.GEMINI_API_KEY;
-  const ai = apiKey ? await callGemini(apiKey, buildSajuPrompt(saju, gender)) : null;
+  const ai = apiKey ? await callGemini(apiKey, buildSajuPrompt(saju, gender, lang)) : null;
 
   return json({ ...saju, ai });
 }
 
 async function handleCompatQuick(request, env) {
-  const { personA, personB } = await request.json();
+  const { personA, personB, lang } = await request.json();
   if (!personA?.birth_date || !personB?.birth_date) {
     return json({ error: '두 사람의 생년월일은 필수입니다' }, 400);
   }
@@ -702,13 +707,13 @@ async function handleCompatQuick(request, env) {
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
   const apiKey = env.GEMINI_API_KEY;
-  const ai = apiKey ? await callGemini(apiKey, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender)) : null;
+  const ai = apiKey ? await callGemini(apiKey, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang)) : null;
 
   return json({ score, grade, saju_a: sajuA, saju_b: sajuB, relations, ai });
 }
 
 async function handleFortune(request, env) {
-  const { birth_date, birth_time, gender, year: reqYear } = await request.json();
+  const { birth_date, birth_time, gender, year: reqYear, lang } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '');
@@ -717,7 +722,7 @@ async function handleFortune(request, env) {
   const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKey, buildFortunePrompt(saju, gender, year));
+  const ai = await callGemini(apiKey, buildFortunePrompt(saju, gender, year, lang));
   return json({ year, saju_summary: saju.summary, ilgan: saju.ilgan, ilganOhang: saju.ilganOhang, fortune: ai });
 }
 

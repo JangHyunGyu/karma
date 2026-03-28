@@ -265,6 +265,7 @@ analyzeBtn.addEventListener('click', async () => {
         image: imageData, mimeType: imageMime,
         gender: document.getElementById('gender').value,
         age: document.getElementById('age').value,
+        lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
     const data = await resp.json();

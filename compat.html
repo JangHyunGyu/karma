@@ -231,6 +231,7 @@ async function doCompat() {
       body: JSON.stringify({
         personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value },
         personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value },
+        lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
     const data = await resp.json();
