@@ -142,10 +142,12 @@ function createCombo(selectEl) {
         parentCard.classList.remove('combo-active');
       }
     }
-    // 선택된 항목으로 스크롤
+    // 선택된 항목으로 드롭다운 내부 스크롤 (페이지 스크롤 안 움직이게)
     if (combo.classList.contains('open')) {
       const sel = dropdown.querySelector('.selected');
-      if (sel) sel.scrollIntoView({ block: 'nearest' });
+      if (sel) {
+        dropdown.scrollTop = sel.offsetTop - dropdown.offsetHeight / 2 + sel.offsetHeight / 2;
+      }
     }
   });
 
