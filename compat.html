@@ -7,6 +7,11 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 <script src="/js/browser-check.js"></script>
+<style>
+  @media (min-width: 769px) { .compat-input-grid { grid-template-columns: 1fr 1fr !important; } }
+  .container.wide { max-width: 100%; width: 100%; }
+  @media (min-width: 769px) { .container.wide { max-width: 640px; } }
+</style>
 </head>
 <body class="bg-compat">
 <div class="header-bg"></div>
@@ -16,7 +21,7 @@
   <h1>💕 궁합 분석</h1>
   <p class="subtitle">두 사람의 사주 오행 궁합을 분석합니다</p>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  <div class="compat-input-grid" style="display:grid;grid-template-columns:1fr;gap:12px">
     <div class="card">
       <h2>Person A</h2>
       <label>생년월일</label>

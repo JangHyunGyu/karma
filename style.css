@@ -166,6 +166,12 @@ select.lang-select {
   padding: 24px 20px;
   padding-top: 48px;
   overflow-x: hidden;
+  width: 100%;
+}
+/* 모든 카드/그리드 내부 요소가 부모 너비를 절대 넘지 않도록 */
+.container *, .container *::before, .container *::after {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .container.wide { max-width: 640px; }
 
@@ -280,8 +286,10 @@ h1 {
   margin-bottom: 14px;
   backdrop-filter: blur(10px);
   overflow-wrap: break-word;
-  word-break: keep-all;
+  word-break: break-word;
   max-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
 .card h2 {
   font-size: 1rem;

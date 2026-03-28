@@ -8,19 +8,13 @@
 <link rel="stylesheet" href="/style.css">
 <style>
   .fortune-grid { display: grid; gap: 14px; }
-  .fortune-2col { display: grid; gap: 14px; }
+  .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  .container.fortune-page { max-width: 100%; width: 100%; }
   @media (min-width: 769px) {
     .container.fortune-page { max-width: 1000px; }
     .fortune-2col { grid-template-columns: 1fr 1fr; }
   }
-  @media (min-width: 481px) and (max-width: 768px) {
-    .container.fortune-page { max-width: 700px; }
-    .fortune-2col { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 480px) {
-    .container.fortune-page { max-width: 100%; padding: 16px 12px; padding-top: 48px; }
-  }
-  .fortune-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); }
+  .fortune-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); word-break: break-word; }
 </style>
 <script src="/js/browser-check.js"></script>
 </head>
