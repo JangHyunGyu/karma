@@ -6,7 +6,9 @@
 // ============================================================
 
 const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const CF_ACCOUNT_ID = 'f5ced3498c8b7674581b5c9987f31585';
+const CF_GATEWAY_NAME = 'archer-gateway';
+const GEMINI_URL = `https://gateway.ai.cloudflare.com/v1/${CF_ACCOUNT_ID}/${CF_GATEWAY_NAME}/google-ai-studio/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
