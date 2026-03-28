@@ -15,24 +15,36 @@ body {
 }
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
-  /* 배경이미지 + 어둡게 오버레이를 하나로 합침 (::after 불필요) */
   background-color: #0a0a1e;
+  min-height: 100vh;
+}
+/* 배경을 ::before로 분리하여 fixed 고정 (스크롤해도 안 움직임) */
+body.bg-main::before, body.bg-saju::before, body.bg-fortune::before, body.bg-compat::before {
+  content: '';
+  position: fixed;
+  inset: 0;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  background-attachment: scroll;
-  min-height: 100vh;
+  z-index: -2;
 }
-body.bg-main {
-  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main.webp');
+body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,30,0.85);
+  z-index: -1;
 }
-body.bg-saju {
-  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju.webp');
+body.bg-main::before {
+  background-image: url('/images/bg-main.webp');
 }
-body.bg-fortune {
-  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune.webp');
+body.bg-saju::before {
+  background-image: url('/images/bg-saju.webp');
 }
-body.bg-compat {
+body.bg-fortune::before {
+  background-image: url('/images/bg-fortune.webp');
+}
+body.bg-compat::before {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat.webp');
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {

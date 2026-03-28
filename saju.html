@@ -125,8 +125,8 @@
       <div class="card">
         <h2>🔄 대운 (10년 단위 인생 흐름) <span style="font-size:0.7rem;color:#888;font-weight:400">카드를 클릭하세요</span></h2>
         <div id="daeunTimeline" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px"></div>
-        <div id="daeunAccordion" style="display:none;margin-top:12px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:12px">
-          <div id="daeunAccordionContent"></div>
+        <div id="daeunAccordion" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;margin-top:12px;background:rgba(255,255,255,0.03);border:1px solid transparent;border-radius:12px">
+          <div id="daeunAccordionContent" style="padding:14px"></div>
         </div>
       </div>
     </div>
@@ -344,7 +344,8 @@ function openDaeunModal(index, event) {
 
   // 같은 카드 다시 클릭 → 닫기
   if (_openDaeunIndex === index) {
-    accordion.style.display = 'none';
+    accordion.style.maxHeight = '0';
+    accordion.style.borderColor = 'transparent';
     _openDaeunIndex = -1;
     return;
   }
@@ -368,7 +369,12 @@ function openDaeunModal(index, event) {
     (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">현재 이 대운의 영향 아래에 있습니다</div>' : '') +
     '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || '해석 데이터가 없습니다.') + '</p>';
 
-  accordion.style.display = 'block';
+  // 콘텐츠 높이 측정 후 max-height 적용 (부드러운 전환)
+  accordion.style.maxHeight = '0';
+  accordion.style.borderColor = 'rgba(255,255,255,0.1)';
+  requestAnimationFrame(() => {
+    accordion.style.maxHeight = content.scrollHeight + 28 + 'px';
+  });
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
