@@ -15,43 +15,32 @@ body {
 }
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
-  background-color: #1a1a2e;
+  /* 배경이미지 + 어둡게 오버레이를 하나로 합침 (::after 불필요) */
+  background-color: #0a0a1e;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-attachment: scroll;
   min-height: 100vh;
-  min-height: 100dvh;
 }
-@supports (-webkit-touch-callout: none) {
-  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
-    min-height: -webkit-fill-available;
-  }
+body.bg-main {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main.webp');
 }
-body.bg-main { background-image: url('/images/bg-main.webp'); }
-body.bg-saju { background-image: url('/images/bg-saju.webp'); }
-body.bg-fortune { background-image: url('/images/bg-fortune.webp'); }
-body.bg-compat { background-image: url('/images/bg-compat.webp'); }
-/* iOS에서 background-attachment:fixed 미지원 대비 */
-@supports (-webkit-touch-callout: none) {
-  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
-    background-attachment: scroll;
-  }
+body.bg-saju {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju.webp');
 }
-body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(10, 10, 30, 0.85);
-  z-index: 0;
+body.bg-fortune {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune.webp');
+}
+body.bg-compat {
+  background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat.webp');
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
   position: relative;
-  z-index: 1;
 }
 .archerlab-link, .home-nav, .lang-select-wrap {
-  z-index: 60 !important;
-  position: fixed !important;
+  z-index: 60;
+  position: fixed;
 }
 /* 콤보 드롭다운이 다른 카드 위로 올라가도록 */
 .card.combo-active {
