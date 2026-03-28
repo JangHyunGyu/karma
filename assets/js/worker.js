@@ -1171,6 +1171,17 @@ export default {
         return handleGetErrorLog(env);
       }
 
+      // ---- R2 Routes ----
+      if (path === '/api/r2/list' && method === 'GET') {
+        return handleR2List(url, env);
+      }
+      if (path === '/api/r2/image' && method === 'GET') {
+        return handleR2Get(url, env);
+      }
+      if (path === '/api/r2/delete' && method === 'DELETE') {
+        return handleR2Delete(request, env);
+      }
+
       // ---- 404 ----
       return json({ error: 'Not Found' }, 404);
 
