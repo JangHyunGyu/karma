@@ -1,5 +1,5 @@
 // Karma Worker — Single-file vanilla Cloudflare Worker
-// Consolidated from lovematch src modules (no imports, no Hono)
+// Karma API Worker (vanilla JS, no framework)
 
 // ============================================================
 // CORS & Response Helpers
