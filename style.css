@@ -443,14 +443,15 @@ option { background: #1a1a2e; color: #e0e0e0; }
   margin-top: 12px;
 }
 
-/* 사주 사주 */
-.pillars { display: flex; gap: 6px; margin-top: 8px; }
+/* 사주 기둥 */
+.pillars { display: flex; gap: 6px; margin-top: 8px; width: 100%; }
 .pillar {
   text-align: center;
-  padding: 8px 6px;
+  padding: 8px 4px;
   background: rgba(255,255,255,0.05);
   border-radius: 10px;
   flex: 1;
+  min-width: 0;
 }
 .pillar .gan { font-size: 1.1rem; font-weight: 700; color: #ffd93d; }
 .pillar .ji { font-size: 1.1rem; font-weight: 700; color: #81c784; }
