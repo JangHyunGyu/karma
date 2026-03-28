@@ -238,7 +238,8 @@ function handleFile(file) {
   reader.onload = e => {
     imageData = e.target.result.split(',')[1];
     uploadArea.classList.add('has-image');
-    uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded">`;
+    uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
+    document.getElementById('fileInput').addEventListener('change', e2 => { if (e2.target.files[0]) handleFile(e2.target.files[0]); });
     checkReady();
   };
   reader.readAsDataURL(file);
