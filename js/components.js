@@ -378,7 +378,6 @@ function formatSentences(el) {
 }
 
 // AI 결과 텍스트에 마침표 줄바꿈 자동 적용
-const _origTextContent = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
 function applyLineBreaks() {
   document.querySelectorAll('#result p, #fortuneResult p, [id^="fortune"] p, [id^="ai"] p, #daeunAccordionContent p').forEach(p => {
     if (p.dataset.formatted) return;
@@ -390,12 +389,17 @@ function applyLineBreaks() {
   });
 }
 
-// MutationObserver로 동적 콘텐츠 감지
+// MutationObserver로 동적 콘텐츠 감지 (디바운스 적용)
+let _lineBreakTimer = null;
 const _lineBreakObserver = new MutationObserver(() => {
-  setTimeout(applyLineBreaks, 100);
+  if (_lineBreakTimer) clearTimeout(_lineBreakTimer);
+  _lineBreakTimer = setTimeout(applyLineBreaks, 200);
 });
 document.addEventListener('DOMContentLoaded', () => {
   _lineBreakObserver.observe(document.body, { childList: true, subtree: true });
+});
+window.addEventListener('beforeunload', () => {
+  _lineBreakObserver.disconnect();
 });
 
 // 초기화
