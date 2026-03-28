@@ -121,6 +121,24 @@ function createCombo(selectEl) {
     dropdown.appendChild(div);
   });
 
+  // 드롭다운 위치 계산 (fixed 기반)
+  function positionDropdown() {
+    const rect = trigger.getBoundingClientRect();
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.width = rect.width + 'px';
+    // 아래 공간이 부족하면 위로 열기
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    if (spaceBelow < 220 && rect.top > spaceBelow) {
+      dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      dropdown.style.top = 'auto';
+      dropdown.style.maxHeight = Math.min(220, rect.top - 8) + 'px';
+    } else {
+      dropdown.style.top = (rect.bottom + 4) + 'px';
+      dropdown.style.bottom = 'auto';
+      dropdown.style.maxHeight = Math.min(220, spaceBelow) + 'px';
+    }
+  }
+
   // 토글
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -142,8 +160,9 @@ function createCombo(selectEl) {
         parentCard.classList.remove('combo-active');
       }
     }
-    // 선택된 항목으로 드롭다운 내부 스크롤 (페이지 스크롤 안 움직이게)
+    // fixed 위치 계산
     if (combo.classList.contains('open')) {
+      positionDropdown();
       const sel = dropdown.querySelector('.selected');
       if (sel) {
         dropdown.scrollTop = sel.offsetTop - dropdown.offsetHeight / 2 + sel.offsetHeight / 2;
