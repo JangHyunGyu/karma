@@ -53,15 +53,25 @@
       <div class="menu-title" data-ko="수상" data-en="Palm Reading">수상</div>
       <div class="menu-desc" data-ko="손금 사진으로 운명 분석" data-en="Palm Photo Analysis">손금 사진으로 운명 분석</div>
     </div>
-    <div class="menu-card" onclick="location.href='/login.html'">
+    <div class="menu-card" onclick="document.getElementById('comingSoon').style.display='flex'">
       <div class="menu-icon">👥</div>
       <div class="menu-title" data-ko="매칭" data-en="Matching">매칭</div>
       <div class="menu-desc" data-ko="나와 맞는 사람 찾기" data-en="Find Your Match">나와 맞는 사람 찾기</div>
-      <span class="menu-badge" data-ko="회원전용" data-en="Members">회원전용</span>
+      <span class="menu-badge" data-ko="준비중" data-en="Soon">준비중</span>
     </div>
   </div>
 
 </div>
+
+<div id="comingSoon" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;justify-content:center;align-items:center">
+  <div style="background:rgba(20,15,30,0.95);border:1px solid rgba(201,160,68,0.3);border-radius:16px;padding:32px 28px;text-align:center;max-width:320px;margin:20px">
+    <div style="font-size:2.5rem;margin-bottom:12px">🚧</div>
+    <div style="font-size:1.1rem;font-weight:700;color:#c9a044;margin-bottom:8px">서비스 준비중</div>
+    <p style="font-size:0.85rem;color:#aaa;line-height:1.6;margin-bottom:20px">프로필 매칭 서비스는 현재 개발 중입니다.<br>빠른 시일 내에 오픈 예정이니 기대해주세요!</p>
+    <button onclick="document.getElementById('comingSoon').style.display='none'" style="padding:10px 28px;border:none;border-radius:20px;background:linear-gradient(135deg,#8b5e2f,#c9a044);color:#fff;font-family:'Noto Serif KR',serif;font-size:0.85rem;font-weight:600;cursor:pointer">확인</button>
+  </div>
+</div>
+
 <script>
 function changeLang(lang) {
   document.documentElement.lang = lang;
