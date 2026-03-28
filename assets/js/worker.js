@@ -205,11 +205,31 @@ function getGeminiKeys(env) {
   ].filter(Boolean);
 }
 
-async function callGemini(apiKeys, prompt) {
+// Gemini API 실패 시 D1에 에러 기록 (자세한 디버깅 정보 포함)
+let _envRef = null;
+async function logApiError(message, detail, extra) {
+  try {
+    if (!_envRef?.DB) return;
+    const info = extra ? JSON.stringify(extra) : '';
+    const fullStack = [detail || '', info].filter(Boolean).join('\n---\n');
+    await _envRef.DB.prepare(
+      `INSERT INTO error_logs (app_id, message, stack, url, user_agent) VALUES ('karma', ?, ?, ?, 'server')`
+    ).bind(
+      (message || '').slice(0, 500),
+      fullStack.slice(0, 2000),
+      (extra?.endpoint || 'worker/gemini').slice(0, 500)
+    ).run();
+  } catch {}
+}
+
+async function callGemini(apiKeys, prompt, _caller) {
+  const endpoint = _caller || 'unknown';
+  const promptPreview = prompt.slice(0, 100);
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
   });
+  const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
     const isLast = i === apiKeys.length - 1;
     try {
@@ -218,26 +238,43 @@ async function callGemini(apiKeys, prompt) {
         headers: { 'Content-Type': 'application/json' },
         body,
       });
-      if (!resp.ok && !isLast) continue;
+      if (!resp.ok && !isLast) { errors.push(`key${i+1}: HTTP ${resp.status}`); continue; }
+      if (!resp.ok && isLast) {
+        const errText = await resp.text().catch(() => '');
+        errors.push(`key${i+1}: HTTP ${resp.status} - ${errText.slice(0, 200)}`);
+        await logApiError(`[${endpoint}] Gemini API 전체 실패 (HTTP ${resp.status})`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
+        return null;
+      }
       const data = await resp.json();
       if (data.error) {
+        errors.push(`key${i+1}: ${data.error?.message || data.error?.code || JSON.stringify(data.error).slice(0, 200)}`);
         if (!isLast) continue;
-        console.error('Gemini API error:', JSON.stringify(data.error));
+        await logApiError(`[${endpoint}] Gemini API 전체 실패`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
         return null;
       }
       const parts = data.candidates?.[0]?.content?.parts || [];
       const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
-      if (!allText) { console.error('Gemini: no text in response'); return null; }
+      if (!allText) {
+        await logApiError(`[${endpoint}] Gemini 빈 응답`, `finishReason: ${data.candidates?.[0]?.finishReason || 'N/A'}`, { endpoint, promptPreview });
+        return null;
+      }
       const jsonMatch = allText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) { console.error('Gemini: no JSON found in:', allText.slice(0, 200)); return null; }
+      if (!jsonMatch) {
+        await logApiError(`[${endpoint}] Gemini JSON 미발견`, `응답: ${allText.slice(0, 300)}`, { endpoint, promptPreview });
+        return null;
+      }
       try {
         return JSON.parse(jsonMatch[0]);
       } catch (e2) {
-        console.error('Gemini: JSON parse failed:', e2.message, jsonMatch[0].slice(0, 200));
+        await logApiError(`[${endpoint}] Gemini JSON 파싱 실패`, `${e2.message}\n응답: ${jsonMatch[0].slice(0, 300)}`, { endpoint, promptPreview });
         return null;
       }
     } catch (e) {
-      if (isLast) { console.error('Gemini call failed:', e.message || e); return null; }
+      errors.push(`key${i+1}: ${e.message || e}`);
+      if (isLast) {
+        await logApiError(`[${endpoint}] Gemini 네트워크 오류`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
+        return null;
+      }
     }
   }
   return null;
@@ -253,6 +290,7 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType) {
     }],
     generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
   });
+  const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
     const isLast = i === apiKeys.length - 1;
     try {
@@ -261,13 +299,12 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType) {
         headers: { 'Content-Type': 'application/json' },
         body,
       });
-      if (!resp.ok && !isLast) continue;
+      if (!resp.ok && !isLast) { errors.push(`key${i+1}: HTTP ${resp.status}`); continue; }
       const data = await resp.json();
       if (data.error) {
-        if (!isLast) {
-          console.error('Gemini Vision error (key fallback):', JSON.stringify(data.error));
-          continue;
-        }
+        errors.push(`key${i+1}: ${data.error?.message || JSON.stringify(data.error)}`);
+        if (!isLast) continue;
+        await logApiError('Gemini Vision error (all keys failed)', errors.join(' | '));
         return { _apiError: data.error.message || JSON.stringify(data.error) };
       }
       const candidate = data.candidates?.[0];
@@ -284,7 +321,11 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType) {
       if (!jsonMatch) return { _apiError: 'AI 응답 형식 오류' };
       try { return JSON.parse(jsonMatch[0]); } catch { return { _apiError: 'AI 응답 파싱 실패' }; }
     } catch (e) {
-      if (isLast) return { _apiError: 'Gemini API 호출 실패: ' + (e.message || '') };
+      errors.push(`key${i+1}: ${e.message || e}`);
+      if (isLast) {
+        await logApiError('Gemini Vision call failed (all keys)', errors.join(' | '));
+        return { _apiError: 'Gemini API 호출 실패: ' + (e.message || '') };
+      }
     }
   }
   return { _apiError: 'API 키가 설정되지 않았습니다' };
@@ -708,7 +749,7 @@ async function handleSajuAnalysis(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '');
 
   const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang)) : null;
+  const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang), 'saju') : null;
 
   return json({ ...saju, ai });
 }
@@ -726,7 +767,7 @@ async function handleCompatQuick(request, env) {
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
   const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang)) : null;
+  const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang), 'compat') : null;
 
   return json({ score, grade, saju_a: sajuA, saju_b: sajuB, relations, ai });
 }
@@ -741,7 +782,7 @@ async function handleFortune(request, env) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang));
+  const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang), 'fortune');
   return json({ year, saju_summary: saju.summary, ilgan: saju.ilgan, ilganOhang: saju.ilganOhang, fortune: ai });
 }
 
@@ -814,7 +855,7 @@ async function handleMatchDetail(idA, idB, env) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ ...baseResult, ai: null });
 
-  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade));
+  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade), 'match-detail');
   return json({ ...baseResult, ai });
 }
 
@@ -1082,6 +1123,7 @@ function matchPath(pattern, path) {
 
 export default {
   async fetch(request, env) {
+    _envRef = env;
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
