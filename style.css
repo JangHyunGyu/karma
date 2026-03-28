@@ -225,16 +225,13 @@ h1 {
 .combo.open .combo-arrow { transform: rotate(180deg); }
 .combo-dropdown {
   display: none;
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  position: fixed;
   max-height: 220px;
   overflow-y: auto;
   background: #1a1a2e;
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: 4px;
-  z-index: 200;
+  z-index: 9999;
   box-shadow: 0 8px 30px rgba(0,0,0,0.5);
   padding: 4px;
 }
