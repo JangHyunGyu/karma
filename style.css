@@ -168,12 +168,8 @@ select.lang-select {
   width: 100%;
 }
 /* grid/flex 자식이 콘텐츠 크기 이하로 줄어들 수 있도록 */
-.pillars, .tags, .fortune-grid {
+.pillars, .row, .row3, .date-selects, .options-row, .tags, .fortune-grid {
   overflow: hidden;
-}
-/* 콤보 드롭다운이 포함된 컨테이너는 overflow: visible */
-.row, .row3, .date-selects, .options-row {
-  overflow: visible;
 }
 [style*="grid"] > *, [class*="grid"] > *, .pillars > *, .row > *, .row3 > *, .date-selects > *, .tags > * {
   min-width: 0;
