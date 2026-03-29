@@ -260,8 +260,9 @@ function createCombo(selectEl) {
 function createDateSelects(containerId, defY, defM, defD) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const thisYear = new Date().getFullYear();
-  defY = defY || 1995; defM = defM || 1; defD = defD || 1;
+  const _now = new Date();
+  const thisYear = _now.getFullYear();
+  defY = defY || thisYear; defM = defM || (_now.getMonth() + 1); defD = defD || _now.getDate();
 
   // 양력/음력 토글
   let html = '<div class="calendar-toggle">';

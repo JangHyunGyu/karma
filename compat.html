@@ -322,8 +322,9 @@ function restoreCompatInputs() {
 }
 
 const saved = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
-createDateSelectsFor('dateSelectsA', 'a', +saved.aYear || 1995, +saved.aMonth || 3, +saved.aDay || 20);
-createDateSelectsFor('dateSelectsB', 'b', +saved.bYear || 1998, +saved.bMonth || 7, +saved.bDay || 11);
+const _now = new Date();
+createDateSelectsFor('dateSelectsA', 'a', +saved.aYear || _now.getFullYear(), +saved.aMonth || (_now.getMonth()+1), +saved.aDay || _now.getDate());
+createDateSelectsFor('dateSelectsB', 'b', +saved.bYear || _now.getFullYear(), +saved.bMonth || (_now.getMonth()+1), +saved.bDay || _now.getDate());
 restoreCompatInputs();
 
 // 변경 시 자동 저장 (콤보 클릭 이벤트 위임)
