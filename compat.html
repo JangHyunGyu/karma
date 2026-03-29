@@ -362,7 +362,6 @@ async function doCompat() {
   }
 }
 
-const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
 function renderResult(d) {
   document.getElementById('result').style.display = 'block';
   document.getElementById('scoreNum').textContent = d.score;
@@ -370,8 +369,9 @@ function renderResult(d) {
   gt.textContent = d.grade;
   gt.className = 'grade grade-' + d.grade;
 
-  document.getElementById('labelA').textContent = _L('본인: ','You: ') + d.saju_a.ilgan + ' ' + (OHANG_EN[d.saju_a.ilganOhang]||d.saju_a.ilganOhang) + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
-  document.getElementById('labelB').textContent = _L('상대: ','Partner: ') + d.saju_b.ilgan + ' ' + (OHANG_EN[d.saju_b.ilganOhang]||d.saju_b.ilganOhang) + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
+  const isEn = (document.documentElement.lang || 'ko') === 'en';
+  document.getElementById('labelA').textContent = _L('본인: ','You: ') + (isEn ? (d.saju_a.ilganEn||d.saju_a.ilgan) : d.saju_a.ilgan) + ' ' + d.saju_a.ilganOhang + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
+  document.getElementById('labelB').textContent = _L('상대: ','Partner: ') + (isEn ? (d.saju_b.ilganEn||d.saju_b.ilgan) : d.saju_b.ilgan) + ' ' + d.saju_b.ilganOhang + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
 
   document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
   document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
@@ -398,12 +398,13 @@ function renderResult(d) {
 }
 
 function renderPillars(pillars) {
+  const isEn = (document.documentElement.lang || 'ko') === 'en';
   return pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+    '<div class="pillar"><div class="gan">'+esc(isEn ? (p.ganEn||p.gan) : p.gan)+'</div><div class="ji">'+esc(isEn ? (p.jiEn||p.ji) : p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
   ).join('');
 }
 
-function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'}[oh] || ''; }
+function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊','Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'}[oh] || ''; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 <script>
