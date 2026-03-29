@@ -368,6 +368,15 @@ document.addEventListener('click', () => {
   });
 });
 
+// 스크롤 시 드롭다운 닫기
+window.addEventListener('scroll', () => {
+  document.querySelectorAll('.combo.open').forEach(c => {
+    c.classList.remove('open');
+    const card = c.closest('.card');
+    if (card) card.classList.remove('combo-active');
+  });
+}, true);
+
 // ===== 마침표 줄바꿈 =====
 function formatSentences(el) {
   if (!el || !el.textContent.trim()) return;
