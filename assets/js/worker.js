@@ -703,6 +703,48 @@ function hourPillar(dayGan, hour) {
   return { gan, ji };
 }
 
+// 정운법: 생일에서 가장 가까운 절기까지 일수 / 3 = 대운 시작 나이
+function calcDaeunStartAge(year, month, day, direction) {
+  const terms = getExactSolarTerms(year);
+  const birthVal = month * 100 + day;
+
+  if (direction === 1) {
+    // 순행: 다가올 절기 (미래)
+    for (let i = 0; i < 12; i++) {
+      const [tm, td] = terms[i];
+      if (tm * 100 + td > birthVal) {
+        const diffDays = Math.abs(new Date(year, tm - 1, td) - new Date(year, month - 1, day)) / 86400000;
+        const q = Math.floor(diffDays / 3);
+        const r = diffDays % 3;
+        return r >= 2 ? q + 1 : q;
+      }
+    }
+    // 올해 남은 절기 없음 → 내년 소한
+    const nextTerms = getExactSolarTerms(year + 1);
+    const diffDays = Math.abs(new Date(year + 1, nextTerms[0][0] - 1, nextTerms[0][1]) - new Date(year, month - 1, day)) / 86400000;
+    const q = Math.floor(diffDays / 3);
+    const r = diffDays % 3;
+    return r >= 2 ? q + 1 : q;
+  } else {
+    // 역행: 지난 절기 (과거)
+    for (let i = 11; i >= 0; i--) {
+      const [tm, td] = terms[i];
+      if (tm * 100 + td <= birthVal) {
+        const diffDays = Math.abs(new Date(year, month - 1, day) - new Date(year, tm - 1, td)) / 86400000;
+        const q = Math.floor(diffDays / 3);
+        const r = diffDays % 3;
+        return r >= 2 ? q + 1 : q;
+      }
+    }
+    // 올해 이전 절기 없음 → 작년 대설
+    const prevTerms = getExactSolarTerms(year - 1);
+    const diffDays = Math.abs(new Date(year, month - 1, day) - new Date(year - 1, prevTerms[11][0] - 1, prevTerms[11][1])) / 86400000;
+    const q = Math.floor(diffDays / 3);
+    const r = diffDays % 3;
+    return r >= 2 ? q + 1 : q;
+  }
+}
+
 function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex) {
   const [year, month, day] = birthDate.split('-').map(Number);
   const sajuYear = getSajuYear(year, month, day);
@@ -712,7 +754,7 @@ function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex) {
   const isYangGan = yearGanIndex % 2 === 0;
   const isMale = gender === 'male';
   const direction = (isYangGan && isMale) || (!isYangGan && !isMale) ? 1 : -1;
-  const startAge = 3;
+  const startAge = calcDaeunStartAge(year, month, day, direction) || 1;
 
   const daeunList = [];
   for (let i = 1; i <= 8; i++) {
@@ -743,12 +785,11 @@ function calculateSaju(birthDate, birthTime, gender) {
   const rawHour = hasTime ? parseInt(birthTime.split(':')[0], 10) : null;
   const rawMinute = hasTime ? parseInt(birthTime.split(':')[1] || '0', 10) : 0;
 
-  // 태양시 보정 (표준시 → 태양시: -30분, 서머타임 기간: 추가 -60분)
-  // 보정 후 일자가 바뀔 수 있으므로 일주 계산에도 보정된 날짜 사용
-  let solarDay = day, solarHour = rawHour;
+  // 태양시 보정 (표준시 → 태양시: -30분, 서머타임: 추가 -60분)
+  // 시주 판단에만 사용, 일주는 원래 생년월일 기준 (척척만세력 방식)
+  let solarHour = rawHour;
   if (rawHour !== null) {
     const st = toSolarTime(year, month, day, rawHour, rawMinute);
-    solarDay = st.day;
     solarHour = st.hour;
   }
 
@@ -762,8 +803,8 @@ function calculateSaju(birthDate, birthTime, gender) {
   const yearGanIndex = CHEONGAN.indexOf(yGan);
   const mGan = monthCheongan(yearGanIndex, sajuMonth);
   const mJi = monthJiji(sajuMonth);
-  // 일주는 태양시 보정된 날짜 기준
-  const { gan: dGan, ji: dJi } = dayPillar(year, month, solarDay);
+  // 일주는 원래 생년월일 기준 (태양시 보정으로 날짜 변경 안 함)
+  const { gan: dGan, ji: dJi } = dayPillar(year, month, day);
 
   const pillars = [
     { name: '년주', gan: yGan, ji: yJi },
