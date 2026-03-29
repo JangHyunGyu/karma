@@ -376,6 +376,7 @@ function renderResult(d) {
 let _openDaeunIndex = -1;
 
 function openDaeunModal(index, event) {
+  const isEn = (document.documentElement.lang || 'ko') === 'en';
   const du = window._daeunData[index];
   if (!du) return;
 
