@@ -71,7 +71,7 @@
         <option value="19:00">Sul (19:30~21:30)</option>
         <option value="21:00">Hae (21:30~23:30)</option>
       </select>
-      <div id="yajasiWrapA" style="margin:10px 0 0;display:flex;align-items:center;gap:10px;opacity:0.3;pointer-events:none">
+      <div id="yajasiWrapA" style="margin:10px 0 0;display:flex;align-items:center;gap:10px;opacity:0.3">
         <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiA');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
           <span id="yajaSwitchA" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0"><span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span></span>
           <input type="checkbox" id="yajasiA" style="display:none" onchange="const sw=document.getElementById('yajaSwitchA');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}">
@@ -106,7 +106,7 @@
         <option value="19:00">Sul (19:30~21:30)</option>
         <option value="21:00">Hae (21:30~23:30)</option>
       </select>
-      <div id="yajasiWrapB" style="margin:10px 0 0;display:flex;align-items:center;gap:10px;opacity:0.3;pointer-events:none">
+      <div id="yajasiWrapB" style="margin:10px 0 0;display:flex;align-items:center;gap:10px;opacity:0.3">
         <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiB');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
           <span id="yajaSwitchB" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0"><span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span></span>
           <input type="checkbox" id="yajasiB" style="display:none" onchange="const sw=document.getElementById('yajaSwitchB');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}">

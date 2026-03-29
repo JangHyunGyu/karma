@@ -41,7 +41,8 @@ function updateYajasiState(timeSelectId, yajasiWrapperId) {
   if (!timeEl || !wrap) return;
   const isJasi = timeEl.value === '00:00';
   wrap.style.opacity = isJasi ? '1' : '0.3';
-  wrap.style.pointerEvents = isJasi ? 'auto' : 'none';
+  // pointer-events는 항상 auto (overlay가 클릭을 받아야 하므로)
+  wrap.style.pointerEvents = 'auto';
   if (!isJasi) {
     const toggle = wrap.querySelector('input[type="checkbox"]');
     if (toggle && toggle.checked) {
@@ -49,23 +50,21 @@ function updateYajasiState(timeSelectId, yajasiWrapperId) {
       toggle.dispatchEvent(new Event('change'));
     }
   }
-  // 비활성 상태에서 클릭 시 안내 메시지
-  if (!wrap._yajasiOverlay && !isJasi) {
+  // 비활성 상태에서 클릭 시 안내 메시지 (overlay)
+  if (!wrap._yajasiOverlay) {
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:absolute;inset:0;cursor:pointer;z-index:1';
+    overlay.style.cssText = 'position:absolute;inset:0;cursor:pointer;z-index:10';
     overlay.addEventListener('click', () => {
       alert(_L(
-        '자시(23:30~01:30)를 선택했을 때만 사용할 수 있는 옵션입니다.',
-        'This option is only available when Ja-si (23:30~01:30) is selected as birth hour.'
+        '태어난 시를 자시(23:30~01:30)로 선택하면 사용할 수 있습니다.',
+        'Available when birth hour is set to Ja-si (23:30~01:30).'
       ));
     });
     wrap.style.position = 'relative';
     wrap.appendChild(overlay);
     wrap._yajasiOverlay = overlay;
   }
-  if (wrap._yajasiOverlay) {
-    wrap._yajasiOverlay.style.display = isJasi ? 'none' : 'block';
-  }
+  wrap._yajasiOverlay.style.display = isJasi ? 'none' : 'block';
 }
 
 // ===== localStorage =====
