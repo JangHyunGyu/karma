@@ -197,11 +197,11 @@ async function doFortune() {
 
 function renderFortune(d) {
   const f = d.fortune;
-  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+  const OHANG_EMOJI = {'Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'};
 
   document.getElementById('fortuneYearTitle').textContent = '📅 ' + d.year + ' Fortune';
-  const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
-  document.getElementById('sajuInfo').textContent = 'Day Master: ' + d.ilgan + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + (OHANG_EN[d.ilganOhang]||d.ilganOhang) + ' | ' + d.saju_summary;
+  // API returns ilganEn (romanized), ilganOhang (English: Wood/Fire/etc), saju_summary (English)
+  document.getElementById('sajuInfo').textContent = 'Day Master: ' + (d.ilganEn||d.ilgan) + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
   document.getElementById('fortuneSummary').textContent = f.year_summary || '';
   document.getElementById('fortuneLove').textContent = f.love || '';
   document.getElementById('fortuneMoney').textContent = f.money || '';

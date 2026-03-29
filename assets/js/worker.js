@@ -833,6 +833,45 @@ function calculateSaju(birthDate, birthTime, gender, yajasi) {
   };
 }
 
+// ---- English translation for saju data (lang=en) ----
+const GAN_EN = { '갑':'Gap','을':'Eul','병':'Byeong','정':'Jeong','무':'Mu','기':'Gi','경':'Gyeong','신':'Sin','임':'Im','계':'Gye' };
+const JI_EN = { '자':'Ja','축':'Chuk','인':'In','묘':'Myo','진':'Jin','사':'Sa','오':'O','미':'Mi','신':'Sin','유':'Yu','술':'Sul','해':'Hae' };
+const OHANG_EN = { '목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water' };
+const PILLAR_EN = { '년주':'Year','월주':'Month','일주':'Day','시주':'Hour' };
+
+function translateSajuToEn(saju) {
+  const pillars = saju.pillars.map(p => ({
+    ...p,
+    name: PILLAR_EN[p.name] || p.name,
+    ganEn: GAN_EN[p.gan] || p.gan,
+    jiEn: JI_EN[p.ji] || p.ji,
+  }));
+
+  const ohangCount = {};
+  for (const [k, v] of Object.entries(saju.ohangCount)) {
+    ohangCount[OHANG_EN[k] || k] = v;
+  }
+
+  const daeun = saju.daeun ? saju.daeun.map(du => ({
+    ...du,
+    ganEn: GAN_EN[du.gan] || du.gan,
+    jiEn: JI_EN[du.ji] || du.ji,
+    ohang: OHANG_EN[du.ohang] || du.ohang,
+    jiOhang: OHANG_EN[du.jiOhang] || du.jiOhang,
+    label: du.fromAge != null ? `Age ${du.fromAge}-${du.toAge}` : du.label,
+  })) : null;
+
+  return {
+    ...saju,
+    pillars,
+    ohangCount,
+    ilganEn: GAN_EN[saju.ilgan] || saju.ilgan,
+    ilganOhang: OHANG_EN[saju.ilganOhang] || saju.ilganOhang,
+    summary: pillars.map(p => `${p.name}: ${p.ganEn}-${p.jiEn}`).join(', '),
+    daeun,
+  };
+}
+
 function ohangCompatibility(saju1, saju2) {
   let score = 50;
   const oh1 = saju1.ilganOhang;
@@ -1416,7 +1455,8 @@ async function handleSajuAnalysis(request, env) {
   const apiKeys = getGeminiKeys(env);
   const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang), 'saju', env) : null;
 
-  return json({ ...saju, ai });
+  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ ...out, ai });
 }
 
 async function handleCompatQuick(request, env) {
@@ -1434,7 +1474,14 @@ async function handleCompatQuick(request, env) {
   const apiKeys = getGeminiKeys(env);
   const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang), 'compat', env) : null;
 
-  return json({ score, grade, saju_a: sajuA, saju_b: sajuB, relations, ai });
+  const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
+  const outRelations = lang === 'en' ? {
+    sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+    sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+    same: relations.same,
+  } : relations;
+  return json({ score, grade, saju_a: outA, saju_b: outB, relations: outRelations, ai });
 }
 
 async function handleFortune(request, env) {
@@ -1448,7 +1495,8 @@ async function handleFortune(request, env) {
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
   const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang), 'fortune', env);
-  return json({ year, saju_summary: saju.summary, ilgan: saju.ilgan, ilganOhang: saju.ilganOhang, fortune: ai });
+  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
 
 async function handleQuickSaju(request, env) {
@@ -1498,7 +1546,7 @@ async function handleMatchList(userId, env) {
   return json({ my_id: userId, matches });
 }
 
-async function handleMatchDetail(idA, idB, env) {
+async function handleMatchDetail(idA, idB, env, lang) {
   const [userA, userB] = await Promise.all([
     env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idA).first(),
     env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idB).first(),
@@ -1511,10 +1559,17 @@ async function handleMatchDetail(idA, idB, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
+  const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
   const baseResult = {
-    user_a: { user_id: idA, nickname: userA.nickname, age: calcAge(userA.birth_date), gender: userA.gender, ohang: sajuA.ilganOhang },
-    user_b: { user_id: idB, nickname: userB.nickname, age: calcAge(userB.birth_date), gender: userB.gender, ohang: sajuB.ilganOhang },
-    score, grade, saju_a: sajuA, saju_b: sajuB, relations,
+    user_a: { user_id: idA, nickname: userA.nickname, age: calcAge(userA.birth_date), gender: userA.gender, ohang: lang === 'en' ? (OHANG_EN[sajuA.ilganOhang]||sajuA.ilganOhang) : sajuA.ilganOhang },
+    user_b: { user_id: idB, nickname: userB.nickname, age: calcAge(userB.birth_date), gender: userB.gender, ohang: lang === 'en' ? (OHANG_EN[sajuB.ilganOhang]||sajuB.ilganOhang) : sajuB.ilganOhang },
+    score, grade, saju_a: outA, saju_b: outB,
+    relations: lang === 'en' ? {
+      sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+      sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+      same: relations.same,
+    } : relations,
   };
 
   const apiKeys = getGeminiKeys(env);
@@ -1842,7 +1897,7 @@ export default {
       {
         const params = matchPath('/api/match/:id_a/:id_b', path);
         if (params && method === 'GET') {
-          return handleMatchDetail(params.id_a, params.id_b, env);
+          return handleMatchDetail(params.id_a, params.id_b, env, url.searchParams.get('lang'));
         }
       }
 

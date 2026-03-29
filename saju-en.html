@@ -213,39 +213,36 @@
 <script>
 createDateSelects('dateSelects');
 
-const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
-const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
+// API now returns English keys when lang=en (Wood, Fire, Earth, Metal, Water)
+const OHANG_COLORS = { 'Wood':'#4CAF50', 'Fire':'#F44336', 'Earth':'#795548', 'Metal':'#FFC107', 'Water':'#2196F3' };
+const OHANG_EMOJI = { 'Wood':'🌿', 'Fire':'🔥', 'Earth':'🏔', 'Metal':'⚔', 'Water':'🌊' };
+// ILGAN_INFO keyed by romanized name (API returns ilganEn)
 const ILGAN_INFO = {
-  '갑': { symbol: 'Great Tree', nature: 'Wood (木)', desc: 'A steadfast leader with strong drive. Once a decision is made, they push through to the end.' },
-  '을': { symbol: 'Grass & Vines', nature: 'Wood (木)', desc: 'A soft and flexible socializer. Adapts well to any environment and gets along with everyone.' },
-  '병': { symbol: 'The Sun', nature: 'Fire (火)', desc: 'A bright and passionate mood-maker. Lights up the room and naturally draws attention.' },
-  '정': { symbol: 'Candlelight', nature: 'Fire (火)', desc: 'Quiet but warmly caring. Calm on the outside, but holds a burning passion within.' },
-  '무': { symbol: 'Great Mountain', nature: 'Earth (土)', desc: 'Reliable and trustworthy. Gives stability to those around and quietly holds their ground.' },
-  '기': { symbol: 'Farmland', nature: 'Earth (土)', desc: 'Practical and meticulous manager. Good at looking after details and caring for others.' },
-  '경': { symbol: 'Steel', nature: 'Metal (金)', desc: 'Strong-willed and just. A principled person who always stands up for what they believe is right.' },
-  '신': { symbol: 'Jewel', nature: 'Metal (金)', desc: 'Sharp and delicate perfectionist. Pursues beauty and possesses keen analytical skills.' },
-  '임': { symbol: 'Great Ocean', nature: 'Water (水)', desc: 'A free spirit with a broad mind. Deep thinker with great tolerance who embraces everyone.' },
-  '계': { symbol: 'Dew/Stream', nature: 'Water (水)', desc: 'Artistic temperament with rich sensitivity. Excellent intuition; calm on the surface but deep within.' },
+  'Gap': { symbol: 'Great Tree', nature: 'Wood (木)', desc: 'A steadfast leader with strong drive. Once a decision is made, they push through to the end.' },
+  'Eul': { symbol: 'Grass & Vines', nature: 'Wood (木)', desc: 'A soft and flexible socializer. Adapts well to any environment and gets along with everyone.' },
+  'Byeong': { symbol: 'The Sun', nature: 'Fire (火)', desc: 'A bright and passionate mood-maker. Lights up the room and naturally draws attention.' },
+  'Jeong': { symbol: 'Candlelight', nature: 'Fire (火)', desc: 'Quiet but warmly caring. Calm on the outside, but holds a burning passion within.' },
+  'Mu': { symbol: 'Great Mountain', nature: 'Earth (土)', desc: 'Reliable and trustworthy. Gives stability to those around and quietly holds their ground.' },
+  'Gi': { symbol: 'Farmland', nature: 'Earth (土)', desc: 'Practical and meticulous manager. Good at looking after details and caring for others.' },
+  'Gyeong': { symbol: 'Steel', nature: 'Metal (金)', desc: 'Strong-willed and just. A principled person who always stands up for what they believe is right.' },
+  'Sin': { symbol: 'Jewel', nature: 'Metal (金)', desc: 'Sharp and delicate perfectionist. Pursues beauty and possesses keen analytical skills.' },
+  'Im': { symbol: 'Great Ocean', nature: 'Water (水)', desc: 'A free spirit with a broad mind. Deep thinker with great tolerance who embraces everyone.' },
+  'Gye': { symbol: 'Dew/Stream', nature: 'Water (水)', desc: 'Artistic temperament with rich sensitivity. Excellent intuition; calm on the surface but deep within.' },
 };
 const OHANG_EXCESS = {
-  '목': 'Full of drive but can be stubborn',
-  '화': 'Passionate but can be impulsive with mood swings',
-  '토': 'Stable but may fear change',
-  '금': 'Perfectionist but can be overly critical',
-  '수': 'Wise but can be indecisive',
+  'Wood': 'Full of drive but can be stubborn',
+  'Fire': 'Passionate but can be impulsive with mood swings',
+  'Earth': 'Stable but may fear change',
+  'Metal': 'Perfectionist but can be overly critical',
+  'Water': 'Wise but can be indecisive',
 };
 const OHANG_LACK = {
-  '목': 'May lack drive and adventurous spirit',
-  '화': 'May lack passion and expressiveness',
-  '토': 'May lack stability and feel anxious',
-  '금': 'May lack decisiveness and judgment',
-  '수': 'May lack flexibility and adaptability',
+  'Wood': 'May lack drive and adventurous spirit',
+  'Fire': 'May lack passion and expressiveness',
+  'Earth': 'May lack stability and feel anxious',
+  'Metal': 'May lack decisiveness and judgment',
+  'Water': 'May lack flexibility and adaptability',
 };
-
-const OHANG_EN = { '목': 'Wood', '화': 'Fire', '토': 'Earth', '금': 'Metal', '수': 'Water' };
-const PILLAR_NAME_EN = { '년주': 'Year Pillar', '월주': 'Month Pillar', '일주': 'Day Pillar', '시주': 'Hour Pillar' };
-function enOhang(k) { return OHANG_EN[k] || k; }
-function enPillar(n) { return PILLAR_NAME_EN[n] || n; }
 
 async function doAnalyze() {
   const btn = document.getElementById('analyzeBtn');
@@ -281,37 +278,49 @@ async function doAnalyze() {
 
 function renderResult(d) {
   document.getElementById('result').style.display = 'grid';
-  document.getElementById('ilganText').textContent = d.ilgan;
-  const info = ILGAN_INFO[d.ilgan] || {};
+
+  // ilganEn comes from API (e.g. "Im", "Gap"), ilgan is still Korean for reference
+  const ilganKey = d.ilganEn || d.ilgan;
+  document.getElementById('ilganText').textContent = ilganKey;
+  const info = ILGAN_INFO[ilganKey] || {};
   document.getElementById('ohangText').innerHTML =
-    OHANG_EMOJI[d.ilganOhang] + ' ' + esc(info.nature || d.ilganOhang) +
+    (OHANG_EMOJI[d.ilganOhang]||'') + ' ' + esc(info.nature || d.ilganOhang) +
     '<div style="font-size:0.85rem;color:#aaa;margin-top:4px">In nature, like <b style="color:#fff">' + esc(info.symbol || '') + '</b></div>';
   document.getElementById('ilganDesc').textContent = info.desc || '';
 
+  // Pillar descriptions (API sends English names: Year, Month, Day, Hour)
   const PILLAR_DESC = {
-    '년주': 'Year Pillar: Ancestors/parents, childhood',
-    '월주': 'Month Pillar: Parents/siblings, social life',
-    '일주': 'Day Pillar: Self, spouse fortune',
-    '시주': 'Hour Pillar: Children, later years',
+    'Year': 'Ancestors/Parents luck, Childhood',
+    'Month': 'Parents/Siblings luck, Social life',
+    'Day': 'Self, Spouse luck',
+    'Hour': 'Children luck, Later years',
   };
-  document.getElementById('pillars').innerHTML = d.pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(enPillar(p.name))+'</div></div>'
-  ).join('');
-  document.getElementById('pillarDesc').innerHTML = d.pillars.map(p =>
-    '<span style="color:#ffd93d">'+esc(enPillar(p.name))+'</span> '+esc(p.gan+p.ji)+' — '+esc(PILLAR_DESC[p.name]||'')
-  ).join(' · ');
+  // ganEn/jiEn come from API; fall back to gan/ji if missing
+  document.getElementById('pillars').innerHTML = d.pillars.map(p => {
+    const ganLabel = p.ganEn || p.gan;
+    const jiLabel = p.jiEn || p.ji;
+    return '<div class="pillar">' +
+      '<div class="gan">'+esc(ganLabel)+'</div>' +
+      '<div class="ji">'+esc(jiLabel)+'</div>' +
+      '<div class="name">'+esc(p.name)+'</div></div>';
+  }).join('');
+  document.getElementById('pillarDesc').innerHTML = d.pillars.map(p => {
+    const ganLabel = p.ganEn || p.gan;
+    const jiLabel = p.jiEn || p.ji;
+    return '<span style="color:#ffd93d">'+esc(p.name)+' Pillar</span> '+esc(ganLabel+'-'+jiLabel)+' — '+esc(PILLAR_DESC[p.name]||'');
+  }).join(' · ');
   window._pillarKeys = ['year','month','day','hour'];
 
+  // Five Elements — keys are now English (Wood, Fire, etc.)
   const maxOh = Math.max(...Object.values(d.ohangCount), 1);
   let ohangHtml = Object.entries(d.ohangCount).map(([k,v]) =>
-    '<div class="bar-item"><div class="bar-label"><span>'+OHANG_EMOJI[k]+' '+enOhang(k)+'</span><span>'+v+'</span></div>' +
-    '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+OHANG_COLORS[k]+'"></div></div></div>'
+    '<div class="bar-item"><div class="bar-label"><span>'+(OHANG_EMOJI[k]||'')+' '+esc(k)+'</span><span>'+v+'</span></div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+(OHANG_COLORS[k]||'#888')+'"></div></div></div>'
   ).join('');
-  // Excess/Lack tags
   const ohangTags = [];
   for (const [k,v] of Object.entries(d.ohangCount)) {
-    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + enOhang(k) + ' Excess: ' + esc(OHANG_EXCESS[k]) + '</span>');
-    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + enOhang(k) + ' Lacking: ' + esc(OHANG_LACK[k]) + '</span>');
+    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + (OHANG_EMOJI[k]||'') + ' ' + esc(k) + ' Excess: ' + esc(OHANG_EXCESS[k]||'') + '</span>');
+    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + (OHANG_EMOJI[k]||'') + ' ' + esc(k) + ' Lacking: ' + esc(OHANG_LACK[k]||'') + '</span>');
   }
   if (ohangTags.length) ohangHtml += '<div class="tags" style="margin-top:8px">' + ohangTags.join('') + '</div>';
   document.getElementById('ohangBars').innerHTML = ohangHtml;
@@ -328,13 +337,16 @@ function renderResult(d) {
 
     document.getElementById('daeunTimeline').innerHTML = d.daeun.map((du, i) => {
       const isCurrent = currentAge >= du.fromAge && currentAge <= du.toAge;
+      const ganLabel = du.ganEn || du.gan;
+      const jiLabel = du.jiEn || du.ji;
+      const ageLabel = du.fromAge != null ? 'Age ' + du.fromAge + '-' + du.toAge : esc(du.label);
       return '<div onclick="openDaeunModal('+i+', event)" style="min-width:90px;text-align:center;padding:12px 10px;border-radius:12px;flex-shrink:0;cursor:pointer;transition:transform 0.15s;' +
         'background:' + (isCurrent ? 'rgba(233,69,96,0.2);border:2px solid #e94560' : 'rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)') + '" ' +
         'onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'none\'">' +
-        '<div style="font-size:0.7rem;color:' + (isCurrent ? '#ff6b6b' : '#888') + ';margin-bottom:4px">' + (du.fromAge != null ? 'Age ' + du.fromAge + '-' + du.toAge : esc(du.label)) + '</div>' +
-        '<div style="font-size:1.2rem;font-weight:700;color:#ffd93d">' + esc(du.gan) + '</div>' +
-        '<div style="font-size:1.2rem;font-weight:700;color:#81c784">' + esc(du.ji) + '</div>' +
-        '<div style="font-size:0.7rem;color:#aaa;margin-top:4px">' + esc(enOhang(du.ohang)) + '/' + esc(enOhang(du.jiOhang)) + '</div>' +
+        '<div style="font-size:0.7rem;color:' + (isCurrent ? '#ff6b6b' : '#888') + ';margin-bottom:4px">' + ageLabel + '</div>' +
+        '<div style="font-size:1.1rem;font-weight:700;color:#ffd93d">' + esc(ganLabel) + '</div>' +
+        '<div style="font-size:1.1rem;font-weight:700;color:#81c784">' + esc(jiLabel) + '</div>' +
+        '<div style="font-size:0.7rem;color:#aaa;margin-top:4px">' + esc(du.ohang) + '/' + esc(du.jiOhang) + '</div>' +
         (isCurrent ? '<div style="font-size:0.6rem;color:#ff6b6b;margin-top:2px;font-weight:700">Current</div>' : '') +
         '</div>';
     }).join('');
@@ -347,13 +359,14 @@ function renderResult(d) {
     if (d.ai.pillar_reading) {
       const pr = d.ai.pillar_reading;
       const keys = ['year','month','day','hour'];
-      const labels = { year: 'Year Pillar', month: 'Month Pillar', day: 'Day Pillar', hour: 'Hour Pillar' };
       let prHtml = '';
       d.pillars.forEach((p, i) => {
         const key = keys[i];
         const reading = pr[key];
         if (reading) {
-          prHtml += '<div style="margin-bottom:8px"><span style="color:#ffd93d;font-weight:600;font-size:0.8rem">'+esc(enPillar(p.name))+' '+esc(p.gan+p.ji)+'</span> ' +
+          const ganLabel = p.ganEn || p.gan;
+          const jiLabel = p.jiEn || p.ji;
+          prHtml += '<div style="margin-bottom:8px"><span style="color:#ffd93d;font-weight:600;font-size:0.8rem">'+esc(p.name)+' Pillar '+esc(ganLabel+'-'+jiLabel)+'</span> ' +
             '<span style="color:#888;font-size:0.72rem">'+esc(PILLAR_DESC[p.name]||'')+'</span>' +
             '<div style="color:#ccc;font-size:0.82rem;margin-top:3px;line-height:1.5">'+esc(reading)+'</div></div>';
         }
@@ -390,18 +403,20 @@ function openDaeunModal(index, event) {
   }
   _openDaeunIndex = index;
 
+  const ganLabel = du.ganEn || du.gan;
+  const jiLabel = du.jiEn || du.ji;
   content.innerHTML =
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
       '<div>' +
-        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(du.gan) + '</span>' +
-        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(du.ji) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(ganLabel) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(jiLabel) + '</span>' +
       '</div>' +
       '<div>' +
         '<div style="font-size:0.9rem;font-weight:600;color:' + (du.isCurrent ? '#ff6b6b' : '#fff') + '">' +
           (du.fromAge != null ? 'Age ' + du.fromAge + '-' + du.toAge : esc(du.label)) + (du.isCurrent ? ' (Current Cycle)' : '') +
         '</div>' +
         '<div style="font-size:0.8rem;color:#aaa">' +
-          (OHANG_EMOJI[du.ohang]||'') + ' ' + esc(enOhang(du.ohang)) + ' / ' + (OHANG_EMOJI[du.jiOhang]||'') + ' ' + esc(enOhang(du.jiOhang)) +
+          (OHANG_EMOJI[du.ohang]||'') + ' ' + esc(du.ohang) + ' / ' + (OHANG_EMOJI[du.jiOhang]||'') + ' ' + esc(du.jiOhang) +
         '</div>' +
       '</div>' +
     '</div>' +

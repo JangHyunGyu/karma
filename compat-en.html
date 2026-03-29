@@ -362,9 +362,9 @@ function renderResult(d) {
   gt.textContent = d.grade;
   gt.className = 'grade grade-' + d.grade;
 
-  const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
-  document.getElementById('labelA').textContent = 'You: ' + d.saju_a.ilgan + ' ' + (OHANG_EN[d.saju_a.ilganOhang]||d.saju_a.ilganOhang) + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
-  document.getElementById('labelB').textContent = 'Partner: ' + d.saju_b.ilgan + ' ' + (OHANG_EN[d.saju_b.ilganOhang]||d.saju_b.ilganOhang) + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
+  // API returns English data: ilganEn, ilganOhang (Wood/Fire/etc)
+  document.getElementById('labelA').textContent = 'You: ' + (d.saju_a.ilganEn||d.saju_a.ilgan) + ' ' + d.saju_a.ilganOhang + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
+  document.getElementById('labelB').textContent = 'Partner: ' + (d.saju_b.ilganEn||d.saju_b.ilgan) + ' ' + d.saju_b.ilganOhang + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
 
   document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
   document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
@@ -390,14 +390,16 @@ function renderResult(d) {
   result.scrollIntoView({ behavior: 'smooth' });
 }
 
-const PILLAR_NAME_EN = {'년주':'Year','월주':'Month','일주':'Day','시주':'Hour'};
+// API now returns English: pillar.name=Year/Month/Day/Hour, pillar.ganEn/jiEn
 function renderPillars(pillars) {
   return pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(PILLAR_NAME_EN[p.name]||p.name)+'</div></div>'
+    '<div class="pillar"><div class="gan">'+esc(p.ganEn||p.gan)+'</div>' +
+    '<div class="ji">'+esc(p.jiEn||p.ji)+'</div>' +
+    '<div class="name">'+esc(p.name)+'</div></div>'
   ).join('');
 }
 
-function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'}[oh] || ''; }
+function ohangEmoji(oh) { return {'Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'}[oh] || ''; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 </body>
