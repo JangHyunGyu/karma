@@ -49,6 +49,23 @@ function updateYajasiState(timeSelectId, yajasiWrapperId) {
       toggle.dispatchEvent(new Event('change'));
     }
   }
+  // 비활성 상태에서 클릭 시 안내 메시지
+  if (!wrap._yajasiOverlay && !isJasi) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:absolute;inset:0;cursor:pointer;z-index:1';
+    overlay.addEventListener('click', () => {
+      alert(_L(
+        '자시(23:30~01:30)를 선택했을 때만 사용할 수 있는 옵션입니다.',
+        'This option is only available when Ja-si (23:30~01:30) is selected as birth hour.'
+      ));
+    });
+    wrap.style.position = 'relative';
+    wrap.appendChild(overlay);
+    wrap._yajasiOverlay = overlay;
+  }
+  if (wrap._yajasiOverlay) {
+    wrap._yajasiOverlay.style.display = isJasi ? 'none' : 'block';
+  }
 }
 
 // ===== localStorage =====
@@ -469,4 +486,8 @@ window.addEventListener('beforeunload', () => {
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();
   restoreInputs();
+  // 야자시 초기 상태 설정
+  if (document.getElementById('yajasiWrap')) updateYajasiState('birthTime', 'yajasiWrap');
+  if (document.getElementById('yajasiWrapA')) updateYajasiState('timeA', 'yajasiWrapA');
+  if (document.getElementById('yajasiWrapB')) updateYajasiState('timeB', 'yajasiWrapB');
 });

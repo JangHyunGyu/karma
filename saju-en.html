@@ -92,7 +92,7 @@
       </div>
       <div>
         <label>Birth Hour (Optional)</label>
-        <select id="birthTime" onchange="saveInputs()">
+        <select id="birthTime" onchange="saveInputs();updateYajasiState('birthTime','yajasiWrap')">
           <option value="">Unknown</option>
           <option value="00:00">Ja (23:30~01:30)</option>
           <option value="01:00">Chuk (01:30~03:30)</option>
@@ -109,7 +109,7 @@
         </select>
       </div>
     </div>
-    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px">
+    <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3;pointer-events:none">
       <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
         <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
           <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
