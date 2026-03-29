@@ -175,8 +175,8 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   let html = '';
   // 양력/음력 토글
   html += '<div class="calendar-toggle">';
-  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">양력</button>';
-  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">음력</button>';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">'+_L('양력','Solar')+'</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">'+_L('음력','Lunar')+'</button>';
   html += '</div>';
   // 년
   html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateMonthsFor(\''+prefix+'\');updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
@@ -218,7 +218,7 @@ function updateMonthsFor(prefix) {
     if (_compatCalType[prefix] === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
       const leapOpt = document.createElement('option');
       leapOpt.value = 'leap_' + m;
-      leapOpt.textContent = '윤' + m;
+      leapOpt.textContent = _L('윤','L') + m;
       monthSelect.appendChild(leapOpt);
     }
   }
@@ -274,7 +274,7 @@ function getDateFor(prefix) {
     const isLeap = mVal.startsWith('leap_');
     const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
     const solar = lunarToSolar(+y, m, +d, isLeap);
-    if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
+    if (!solar) { alert(_L('유효하지 않은 음력 날짜입니다','Invalid lunar date')); return ''; }
     return solar.year + '-' + String(solar.month).padStart(2,'0') + '-' + String(solar.day).padStart(2,'0');
   }
   return y + '-' + String(mVal).padStart(2,'0') + '-' + String(d).padStart(2,'0');
@@ -327,12 +327,12 @@ async function doCompat() {
         lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
-    if (!resp.ok) { alert('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'); return; }
+    if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
     renderResult(data);
   } catch(e) {
-    alert('오류: ' + e.message);
+    alert(_L('오류: ','Error: ') + e.message);
   } finally {
     btn.disabled = false;
     loading.style.display = 'none';
@@ -354,10 +354,10 @@ function renderResult(d) {
 
   // 오행 관계
   let relHtml = '';
-  if (d.relations.sangsaeng.length) relHtml += d.relations.sangsaeng.map(r => '<div class="tag tag-good">상생: ' + esc(r) + '</div>').join('');
-  if (d.relations.sanggeuk.length) relHtml += d.relations.sanggeuk.map(r => '<div class="tag tag-warn">상극: ' + esc(r) + '</div>').join('');
-  if (d.relations.same) relHtml += '<div class="tag tag-good">동일 오행 (비화)</div>';
-  if (!relHtml) relHtml = '<p style="color:#888;font-size:0.85rem">특별한 오행 관계 없음</p>';
+  if (d.relations.sangsaeng.length) relHtml += d.relations.sangsaeng.map(r => '<div class="tag tag-good">'+_L('상생: ','Harmony: ') + esc(r) + '</div>').join('');
+  if (d.relations.sanggeuk.length) relHtml += d.relations.sanggeuk.map(r => '<div class="tag tag-warn">'+_L('상극: ','Clash: ') + esc(r) + '</div>').join('');
+  if (d.relations.same) relHtml += '<div class="tag tag-good">'+_L('동일 오행 (비화)','Same Element (Bihwa)')+'</div>';
+  if (!relHtml) relHtml = '<p style="color:#888;font-size:0.85rem">'+_L('특별한 오행 관계 없음','No special elemental relations')+'</p>';
   document.getElementById('relationsContent').innerHTML = '<div class="tags">' + relHtml + '</div>';
 
   // AI

@@ -147,10 +147,11 @@
 .fort-text { font-size: 0.8rem; color: #bbb; line-height: 1.5; }
 </style>
 <script src="/js/browser-check.js"></script>
+<script src="/js/components.js?v=3"></script>
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
-<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Main">🏠 메인</a></nav>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
 <div class="container">
   <h1 data-ko="🤚 수상 (손금) 분석" data-en="🤚 Palm Reading">🤚 수상 (손금) 분석</h1>
@@ -182,8 +183,8 @@
       <div class="opt-group">
         <label data-ko="촬영한 손" data-en="Which Hand">촬영한 손</label>
         <select id="hand">
-          <option value="왼손" id="handLeft">왼손 (선천운)</option>
-          <option value="오른손" id="handRight">오른손 (후천운)</option>
+          <option value="왼손" id="handLeft" data-ko="왼손 (선천운)" data-en="Left (Innate)">왼손 (선천운)</option>
+          <option value="오른손" id="handRight" data-ko="오른손 (후천운)" data-en="Right (Acquired)">오른손 (후천운)</option>
         </select>
       </div>
     </div>
@@ -280,7 +281,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   if (file.size > 15 * 1024 * 1024) {
-    alert(getLang() === 'en' ? 'Image size exceeds 15MB. Please use a smaller photo.' : '이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.');
+    alert(_L('이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.','Image size exceeds 15MB. Please use a smaller photo.'));
     return;
   }
   imageMime = file.type;
@@ -313,13 +314,13 @@ analyzeBtn.addEventListener('click', async () => {
         lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
-    if (!resp.ok) throw new Error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    if (!resp.ok) throw new Error(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
-    err.textContent = e.message || (getLang() === 'en' ? 'An error occurred during analysis' : '분석 중 오류가 발생했습니다');
+    err.textContent = e.message || _L('분석 중 오류가 발생했습니다','An error occurred during analysis');
     err.style.display = 'block';
   } finally {
     document.getElementById('loading').style.display = 'none';
@@ -338,11 +339,11 @@ function renderResult(d) {
   document.getElementById('scoreCircle').style.strokeDashoffset = offset;
 
   const linesEl = document.getElementById('lines');
-  linesEl.innerHTML = '<h2>📋 손금 상세 분석</h2>' + (d.lines || []).map(l => `
+  linesEl.innerHTML = '<h2>' + _L('📋 손금 상세 분석','📋 Palm Reading Analysis') + '</h2>' + (d.lines || []).map(l => `
     <div class="line-item">
       <div class="line-top">
         <span class="line-name">${l.name}</span>
-        <span class="line-score">${l.score}점</span>
+        <span class="line-score">${l.score}${_L('점','pts')}</span>
       </div>
       ${l.length ? `<span class="line-length">${l.length}</span>` : ''}
       <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${l.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
@@ -358,10 +359,10 @@ function renderResult(d) {
 
   const fort = d.fortune || {};
   document.getElementById('fortune').innerHTML = [
-    ['💰', '재물운', fort.wealth],
-    ['💼', '직업운', fort.career],
-    ['❤️', '연애운', fort.love],
-    ['🏥', '건강운', fort.health],
+    ['💰', _L('재물운','Wealth'), fort.wealth],
+    ['💼', _L('직업운','Career'), fort.career],
+    ['❤️', _L('연애운','Love'), fort.love],
+    ['🏥', _L('건강운','Health'), fort.health],
   ].map(([icon, label, text]) => `
     <div class="fort-card">
       <div class="fort-icon">${icon}</div>

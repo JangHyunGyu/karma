@@ -31,6 +31,9 @@ window.addEventListener('unhandledrejection', function(e) {
   } catch {}
 });
 
+// ===== 언어 헬퍼 =====
+function _L(ko, en) { return (document.documentElement.lang || 'ko') === 'en' ? en : ko; }
+
 // ===== localStorage =====
 const STORAGE_KEY = 'karma_input';
 
@@ -91,7 +94,7 @@ function getBirthDate() {
     const isLeap = mVal.startsWith('leap_');
     const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
     const solar = lunarToSolar(+y, m, +d, isLeap);
-    if (!solar) { alert('유효하지 않은 음력 날짜입니다'); return ''; }
+    if (!solar) { alert(_L('유효하지 않은 음력 날짜입니다', 'Invalid lunar date')); return ''; }
     return `${solar.year}-${String(solar.month).padStart(2,'0')}-${String(solar.day).padStart(2,'0')}`;
   }
   return `${y}-${String(mVal).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -208,19 +211,19 @@ function createDateSelects(containerId, defY, defM, defD) {
 
   // 양력/음력 토글
   let html = '<div class="calendar-toggle">';
-  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCalendarType(this,\'solar\')">양력</button>';
-  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCalendarType(this,\'lunar\')">음력</button>';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" data-ko="양력" data-en="Solar" onclick="setCalendarType(this,\'solar\')">' + _L('양력','Solar') + '</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" data-ko="음력" data-en="Lunar" onclick="setCalendarType(this,\'lunar\')">' + _L('음력','Lunar') + '</button>';
   html += '</div>';
   // 년
-  html += '<div class="date-select-group"><label>년</label><select id="birthYear" onchange="updateMonths();updateDays();saveInputs()">';
+  html += '<div class="date-select-group"><label data-ko="년" data-en="Year">' + _L('년','Year') + '</label><select id="birthYear" onchange="updateMonths();updateDays();saveInputs()">';
   for (let y = thisYear - 5; y >= thisYear - 100; y--) html += `<option value="${y}" ${y==defY?'selected':''}>${y}</option>`;
   html += '</select></div>';
   // 월
-  html += '<div class="date-select-group"><label>월</label><select id="birthMonth" onchange="updateDays();saveInputs()">';
+  html += '<div class="date-select-group"><label data-ko="월" data-en="Month">' + _L('월','Month') + '</label><select id="birthMonth" onchange="updateDays();saveInputs()">';
   for (let m = 1; m <= 12; m++) html += `<option value="${m}" ${m==defM?'selected':''}>${m}</option>`;
   html += '</select></div>';
   // 일
-  html += '<div class="date-select-group"><label>일</label><select id="birthDay" onchange="saveInputs()">';
+  html += '<div class="date-select-group"><label data-ko="일" data-en="Day">' + _L('일','Day') + '</label><select id="birthDay" onchange="saveInputs()">';
   const days = new Date(defY, defM, 0).getDate();
   for (let d = 1; d <= days; d++) html += `<option value="${d}" ${d==defD?'selected':''}>${d}</option>`;
   html += '</select></div>';
@@ -246,7 +249,10 @@ function setCalendarType(btn, type) {
     if (label) {
       label.setAttribute('data-ko', type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)');
       label.setAttribute('data-en', type === 'lunar' ? 'Date of Birth (Lunar)' : 'Date of Birth (Solar)');
-      label.textContent = type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)';
+      label.textContent = _L(
+        type === 'lunar' ? '생년월일 (음력)' : '생년월일 (양력)',
+        type === 'lunar' ? 'Date of Birth (Lunar)' : 'Date of Birth (Solar)'
+      );
     }
   }
   updateMonths();
@@ -271,7 +277,7 @@ function updateMonths() {
     if (_calendarType === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
       const leapOpt = document.createElement('option');
       leapOpt.value = 'leap_' + m;
-      leapOpt.textContent = '윤' + m;
+      leapOpt.textContent = _L('윤' + m, 'Leap ' + m);
       monthSelect.appendChild(leapOpt);
     }
   }
@@ -326,7 +332,7 @@ function updateDays() {
   daySelect.innerHTML = '';
   for (let d = 1; d <= daysInMonth; d++) {
     const opt = document.createElement('option');
-    opt.value = d; opt.textContent = d + '일';
+    opt.value = d; opt.textContent = _L(d + '일', d);
     if (d === newDay) opt.selected = true;
     daySelect.appendChild(opt);
   }
@@ -339,12 +345,12 @@ function updateDays() {
     for (let d = 1; d <= daysInMonth; d++) {
       const div = document.createElement('div');
       div.className = 'combo-option' + (d === newDay ? ' selected' : '');
-      div.textContent = d + '일';
+      div.textContent = _L(d + '일', d);
       div.dataset.value = d;
       div.addEventListener('click', (e) => {
         e.stopPropagation();
         daySelect.value = d;
-        trigger.textContent = d + '일';
+        trigger.textContent = _L(d + '일', d);
         dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
         div.classList.add('selected');
         dayCombo.classList.remove('open');
@@ -352,7 +358,7 @@ function updateDays() {
       });
       dropdown.appendChild(div);
     }
-    trigger.textContent = newDay + '일';
+    trigger.textContent = _L(newDay + '일', newDay);
   }
 }
 

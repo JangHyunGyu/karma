@@ -95,18 +95,18 @@
         <label data-ko="태어난 시 (선택)" data-en="Birth Hour (Optional)">태어난 시 (선택)</label>
         <select id="birthTime" onchange="saveInputs()">
           <option value="" data-ko="모름" data-en="Unknown">모름</option>
-          <option value="00:00" data-ko="자시 (23:30~01:30)" data-en="자시 (23:30~01:30)">자시 (23:30~01:30)</option>
-          <option value="01:00" data-ko="축시 (01:30~03:30)" data-en="축시 (01:30~03:30)">축시 (01:30~03:30)</option>
-          <option value="03:00" data-ko="인시 (03:30~05:30)" data-en="인시 (03:30~05:30)">인시 (03:30~05:30)</option>
-          <option value="05:00" data-ko="묘시 (05:30~07:30)" data-en="묘시 (05:30~07:30)">묘시 (05:30~07:30)</option>
-          <option value="07:00" data-ko="진시 (07:30~09:30)" data-en="진시 (07:30~09:30)">진시 (07:30~09:30)</option>
-          <option value="09:00" data-ko="사시 (09:30~11:30)" data-en="사시 (09:30~11:30)">사시 (09:30~11:30)</option>
-          <option value="11:00" data-ko="오시 (11:30~13:30)" data-en="오시 (11:30~13:30)">오시 (11:30~13:30)</option>
-          <option value="13:00" data-ko="미시 (13:30~15:30)" data-en="미시 (13:30~15:30)">미시 (13:30~15:30)</option>
-          <option value="15:00" data-ko="신시 (15:30~17:30)" data-en="신시 (15:30~17:30)">신시 (15:30~17:30)</option>
-          <option value="17:00" data-ko="유시 (17:30~19:30)" data-en="유시 (17:30~19:30)">유시 (17:30~19:30)</option>
-          <option value="19:00" data-ko="술시 (19:30~21:30)" data-en="술시 (19:30~21:30)">술시 (19:30~21:30)</option>
-          <option value="21:00" data-ko="해시 (21:30~23:30)" data-en="해시 (21:30~23:30)">해시 (21:30~23:30)</option>
+          <option value="00:00" data-ko="자시 (23:30~01:30)" data-en="Ja (23:30~01:30)">자시 (23:30~01:30)</option>
+          <option value="01:00" data-ko="축시 (01:30~03:30)" data-en="Chuk (01:30~03:30)">축시 (01:30~03:30)</option>
+          <option value="03:00" data-ko="인시 (03:30~05:30)" data-en="In (03:30~05:30)">인시 (03:30~05:30)</option>
+          <option value="05:00" data-ko="묘시 (05:30~07:30)" data-en="Myo (05:30~07:30)">묘시 (05:30~07:30)</option>
+          <option value="07:00" data-ko="진시 (07:30~09:30)" data-en="Jin (07:30~09:30)">진시 (07:30~09:30)</option>
+          <option value="09:00" data-ko="사시 (09:30~11:30)" data-en="Sa (09:30~11:30)">사시 (09:30~11:30)</option>
+          <option value="11:00" data-ko="오시 (11:30~13:30)" data-en="O (11:30~13:30)">오시 (11:30~13:30)</option>
+          <option value="13:00" data-ko="미시 (13:30~15:30)" data-en="Mi (13:30~15:30)">미시 (13:30~15:30)</option>
+          <option value="15:00" data-ko="신시 (15:30~17:30)" data-en="Sin (15:30~17:30)">신시 (15:30~17:30)</option>
+          <option value="17:00" data-ko="유시 (17:30~19:30)" data-en="Yu (17:30~19:30)">유시 (17:30~19:30)</option>
+          <option value="19:00" data-ko="술시 (19:30~21:30)" data-en="Sul (19:30~21:30)">술시 (19:30~21:30)</option>
+          <option value="21:00" data-ko="해시 (21:30~23:30)" data-en="Hae (21:30~23:30)">해시 (21:30~23:30)</option>
         </select>
       </div>
     </div>
@@ -217,30 +217,30 @@ createDateSelects('dateSelects', 1995, 3, 20);
 const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
 const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
 const ILGAN_INFO = {
-  '갑': { symbol: '큰 나무', nature: '목(木)', desc: '우직하고 곧은 성격의 리더. 한번 정하면 끝까지 밀고 나가는 추진력의 소유자' },
-  '을': { symbol: '풀과 덩굴', nature: '목(木)', desc: '부드럽고 유연한 사교가. 어떤 환경에든 잘 적응하며 사람들과 잘 어울림' },
-  '병': { symbol: '태양', nature: '화(火)', desc: '밝고 열정적인 분위기 메이커. 주변을 환하게 만들고 사람들의 주목을 받는 타입' },
-  '정': { symbol: '촛불', nature: '화(火)', desc: '조용하지만 따뜻한 배려의 사람. 겉은 차분해도 마음속에 뜨거운 열정을 품고 있음' },
-  '무': { symbol: '큰 산', nature: '토(土)', desc: '듬직하고 믿음직한 사람. 주변 사람들에게 안정감을 주고 묵묵히 자기 자리를 지킴' },
-  '기': { symbol: '논밭', nature: '토(土)', desc: '현실적이고 꼼꼼한 관리자. 실리를 잘 챙기며 세심하게 주변을 돌봄' },
-  '경': { symbol: '강철', nature: '금(金)', desc: '의지가 강하고 정의로운 사람. 옳다고 믿는 것은 반드시 지키려는 원칙주의자' },
-  '신': { symbol: '보석', nature: '금(金)', desc: '예리하고 섬세한 완벽주의자. 아름다움을 추구하며 날카로운 분석력을 가짐' },
-  '임': { symbol: '큰 바다', nature: '수(水)', desc: '넓은 마음의 자유인. 생각이 깊고 포용력이 커서 누구든 품어주는 타입' },
-  '계': { symbol: '이슬/시냇물', nature: '수(水)', desc: '감수성 풍부한 예술가 기질. 직관이 뛰어나고 겉은 잔잔하지만 내면은 깊음' },
+  '갑': { symbol: _L('큰 나무','Great Tree'), nature: _L('목(木)','Wood (木)'), desc: _L('우직하고 곧은 성격의 리더. 한번 정하면 끝까지 밀고 나가는 추진력의 소유자','A steadfast and upright leader. Once decided, they push through to the end with unwavering drive') },
+  '을': { symbol: _L('풀과 덩굴','Grass & Vines'), nature: _L('목(木)','Wood (木)'), desc: _L('부드럽고 유연한 사교가. 어떤 환경에든 잘 적응하며 사람들과 잘 어울림','A soft and flexible socialite. Adapts well to any environment and gets along with everyone') },
+  '병': { symbol: _L('태양','Sun'), nature: _L('화(火)','Fire (火)'), desc: _L('밝고 열정적인 분위기 메이커. 주변을 환하게 만들고 사람들의 주목을 받는 타입','A bright and passionate mood maker. Lights up their surroundings and naturally draws attention') },
+  '정': { symbol: _L('촛불','Candle'), nature: _L('화(火)','Fire (火)'), desc: _L('조용하지만 따뜻한 배려의 사람. 겉은 차분해도 마음속에 뜨거운 열정을 품고 있음','A quiet but warmly caring person. Calm on the outside, but harboring passionate fire within') },
+  '무': { symbol: _L('큰 산','Great Mountain'), nature: _L('토(土)','Earth (土)'), desc: _L('듬직하고 믿음직한 사람. 주변 사람들에게 안정감을 주고 묵묵히 자기 자리를 지킴','A dependable and trustworthy person. Provides stability to those around them and steadfastly holds their ground') },
+  '기': { symbol: _L('논밭','Farmland'), nature: _L('토(土)','Earth (土)'), desc: _L('현실적이고 꼼꼼한 관리자. 실리를 잘 챙기며 세심하게 주변을 돌봄','A practical and meticulous manager. Looks after practical interests and cares for others with attention to detail') },
+  '경': { symbol: _L('강철','Steel'), nature: _L('금(金)','Metal (金)'), desc: _L('의지가 강하고 정의로운 사람. 옳다고 믿는 것은 반드시 지키려는 원칙주의자','A strong-willed and righteous person. A principled individual who stands firm for what they believe is right') },
+  '신': { symbol: _L('보석','Jewel'), nature: _L('금(金)','Metal (金)'), desc: _L('예리하고 섬세한 완벽주의자. 아름다움을 추구하며 날카로운 분석력을 가짐','A sharp and delicate perfectionist. Pursues beauty and possesses keen analytical ability') },
+  '임': { symbol: _L('큰 바다','Great Ocean'), nature: _L('수(水)','Water (水)'), desc: _L('넓은 마음의 자유인. 생각이 깊고 포용력이 커서 누구든 품어주는 타입','A free spirit with a broad mind. Deep in thought and embracing, the type who accepts everyone') },
+  '계': { symbol: _L('이슬/시냇물','Dew/Stream'), nature: _L('수(水)','Water (水)'), desc: _L('감수성 풍부한 예술가 기질. 직관이 뛰어나고 겉은 잔잔하지만 내면은 깊음','An artistically sensitive temperament. Highly intuitive, calm on the surface but deep within') },
 };
 const OHANG_EXCESS = {
-  '목': '추진력 넘치지만 고집이 강할 수 있음',
-  '화': '열정적이지만 급하고 감정 기복이 있을 수 있음',
-  '토': '안정적이지만 변화를 두려워할 수 있음',
-  '금': '완벽주의적이지만 비판적일 수 있음',
-  '수': '지혜롭지만 우유부단할 수 있음',
+  '목': _L('추진력 넘치지만 고집이 강할 수 있음','Full of drive but can be stubborn'),
+  '화': _L('열정적이지만 급하고 감정 기복이 있을 수 있음','Passionate but can be hasty with mood swings'),
+  '토': _L('안정적이지만 변화를 두려워할 수 있음','Stable but may fear change'),
+  '금': _L('완벽주의적이지만 비판적일 수 있음','Perfectionistic but can be overly critical'),
+  '수': _L('지혜롭지만 우유부단할 수 있음','Wise but can be indecisive'),
 };
 const OHANG_LACK = {
-  '목': '추진력/도전 정신이 부족할 수 있음',
-  '화': '열정/표현력이 약하고 소극적일 수 있음',
-  '토': '안정감이 부족하고 불안할 수 있음',
-  '금': '결단력/판단력이 약할 수 있음',
-  '수': '유연성/적응력이 부족할 수 있음',
+  '목': _L('추진력/도전 정신이 부족할 수 있음','May lack drive and adventurous spirit'),
+  '화': _L('열정/표현력이 약하고 소극적일 수 있음','May lack passion/expressiveness and be passive'),
+  '토': _L('안정감이 부족하고 불안할 수 있음','May lack stability and feel anxious'),
+  '금': _L('결단력/판단력이 약할 수 있음','May lack decisiveness and judgment'),
+  '수': _L('유연성/적응력이 부족할 수 있음','May lack flexibility and adaptability'),
 };
 
 async function doAnalyze() {
@@ -263,12 +263,12 @@ async function doAnalyze() {
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
     });
-    if (!resp.ok) { alert('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'); return; }
+    if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
     renderResult(data);
   } catch(e) {
-    alert('오류: ' + e.message);
+    alert(_L('오류: ','Error: ') + e.message);
   } finally {
     btn.disabled = false;
     loading.style.display = 'none';
@@ -281,14 +281,14 @@ function renderResult(d) {
   const info = ILGAN_INFO[d.ilgan] || {};
   document.getElementById('ohangText').innerHTML =
     OHANG_EMOJI[d.ilganOhang] + ' ' + esc(info.nature || d.ilganOhang) +
-    '<div style="font-size:0.85rem;color:#aaa;margin-top:4px">자연에 비유하면 <b style="color:#fff">' + esc(info.symbol || '') + '</b></div>';
+    '<div style="font-size:0.85rem;color:#aaa;margin-top:4px">' + esc(_L('자연에 비유하면 ','In nature, like ')) + '<b style="color:#fff">' + esc(info.symbol || '') + '</b></div>';
   document.getElementById('ilganDesc').textContent = info.desc || '';
 
   const PILLAR_DESC = {
-    '년주': '조상/부모운, 어린 시절',
-    '월주': '부모/형제운, 사회성',
-    '일주': '나 자신, 배우자운',
-    '시주': '자녀운, 말년운',
+    '년주': _L('조상/부모운, 어린 시절','Ancestors/Parents luck, Childhood'),
+    '월주': _L('부모/형제운, 사회성','Parents/Siblings luck, Social life'),
+    '일주': _L('나 자신, 배우자운','Self, Spouse luck'),
+    '시주': _L('자녀운, 말년운','Children luck, Later years'),
   };
   document.getElementById('pillars').innerHTML = d.pillars.map(p =>
     '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
@@ -308,8 +308,8 @@ function renderResult(d) {
   // 과다/부족 태그
   const ohangTags = [];
   for (const [k,v] of Object.entries(d.ohangCount)) {
-    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + k + ' 과다: ' + esc(OHANG_EXCESS[k]) + '</span>');
-    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + k + ' 부족: ' + esc(OHANG_LACK[k]) + '</span>');
+    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + k + _L(' 과다: ',' Excess: ') + esc(OHANG_EXCESS[k]) + '</span>');
+    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + k + _L(' 부족: ',' Lacking: ') + esc(OHANG_LACK[k]) + '</span>');
   }
   if (ohangTags.length) ohangHtml += '<div class="tags" style="margin-top:8px">' + ohangTags.join('') + '</div>';
   document.getElementById('ohangBars').innerHTML = ohangHtml;
@@ -334,7 +334,7 @@ function renderResult(d) {
         '<div style="font-size:1.2rem;font-weight:700;color:#ffd93d">' + esc(du.gan) + '</div>' +
         '<div style="font-size:1.2rem;font-weight:700;color:#81c784">' + esc(du.ji) + '</div>' +
         '<div style="font-size:0.7rem;color:#aaa;margin-top:4px">' + esc(du.ohang) + '/' + esc(du.jiOhang) + '</div>' +
-        (isCurrent ? '<div style="font-size:0.6rem;color:#ff6b6b;margin-top:2px;font-weight:700">현재</div>' : '') +
+        (isCurrent ? '<div style="font-size:0.6rem;color:#ff6b6b;margin-top:2px;font-weight:700">' + _L('현재','Current') + '</div>' : '') +
         '</div>';
     }).join('');
   }
@@ -397,15 +397,15 @@ function openDaeunModal(index, event) {
       '</div>' +
       '<div>' +
         '<div style="font-size:0.9rem;font-weight:600;color:' + (du.isCurrent ? '#ff6b6b' : '#fff') + '">' +
-          esc(du.label) + (du.isCurrent ? ' (현재 대운)' : '') +
+          esc(du.label) + (du.isCurrent ? _L(' (현재 대운)',' (Current Cycle)') : '') +
         '</div>' +
         '<div style="font-size:0.8rem;color:#aaa">' +
           (OHANG_EMOJI[du.ohang]||'') + ' ' + esc(du.ohang) + ' / ' + (OHANG_EMOJI[du.jiOhang]||'') + ' ' + esc(du.jiOhang) +
         '</div>' +
       '</div>' +
     '</div>' +
-    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">현재 이 대운의 영향 아래에 있습니다</div>' : '') +
-    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || '해석 데이터가 없습니다.') + '</p>';
+    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">' + esc(_L('현재 이 대운의 영향 아래에 있습니다','You are currently under the influence of this major fortune cycle')) + '</div>' : '') +
+    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || _L('해석 데이터가 없습니다.','No reading data available.')) + '</p>';
 
   // 콘텐츠 높이 측정 후 max-height 적용 (부드러운 전환)
   accordion.style.maxHeight = '0';

@@ -148,6 +148,7 @@
 }
 </style>
 <script src="/js/browser-check.js"></script>
+<script src="/js/components.js?v=3"></script>
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
@@ -255,7 +256,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   if (file.size > 15 * 1024 * 1024) {
-    alert('이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.');
+    alert(_L('이미지 크기가 15MB를 초과합니다. 더 작은 사진을 사용해주세요.','Image size exceeds 15MB. Please use a smaller photo.'));
     return;
   }
   imageMime = file.type;
@@ -288,13 +289,13 @@ analyzeBtn.addEventListener('click', async () => {
         lang: localStorage.getItem('karma_lang') || 'ko',
       }),
     });
-    if (!resp.ok) throw new Error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    if (!resp.ok) throw new Error(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
-    err.textContent = e.message || '분석 중 오류가 발생했습니다';
+    err.textContent = e.message || _L('분석 중 오류가 발생했습니다','An error occurred during analysis');
     err.style.display = 'block';
   } finally {
     document.getElementById('loading').style.display = 'none';
@@ -314,11 +315,11 @@ function renderResult(d) {
   document.getElementById('scoreCircle').style.strokeDashoffset = offset;
 
   const cats = document.getElementById('categories');
-  cats.innerHTML = '<h2>📋 상세 분석</h2>' + (d.categories || []).map(c => `
+  cats.innerHTML = '<h2>' + _L('📋 상세 분석','📋 Detailed Analysis') + '</h2>' + (d.categories || []).map(c => `
     <div class="cat-item">
       <div class="cat-top">
         <span class="cat-name">${c.name}</span>
-        <span class="cat-score">${c.score}점</span>
+        <span class="cat-score">${c.score}${_L('점','pts')}</span>
       </div>
       <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${c.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
       <div class="cat-desc">${c.desc}</div>
@@ -327,10 +328,10 @@ function renderResult(d) {
 
   const fort = d.fortune || {};
   document.getElementById('fortune').innerHTML = [
-    ['💰', '재물운', fort.wealth],
-    ['💼', '직업운', fort.career],
-    ['❤️', '연애운', fort.love],
-    ['🏥', '건강운', fort.health],
+    ['💰', _L('재물운','Wealth'), fort.wealth],
+    ['💼', _L('직업운','Career'), fort.career],
+    ['❤️', _L('연애운','Love'), fort.love],
+    ['🏥', _L('건강운','Health'), fort.health],
   ].map(([icon, label, text]) => `
     <div class="fort-card">
       <div class="fort-icon">${icon}</div>
@@ -342,7 +343,7 @@ function renderResult(d) {
   document.getElementById('advice').textContent = d.advice || '';
   const celeb = document.getElementById('celeb');
   if (d.celebrity_resemblance) {
-    celeb.innerHTML = '⭐ <span>닮은 유명인: <b>' + d.celebrity_resemblance + '</b></span>';
+    celeb.innerHTML = '⭐ <span>' + _L('닮은 유명인: ','Celebrity Resemblance: ') + '<b>' + d.celebrity_resemblance + '</b></span>';
     celeb.style.display = 'flex';
   } else {
     celeb.style.display = 'none';
