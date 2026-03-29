@@ -182,7 +182,7 @@ async function doFortune() {
         birth_time: document.getElementById('birthTime').value,
         gender: document.getElementById('gender').value,
         year: parseInt(document.getElementById('fortuneYear').value),
-        lang: localStorage.getItem('karma_lang') || 'ko',
+        lang: 'ko',
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
     });
@@ -200,11 +200,10 @@ async function doFortune() {
 
 function renderFortune(d) {
   const f = d.fortune;
-  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊','Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'};
+  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
 
   document.getElementById('fortuneYearTitle').textContent = '📅 ' + _L(d.year + '년 운세', d.year + ' Fortune');
-  const isEn = (document.documentElement.lang || 'ko') === 'en';
-  document.getElementById('sajuInfo').textContent = _L('일간: ','Day Master: ') + (isEn?(d.ilganEn||d.ilgan):d.ilgan) + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
+  document.getElementById('sajuInfo').textContent = _L('일간: ','Day Master: ') + d.ilgan + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
   document.getElementById('fortuneSummary').textContent = f.year_summary || '';
   document.getElementById('fortuneLove').textContent = f.love || '';
   document.getElementById('fortuneMoney').textContent = f.money || '';

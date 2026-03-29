@@ -347,7 +347,7 @@ async function doCompat() {
       body: JSON.stringify({
         personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false },
         personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false },
-        lang: localStorage.getItem('karma_lang') || 'ko',
+        lang: 'ko',
       }),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
@@ -369,9 +369,8 @@ function renderResult(d) {
   gt.textContent = d.grade;
   gt.className = 'grade grade-' + d.grade;
 
-  const isEn = (document.documentElement.lang || 'ko') === 'en';
-  document.getElementById('labelA').textContent = _L('본인: ','You: ') + (isEn ? (d.saju_a.ilganEn||d.saju_a.ilgan) : d.saju_a.ilgan) + ' ' + d.saju_a.ilganOhang + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
-  document.getElementById('labelB').textContent = _L('상대: ','Partner: ') + (isEn ? (d.saju_b.ilganEn||d.saju_b.ilgan) : d.saju_b.ilgan) + ' ' + d.saju_b.ilganOhang + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
+  document.getElementById('labelA').textContent = _L('본인: ','You: ') + d.saju_a.ilgan + ' ' + d.saju_a.ilganOhang + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
+  document.getElementById('labelB').textContent = _L('상대: ','Partner: ') + d.saju_b.ilgan + ' ' + d.saju_b.ilganOhang + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
 
   document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
   document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
@@ -398,13 +397,12 @@ function renderResult(d) {
 }
 
 function renderPillars(pillars) {
-  const isEn = (document.documentElement.lang || 'ko') === 'en';
   return pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(isEn ? (p.ganEn||p.gan) : p.gan)+'</div><div class="ji">'+esc(isEn ? (p.jiEn||p.ji) : p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
   ).join('');
 }
 
-function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊','Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'}[oh] || ''; }
+function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'}[oh] || ''; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 <script>

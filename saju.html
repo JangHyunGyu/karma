@@ -215,7 +215,7 @@
 createDateSelects('dateSelects');
 
 const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
-const OHANG_EMOJI = { '목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊','Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊' };
+const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
 const ILGAN_INFO = {
   '갑': { symbol: ['큰 나무','Great Tree'], nature: ['목(木)','Wood (木)'], desc: ['우직하고 곧은 성격의 리더. 한번 정하면 끝까지 밀고 나가는 추진력의 소유자','A steadfast and upright leader. Once decided, they push through to the end with unwavering drive'] },
   '을': { symbol: ['풀과 덩굴','Grass & Vines'], nature: ['목(木)','Wood (木)'], desc: ['부드럽고 유연한 사교가. 어떤 환경에든 잘 적응하며 사람들과 잘 어울림','A soft and flexible socialite. Adapts well to any environment and gets along with everyone'] },
@@ -259,7 +259,7 @@ async function doAnalyze() {
         birth_date: getBirthDate(),
         birth_time: document.getElementById('birthTime').value,
         gender: document.getElementById('gender').value,
-        lang: localStorage.getItem('karma_lang') || 'ko',
+        lang: 'ko',
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
     });
@@ -291,13 +291,12 @@ function renderResult(d) {
     '일주': _L('나 자신, 배우자운','Self, Spouse luck'),
     '시주': _L('자녀운, 말년운','Children luck, Later years'),
   };
-  const isEn = (document.documentElement.lang || 'ko') === 'en';
   document.getElementById('pillars').innerHTML = d.pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(isEn?(p.ganEn||p.gan):p.gan)+'</div><div class="ji">'+esc(isEn?(p.jiEn||p.ji):p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
   ).join('');
   // 기둥 설명 (AI 해석 전 고정 텍스트)
   document.getElementById('pillarDesc').innerHTML = d.pillars.map(p =>
-    '<span style="color:#ffd93d">'+esc(p.name)+'</span> '+esc(isEn?(p.ganEn||p.gan)+(p.jiEn||p.ji):(p.gan+p.ji))+' — '+esc(PILLAR_DESC[p.name]||'')
+    '<span style="color:#ffd93d">'+esc(p.name)+'</span> '+esc(p.gan+p.ji)+' — '+esc(PILLAR_DESC[p.name]||'')
   ).join(' · ');
   // AI 기둥별 해석은 아래에서 추가
   window._pillarKeys = ['year','month','day','hour'];
@@ -376,7 +375,6 @@ function renderResult(d) {
 let _openDaeunIndex = -1;
 
 function openDaeunModal(index, event) {
-  const isEn = (document.documentElement.lang || 'ko') === 'en';
   const du = window._daeunData[index];
   if (!du) return;
 
@@ -395,8 +393,8 @@ function openDaeunModal(index, event) {
   content.innerHTML =
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
       '<div>' +
-        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(isEn?(du.ganEn||du.gan):du.gan) + '</span>' +
-        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(isEn?(du.jiEn||du.ji):du.ji) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(du.gan) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(du.ji) + '</span>' +
       '</div>' +
       '<div>' +
         '<div style="font-size:0.9rem;font-weight:600;color:' + (du.isCurrent ? '#ff6b6b' : '#fff') + '">' +
