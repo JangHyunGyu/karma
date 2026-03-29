@@ -168,6 +168,43 @@ function dayPillar(year, month, day) {
   return { gan: CHEONGAN[gan], ji: JIJI[ji] };
 }
 
+// 서머타임 기간 (대한민국 실시 이력)
+const DST_PERIODS = [
+  [1948,6,1, 1948,9,13], [1949,4,3, 1949,9,11], [1950,4,1, 1950,9,10],
+  [1951,5,6, 1951,9,9],  [1955,5,5, 1955,9,9],  [1956,5,20,1956,9,30],
+  [1957,5,5, 1957,9,22], [1958,5,4, 1958,9,21], [1959,5,3, 1959,9,20],
+  [1960,5,1, 1960,9,18], [1987,5,10,1987,10,11],[1988,5,8, 1988,10,9],
+];
+
+function isDST(year, month, day) {
+  for (const [sy,sm,sd,ey,em,ed] of DST_PERIODS) {
+    if (year !== sy) continue;
+    const d = year * 10000 + month * 100 + day;
+    if (d >= sy * 10000 + sm * 100 + sd && d < ey * 10000 + em * 100 + ed) return true;
+  }
+  return false;
+}
+
+// 태양시 보정: 표준시(KST, UTC+9, 동경135°) → 서울 태양시(~동경127°)
+// 차이: (135-127)/15 * 60 = 32분 → 약 30분 보정
+// 서머타임 기간: 추가 -60분
+function toSolarTime(year, month, day, hour, minute) {
+  let m = minute || 0;
+  let h = hour;
+  let d = day;
+  // 서머타임 보정 (-60분)
+  if (isDST(year, month, day)) { m -= 60; }
+  // 태양시 보정 (-30분)
+  m -= 30;
+  // 분 → 시 변환
+  while (m < 0) { m += 60; h--; }
+  while (m >= 60) { m -= 60; h++; }
+  // 시 → 일 변환
+  if (h < 0) { h += 24; d--; }
+  if (h >= 24) { h -= 24; d++; }
+  return { year, month, day: d, hour: h, minute: m };
+}
+
 function hourPillar(dayGan, hour) {
   const shiIndex = Math.floor(((hour + 1) % 24) / 2);
   const base = { 갑: 0, 을: 2, 병: 4, 정: 6, 무: 8, 기: 0, 경: 2, 신: 4, 임: 6, 계: 8 };
@@ -213,7 +250,17 @@ function calculateSaju(birthDate, birthTime, gender) {
     throw new Error('유효하지 않은 생년월일 형식입니다');
   }
   const hasTime = birthTime && birthTime.length >= 4;
-  const hour = hasTime ? parseInt(birthTime.split(':')[0], 10) : null;
+  const rawHour = hasTime ? parseInt(birthTime.split(':')[0], 10) : null;
+  const rawMinute = hasTime ? parseInt(birthTime.split(':')[1] || '0', 10) : 0;
+
+  // 태양시 보정 (표준시 → 태양시: -30분, 서머타임 기간: 추가 -60분)
+  // 보정 후 일자가 바뀔 수 있으므로 일주 계산에도 보정된 날짜 사용
+  let solarDay = day, solarHour = rawHour;
+  if (rawHour !== null) {
+    const st = toSolarTime(year, month, day, rawHour, rawMinute);
+    solarDay = st.day;
+    solarHour = st.hour;
+  }
 
   // 입춘-adjusted year for year pillar (saju year changes at 입춘, not Jan 1)
   const sajuYear = getSajuYear(year, month, day);
@@ -225,7 +272,8 @@ function calculateSaju(birthDate, birthTime, gender) {
   const yearGanIndex = CHEONGAN.indexOf(yGan);
   const mGan = monthCheongan(yearGanIndex, sajuMonth);
   const mJi = monthJiji(sajuMonth);
-  const { gan: dGan, ji: dJi } = dayPillar(year, month, day);
+  // 일주는 태양시 보정된 날짜 기준
+  const { gan: dGan, ji: dJi } = dayPillar(year, month, solarDay);
 
   const pillars = [
     { name: '년주', gan: yGan, ji: yJi },
@@ -233,8 +281,8 @@ function calculateSaju(birthDate, birthTime, gender) {
     { name: '일주', gan: dGan, ji: dJi },
   ];
 
-  if (hour !== null) {
-    const { gan: hGan, ji: hJi } = hourPillar(dGan, hour);
+  if (solarHour !== null) {
+    const { gan: hGan, ji: hJi } = hourPillar(dGan, solarHour);
     pillars.push({ name: '시주', gan: hGan, ji: hJi });
   }
 
