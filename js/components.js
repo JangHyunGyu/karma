@@ -277,6 +277,8 @@ function updateMonths() {
     if (_calendarType === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
       const leapOpt = document.createElement('option');
       leapOpt.value = 'leap_' + m;
+      leapOpt.dataset.ko = '윤' + m;
+      leapOpt.dataset.en = 'Leap ' + m;
       leapOpt.textContent = _L('윤' + m, 'Leap ' + m);
       monthSelect.appendChild(leapOpt);
     }
@@ -297,12 +299,14 @@ function updateMonths() {
     Array.from(monthSelect.options).forEach(opt => {
       const div = document.createElement('div');
       div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
-      div.textContent = opt.textContent;
+      if (opt.dataset.ko) div.dataset.ko = opt.dataset.ko;
+      if (opt.dataset.en) div.dataset.en = opt.dataset.en;
+      div.textContent = (opt.dataset[document.documentElement.lang] || opt.textContent);
       div.dataset.value = opt.value;
       div.addEventListener('click', (e) => {
         e.stopPropagation();
         monthSelect.value = opt.value;
-        trigger.textContent = opt.textContent;
+        trigger.textContent = (opt.dataset[document.documentElement.lang] || opt.textContent);
         dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
         div.classList.add('selected');
         combo.classList.remove('open');
@@ -332,7 +336,10 @@ function updateDays() {
   daySelect.innerHTML = '';
   for (let d = 1; d <= daysInMonth; d++) {
     const opt = document.createElement('option');
-    opt.value = d; opt.textContent = _L(d + '일', d);
+    opt.value = d;
+    opt.dataset.ko = d + '일';
+    opt.dataset.en = String(d);
+    opt.textContent = _L(d + '일', d);
     if (d === newDay) opt.selected = true;
     daySelect.appendChild(opt);
   }
@@ -345,6 +352,8 @@ function updateDays() {
     for (let d = 1; d <= daysInMonth; d++) {
       const div = document.createElement('div');
       div.className = 'combo-option' + (d === newDay ? ' selected' : '');
+      div.dataset.ko = d + '일';
+      div.dataset.en = String(d);
       div.textContent = _L(d + '일', d);
       div.dataset.value = d;
       div.addEventListener('click', (e) => {

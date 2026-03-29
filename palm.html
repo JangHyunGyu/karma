@@ -261,12 +261,29 @@ function updateHandLabels() {
   const leftEl = document.getElementById('handLeft');
   const rightEl = document.getElementById('handRight');
   if (dom === 'right') {
-    leftEl.textContent = lang === 'en' ? 'Left (Innate)' : '왼손 (선천운)';
-    rightEl.textContent = lang === 'en' ? 'Right (Acquired)' : '오른손 (후천운)';
+    leftEl.dataset.ko = '왼손 (선천운)'; leftEl.dataset.en = 'Left (Innate)';
+    rightEl.dataset.ko = '오른손 (후천운)'; rightEl.dataset.en = 'Right (Acquired)';
   } else {
-    leftEl.textContent = lang === 'en' ? 'Left (Acquired)' : '왼손 (후천운)';
-    rightEl.textContent = lang === 'en' ? 'Right (Innate)' : '오른손 (선천운)';
+    leftEl.dataset.ko = '왼손 (후천운)'; leftEl.dataset.en = 'Left (Acquired)';
+    rightEl.dataset.ko = '오른손 (선천운)'; rightEl.dataset.en = 'Right (Innate)';
   }
+  leftEl.textContent = leftEl.dataset[lang];
+  rightEl.textContent = rightEl.dataset[lang];
+  // 콤보 드롭다운도 동기화
+  [leftEl, rightEl].forEach(optEl => {
+    const combo = optEl.closest('.combo') || optEl.closest('select')?.closest('.combo');
+    if (!combo) return;
+    const comboOpt = combo.querySelector(`.combo-option[data-value="${optEl.value}"]`);
+    if (comboOpt) {
+      comboOpt.dataset.ko = optEl.dataset.ko;
+      comboOpt.dataset.en = optEl.dataset.en;
+      comboOpt.textContent = optEl.dataset[lang];
+    }
+    if (optEl.selected) {
+      const trigger = combo.querySelector('.combo-trigger span:first-child');
+      if (trigger) trigger.textContent = optEl.dataset[lang];
+    }
+  });
 }
 
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
