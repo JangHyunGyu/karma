@@ -47,7 +47,7 @@
 
   <div class="compat-cols">
     <div class="card">
-      <h2>Person A</h2>
+      <h2>You</h2>
       <label>Date of Birth</label>
       <div class="date-selects" id="dateSelectsA"></div>
       <label>Gender</label>
@@ -82,7 +82,7 @@
       <div id="yajasiInfoA" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-top:8px;line-height:1.6">For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.</div>
     </div>
     <div class="card">
-      <h2>Person B</h2>
+      <h2>Partner</h2>
       <label>Date of Birth</label>
       <div class="date-selects" id="dateSelectsB"></div>
       <label>Gender</label>
@@ -362,8 +362,8 @@ function renderResult(d) {
   gt.className = 'grade grade-' + d.grade;
 
   const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
-  document.getElementById('labelA').textContent = 'A: ' + d.saju_a.ilgan + ' ' + (OHANG_EN[d.saju_a.ilganOhang]||d.saju_a.ilganOhang) + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
-  document.getElementById('labelB').textContent = 'B: ' + d.saju_b.ilgan + ' ' + (OHANG_EN[d.saju_b.ilganOhang]||d.saju_b.ilganOhang) + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
+  document.getElementById('labelA').textContent = 'You: ' + d.saju_a.ilgan + ' ' + (OHANG_EN[d.saju_a.ilganOhang]||d.saju_a.ilganOhang) + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
+  document.getElementById('labelB').textContent = 'Partner: ' + d.saju_b.ilgan + ' ' + (OHANG_EN[d.saju_b.ilganOhang]||d.saju_b.ilganOhang) + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
 
   document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
   document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
