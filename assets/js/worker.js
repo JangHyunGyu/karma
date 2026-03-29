@@ -304,7 +304,7 @@ function calculateSaju(birthDate, birthTime, gender) {
 
   return {
     pillars, ohangCount, ilgan, ilganOhang,
-    hasTime: hour !== null,
+    hasTime: solarHour !== null,
     summary: pillars.map((p) => `${p.name}: ${p.gan}${p.ji}`).join(', '),
     daeun,
   };
