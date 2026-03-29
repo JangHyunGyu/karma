@@ -27,6 +27,24 @@
     }
 })();
 
+// 브라우저 언어 기반 자동 리다이렉트 (첫 방문 시)
+(function() {
+    if (localStorage.getItem('karma_lang')) return; // 사용자가 이미 언어 선택함
+    var pageLang = (document.documentElement.lang || 'ko').substring(0, 2);
+    var browserLang = (navigator.language || navigator.userLanguage || 'ko').substring(0, 2);
+    var isKo = browserLang === 'ko';
+    if (pageLang === 'ko' && !isKo) {
+        // 한글 페이지에 영어 브라우저 → 영문 페이지로
+        var enLink = document.querySelector('link[hreflang="en"]');
+        if (enLink) { localStorage.setItem('karma_lang', 'en'); location.replace(enLink.href); return; }
+    } else if (pageLang === 'en' && isKo) {
+        // 영문 페이지에 한국어 브라우저 → 한글 페이지로
+        var koLink = document.querySelector('link[hreflang="ko"]');
+        if (koLink) { localStorage.setItem('karma_lang', 'ko'); location.replace(koLink.href); return; }
+    }
+    localStorage.setItem('karma_lang', pageLang);
+})();
+
 // 글로벌 에러 핸들러 — 프론트엔드 에러를 중앙 D1에 기록
 (function() {
     var ERROR_ENDPOINT = 'https://chatbot-api.yama5993.workers.dev/error-logs';
