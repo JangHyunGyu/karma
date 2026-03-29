@@ -399,6 +399,7 @@ function changeLang(lang) {
   document.querySelectorAll('[data-ko][data-en]').forEach(el => {
     el.textContent = el.dataset[lang];
   });
+  if (typeof updateComboLang === 'function') updateComboLang(lang);
   localStorage.setItem('karma_lang', lang);
 }
 (function() {

@@ -111,20 +111,26 @@ function createCombo(selectEl) {
   // 트리거
   const trigger = document.createElement('div');
   trigger.className = 'combo-trigger';
-  trigger.innerHTML = `<span>${selectedOpt ? selectedOpt.textContent : ''}</span><span class="combo-arrow">▾</span>`;
+  const _initLang = document.documentElement.lang || 'ko';
+  const _initText = selectedOpt ? (selectedOpt.dataset[_initLang] || selectedOpt.textContent) : '';
+  trigger.innerHTML = `<span>${_initText}</span><span class="combo-arrow">▾</span>`;
 
   // 드롭다운
   const dropdown = document.createElement('div');
   dropdown.className = 'combo-dropdown';
+  const _lang = () => document.documentElement.lang || 'ko';
+  const _optText = (el) => (el.dataset[_lang()] || el.dataset.ko || el.textContent);
   options.forEach(opt => {
     const div = document.createElement('div');
     div.className = 'combo-option' + (opt.selected ? ' selected' : '');
-    div.textContent = opt.textContent;
+    if (opt.dataset.ko) div.dataset.ko = opt.dataset.ko;
+    if (opt.dataset.en) div.dataset.en = opt.dataset.en;
+    div.textContent = _optText(opt);
     div.dataset.value = opt.value;
     div.addEventListener('click', (e) => {
       e.stopPropagation();
       selectEl.value = opt.value;
-      trigger.querySelector('span:first-child').textContent = opt.textContent;
+      trigger.querySelector('span:first-child').textContent = _optText(div);
       dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
       div.classList.add('selected');
       combo.classList.remove('open');
@@ -348,6 +354,21 @@ function updateDays() {
     }
     trigger.textContent = newDay + '일';
   }
+}
+
+// ===== 콤보 언어 전환 =====
+function updateComboLang(lang) {
+  document.querySelectorAll('.combo-option[data-ko][data-en]').forEach(opt => {
+    opt.textContent = opt.dataset[lang] || opt.dataset.ko;
+  });
+  // 트리거(선택된 값)도 업데이트
+  document.querySelectorAll('.combo').forEach(combo => {
+    const selected = combo.querySelector('.combo-option.selected');
+    const trigger = combo.querySelector('.combo-trigger span:first-child');
+    if (selected && trigger && selected.dataset[lang]) {
+      trigger.textContent = selected.dataset[lang];
+    }
+  });
 }
 
 // ===== 전체 select 자동 커스텀화 =====
