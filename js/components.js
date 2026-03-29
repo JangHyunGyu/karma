@@ -47,6 +47,16 @@ window.addEventListener('unhandledrejection', function(e) {
     localStorage.setItem('karma_lang', pageLang);
 })();
 
+// ===== 언어 전환 (hreflang 기반 페이지 리다이렉트) =====
+function changeLang(lang) {
+  localStorage.setItem('karma_lang', lang);
+  var link = document.querySelector('link[hreflang="' + lang + '"]');
+  if (link) { location.href = link.href; return; }
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-ko][data-en]').forEach(function(el) { el.textContent = el.dataset[lang]; });
+  if (typeof updateComboLang === 'function') updateComboLang(lang);
+}
+
 // ===== 언어 헬퍼 =====
 function _L(ko, en) { return (document.documentElement.lang || 'ko') === 'en' ? en : ko; }
 
