@@ -31,6 +31,22 @@ window.addEventListener('unhandledrejection', function(e) {
   } catch {}
 });
 
+// ===== 브라우저 언어 기반 자동 리다이렉트 (첫 방문 시) =====
+(function() {
+    if (localStorage.getItem('karma_lang')) return;
+    var pageLang = (document.documentElement.lang || 'ko').substring(0, 2);
+    var browserLang = (navigator.language || navigator.userLanguage || 'ko').substring(0, 2);
+    var isKo = browserLang === 'ko';
+    if (pageLang === 'ko' && !isKo) {
+        var enLink = document.querySelector('link[hreflang="en"]');
+        if (enLink) { localStorage.setItem('karma_lang', 'en'); location.replace(enLink.href); return; }
+    } else if (pageLang === 'en' && isKo) {
+        var koLink = document.querySelector('link[hreflang="ko"]');
+        if (koLink) { localStorage.setItem('karma_lang', 'ko'); location.replace(koLink.href); return; }
+    }
+    localStorage.setItem('karma_lang', pageLang);
+})();
+
 // ===== 언어 헬퍼 =====
 function _L(ko, en) { return (document.documentElement.lang || 'ko') === 'en' ? en : ko; }
 
