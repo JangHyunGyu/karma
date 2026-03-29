@@ -72,8 +72,8 @@ function showYajasiHint() {
       <div style="font-size:2.2rem;margin-bottom:12px">🌙</div>
       <div style="font-size:1rem;font-weight:700;color:#ffd93d;margin-bottom:12px">${_L('야자시/조자시','Night/Morning Ja-si')}</div>
       <p style="font-size:0.82rem;color:#ccc;line-height:1.7;margin-bottom:8px">${_L(
-        '태어난 시를 <b style="color:#ffd93d">자시(23:30~01:30)</b>로 선택하면 사용할 수 있는 옵션입니다.',
-        'This option becomes available when you select <b style="color:#ffd93d">Ja-si (23:30~01:30)</b> as your birth hour.'
+        '태어난 시가 <b style="color:#ffd93d">자시(23:30~01:30)</b>인 분만 해당되는 옵션입니다.',
+        'This option only applies to those born during <b style="color:#ffd93d">Ja-si (23:30~01:30)</b>.'
       )}</p>
       <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:16px;text-align:left">
         <div style="font-size:0.75rem;color:#c9a044;font-weight:600;margin-bottom:6px">${_L('야자시란?','What is Night Ja-si?')}</div>
