@@ -757,7 +757,7 @@ function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex) {
   return daeunList;
 }
 
-function calculateSaju(birthDate, birthTime, gender) {
+function calculateSaju(birthDate, birthTime, gender, yajasi) {
   const [year, month, day] = (birthDate || '').split('-').map(Number);
   if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) {
     throw new Error('유효하지 않은 생년월일 형식입니다');
@@ -787,8 +787,16 @@ function calculateSaju(birthDate, birthTime, gender) {
   const yearGanIndex = CHEONGAN.indexOf(yGan);
   const mGan = monthCheongan(yearGanIndex, sajuMonth);
   const mJi = monthJiji(sajuMonth);
-  // 일주는 원래 생년월일 기준 (태양시 보정으로 날짜 변경 안 함)
-  const { gan: dGan, ji: dJi } = dayPillar(year, month, day);
+  // 야자시 처리: 자시(23:30~01:30) 중 23:30~00:00에 태어난 경우
+  // 야자시 적용 시 → 시주는 자시 그대로, 일주만 다음날 기준
+  // 자시 select value = "00:00" (hour=0), 실제 23:30~00:00 구간은
+  // UI에서 자시를 선택한 경우에 해당 (사용자가 야자시 체크 + 자시 선택)
+  let dayForPillar = day;
+  if (yajasi && solarHour !== null && solarHour === 0) {
+    // 야자시 적용: 자시 선택 시 일주를 다음날로
+    dayForPillar = day + 1;
+  }
+  const { gan: dGan, ji: dJi } = dayPillar(year, month, dayForPillar);
 
   const pillars = [
     { name: '년주', gan: yGan, ji: yJi },
@@ -1400,10 +1408,10 @@ async function handleDeleteProfile(request, env) {
 // --- Saju Routes (from routes/saju.js) ---
 
 async function handleSajuAnalysis(request, env) {
-  const { birth_date, birth_time, gender, lang } = await request.json();
+  const { birth_date, birth_time, gender, lang, yajasi } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '');
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi);
 
   const apiKeys = getGeminiKeys(env);
   const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang), 'saju', env) : null;
