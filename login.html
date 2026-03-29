@@ -69,6 +69,6 @@ async function doLogin() {
   }
 }
 </script>
-<script>function changeLang(l){document.documentElement.lang=l;localStorage.setItem("karma_lang",l)}(function(){var s=localStorage.getItem("karma_lang");if(s){var e=document.getElementById("langSelect");if(e)e.value=s;document.documentElement.lang=s}})()</script>
+<script>(function(){var s=localStorage.getItem("karma_lang");if(s&&s!=='ko'){changeLang(s);return}})()</script>
 </body>
 </html>

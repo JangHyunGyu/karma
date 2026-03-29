@@ -87,19 +87,9 @@
 </div>
 
 <script>
-function changeLang(lang) {
-  document.documentElement.lang = lang;
-  document.querySelectorAll('[data-ko][data-en]').forEach(el => {
-    el.textContent = el.dataset[lang];
-  });
-  localStorage.setItem('karma_lang', lang);
-}
 (function() {
   const saved = localStorage.getItem('karma_lang');
-  if (saved) {
-    document.getElementById('langSelect').value = saved;
-    if (saved !== 'ko') changeLang(saved);
-  }
+  if (saved && saved !== 'ko') { changeLang(saved); return; }
 })();
 </script>
 </body>
