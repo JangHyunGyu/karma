@@ -120,7 +120,7 @@
       <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'">What's this?</span>
     </div>
     <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
-      Splits Ja-si (23:30~01:30) into Night Ja-si (23:30~00:00) and Morning Ja-si (00:00~01:30). When ON, those born during Night Ja-si keep the Ja-si hour pillar but use the next day's day pillar. When OFF, all of Ja-si uses the same day.
+      For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.
     </div>
     <button class="btn" id="analyzeBtn" onclick="doAnalyze()">Analyze</button>
   </div>

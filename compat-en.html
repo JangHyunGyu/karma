@@ -71,6 +71,13 @@
         <option value="19:00">Sul (19:30~21:30)</option>
         <option value="21:00">Hae (21:30~23:30)</option>
       </select>
+      <div style="margin:10px 0 0;display:flex;align-items:center;gap:8px">
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiA');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
+          <span id="yajaSwitchA" style="display:inline-block;width:32px;height:18px;background:rgba(255,255,255,0.12);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0"><span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#666;border-radius:50%;transition:all 0.2s"></span></span>
+          <input type="checkbox" id="yajasiA" style="display:none" onchange="const sw=document.getElementById('yajaSwitchA');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='16px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}">
+          <span style="font-size:0.75rem;color:#aaa;margin-left:6px">Night Ja-si</span>
+        </label>
+      </div>
     </div>
     <div class="card">
       <h2>Person B</h2>
@@ -97,22 +104,16 @@
         <option value="19:00">Sul (19:30~21:30)</option>
         <option value="21:00">Hae (21:30~23:30)</option>
       </select>
+      <div style="margin:10px 0 0;display:flex;align-items:center;gap:8px">
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiB');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
+          <span id="yajaSwitchB" style="display:inline-block;width:32px;height:18px;background:rgba(255,255,255,0.12);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0"><span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#666;border-radius:50%;transition:all 0.2s"></span></span>
+          <input type="checkbox" id="yajasiB" style="display:none" onchange="const sw=document.getElementById('yajaSwitchB');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='16px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}">
+          <span style="font-size:0.75rem;color:#aaa;margin-left:6px">Night Ja-si</span>
+        </label>
+      </div>
     </div>
   </div>
 
-  <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px">
-    <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
-      <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
-        <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
-      </span>
-      <input type="checkbox" id="yajasiToggle" style="display:none" onchange="const sw=document.getElementById('yajasiSwitch');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}">
-      <span style="font-size:0.8rem;color:#aaa;margin-left:8px">Night/Morning Ja-si</span>
-    </label>
-    <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'">What's this?</span>
-  </div>
-  <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
-    Splits Ja-si (23:30~01:30) into Night Ja-si (23:30~00:00) and Morning Ja-si (00:00~01:30). When ON, those born during Night Ja-si keep the Ja-si hour pillar but use the next day's day pillar. When OFF, all of Ja-si uses the same day.
-  </div>
   <button class="btn" id="compatBtn" onclick="doCompat()">Analyze Compatibility</button>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
@@ -332,10 +333,9 @@ async function doCompat() {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value },
-        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value },
+        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false },
+        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false },
         lang: 'en',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
     });
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
