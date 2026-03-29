@@ -80,6 +80,19 @@
         <select id="fortuneYear"></select>
       </div>
     </div>
+    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px">
+      <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
+        <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
+          <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
+        </span>
+        <input type="checkbox" id="yajasiToggle" style="display:none" onchange="const sw=document.getElementById('yajasiSwitch');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}saveInputs();">
+        <span style="font-size:0.8rem;color:#aaa;margin-left:8px" data-ko="야자시/조자시" data-en="Night/Morning Ja-si">야자시/조자시</span>
+      </label>
+      <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
+    </div>
+    <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
+      <span data-ko="자시(23:30~01:30)를 야자시(23:30~00:00)와 조자시(00:00~01:30)로 나누는 방식입니다. 켜면 야자시(23:30~00:00)에 태어난 경우 시주는 자시 그대로, 일주만 다음날 기준으로 계산합니다. 끄면 자시 전체를 당일로 봅니다." data-en="Splits Ja-si (23:30~01:30) into Night Ja-si (23:30~00:00) and Morning Ja-si (00:00~01:30). When ON, those born during Night Ja-si keep the Ja-si hour pillar but use the next day's day pillar. When OFF, all of Ja-si uses the same day.">자시(23:30~01:30)를 야자시(23:30~00:00)와 조자시(00:00~01:30)로 나누는 방식입니다. 켜면 야자시(23:30~00:00)에 태어난 경우 시주는 자시 그대로, 일주만 다음날 기준으로 계산합니다. 끄면 자시 전체를 당일로 봅니다.</span>
+    </div>
     <button class="btn" id="fortuneBtn" onclick="doFortune()" data-ko="운세 분석하기" data-en="Analyze Fortune">운세 분석하기</button>
   </div>
 
@@ -170,6 +183,7 @@ async function doFortune() {
         gender: document.getElementById('gender').value,
         year: parseInt(document.getElementById('fortuneYear').value),
         lang: localStorage.getItem('karma_lang') || 'ko',
+        yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
