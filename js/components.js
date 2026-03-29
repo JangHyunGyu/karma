@@ -71,10 +71,17 @@ function showYajasiHint() {
     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid rgba(201,160,68,0.3);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
       <div style="font-size:2.2rem;margin-bottom:12px">🌙</div>
       <div style="font-size:1rem;font-weight:700;color:#ffd93d;margin-bottom:12px">${_L('야자시/조자시','Night/Morning Ja-si')}</div>
-      <p style="font-size:0.82rem;color:#ccc;line-height:1.7;margin-bottom:16px">${_L(
-        '태어난 시를 <b style="color:#ffd93d">자시(23:30~01:30)</b>로 선택하면 사용할 수 있는 옵션입니다.<br><br>밤 11시 30분~새벽 1시 30분 사이에 태어난 분의 사주를 더 정확하게 계산합니다.',
-        'This option becomes available when you select <b style="color:#ffd93d">Ja-si (23:30~01:30)</b> as your birth hour.<br><br>It provides more accurate calculation for those born between 11:30 PM and 1:30 AM.'
+      <p style="font-size:0.82rem;color:#ccc;line-height:1.7;margin-bottom:8px">${_L(
+        '태어난 시를 <b style="color:#ffd93d">자시(23:30~01:30)</b>로 선택하면 사용할 수 있는 옵션입니다.',
+        'This option becomes available when you select <b style="color:#ffd93d">Ja-si (23:30~01:30)</b> as your birth hour.'
       )}</p>
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:16px;text-align:left">
+        <div style="font-size:0.75rem;color:#c9a044;font-weight:600;margin-bottom:6px">${_L('야자시란?','What is Night Ja-si?')}</div>
+        <p style="font-size:0.78rem;color:#aaa;line-height:1.6;margin:0">${_L(
+          '밤 11시 30분~새벽 1시 30분 사이에 태어난 분의 사주를 더 정확하게 계산하는 옵션입니다. 켜면 자정(0시)을 기준으로 날짜를 나눠서 일주를 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.',
+          'An option for more accurate calculation for those born between 11:30 PM and 1:30 AM. When enabled, the date is split at midnight for day pillar calculation. No effect if born outside this time range.'
+        )}</p>
+      </div>
       <button onclick="document.getElementById('yajasiHintModal').remove()" style="background:linear-gradient(135deg,#c9a044,#b8860b);color:#fff;border:none;padding:10px 32px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer">${_L('확인','OK')}</button>
     </div>`;
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
