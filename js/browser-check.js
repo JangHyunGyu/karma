@@ -9,6 +9,7 @@
         if (isAndroid) {
             location.href = 'intent://' + location.href.replace(/https?:\/\//i, '') + '#Intent;scheme=https;package=com.android.chrome;end';
             setTimeout(function() {
+                if (!document.body) return;
                 document.body.style.backgroundColor = '#0a0a1e';
                 document.body.innerHTML = '<div style="position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;color:#c9a044;text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:20px">🚀</div><p style="line-height:1.6;color:#e8e0d0"><b>Chrome 브라우저</b>로 이동했습니다.<br>새로 열린 창에서 이용해주세요.<br><br><span style="font-size:14px;color:#888">이 창은 닫으셔도 됩니다.</span></p></div>';
             }, 100);
