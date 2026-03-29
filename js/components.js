@@ -34,6 +34,23 @@ window.addEventListener('unhandledrejection', function(e) {
 // ===== 언어 헬퍼 =====
 function _L(ko, en) { return (document.documentElement.lang || 'ko') === 'en' ? en : ko; }
 
+// ===== 야자시 토글 활성/비활성 =====
+function updateYajasiState(timeSelectId, yajasiWrapperId) {
+  const timeEl = document.getElementById(timeSelectId);
+  const wrap = document.getElementById(yajasiWrapperId);
+  if (!timeEl || !wrap) return;
+  const isJasi = timeEl.value === '00:00';
+  wrap.style.opacity = isJasi ? '1' : '0.3';
+  wrap.style.pointerEvents = isJasi ? 'auto' : 'none';
+  if (!isJasi) {
+    const toggle = wrap.querySelector('input[type="checkbox"]');
+    if (toggle && toggle.checked) {
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change'));
+    }
+  }
+}
+
 // ===== localStorage =====
 const STORAGE_KEY = 'karma_input';
 

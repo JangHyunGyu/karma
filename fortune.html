@@ -59,7 +59,7 @@
       </div>
       <div>
         <label data-ko="태어난 시" data-en="Birth Hour">태어난 시</label>
-        <select id="birthTime" onchange="saveInputs()">
+        <select id="birthTime" onchange="saveInputs();updateYajasiState('birthTime','yajasiWrap')">
           <option value="" data-ko="모름" data-en="Unknown">모름</option>
           <option value="00:00" data-ko="자시 (23:30~01:30)" data-en="Ja (23:30~01:30)">자시 (23:30~01:30)</option>
           <option value="01:00" data-ko="축시 (01:30~03:30)" data-en="Chuk (01:30~03:30)">축시 (01:30~03:30)</option>
@@ -80,7 +80,7 @@
         <select id="fortuneYear"></select>
       </div>
     </div>
-    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px">
+    <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3;pointer-events:none">
       <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
         <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
           <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
