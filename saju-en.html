@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - My Four Pillars Analysis</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<style>
+  /* Saju page — mobile first (always 1 column by default) */
+  .container.saju-page {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 16px 12px !important;
+    padding-top: 48px !important;
+    overflow-x: hidden !important;
+  }
+  .saju-top-row, .saju-ai-grid, .saju-personality {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1fr !important;
+    max-width: 100%;
+  }
+  #result {
+    gap: 14px;
+    grid-template-columns: 1fr !important;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  #result[style*="display: grid"], #result[style*="display:grid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tablet (769px+) — 2 columns */
+  @media (min-width: 769px) {
+    .container.saju-page { max-width: 900px !important; padding: 24px 20px !important; }
+    .saju-top-row { grid-template-columns: 1fr 1fr !important; }
+    .saju-ai-grid { grid-template-columns: 1fr 1fr !important; }
+    .saju-personality { grid-template-columns: 1fr 1fr !important; }
+  }
+  /* Desktop (1024px+) — 3 columns */
+  @media (min-width: 1024px) {
+    .container.saju-page { max-width: 1100px !important; }
+    .saju-top-row { grid-template-columns: 220px 1fr 1fr !important; }
+  }
+
+  /* Card interior — must never be clipped */
+  .saju-page .card { overflow-wrap: break-word; word-break: break-word; max-width: 100%; min-width: 0; }
+  .saju-page .card h2 { font-size: clamp(0.85rem, 2vw, 1rem); }
+  .saju-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); word-break: break-word; }
+  .saju-page .tag { font-size: clamp(0.68rem, 1.5vw, 0.78rem); max-width: 100%; word-break: break-word; }
+</style>
+<script src="/js/browser-check.js"></script>
+</head>
+<body class="bg-saju">
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/saju.html">🇰🇷 한국어</a></nav>
+<div class="container saju-page">
+  <h1>🔮 My Saju Analysis</h1>
+  <p class="subtitle">Discover your Four Pillars of Destiny by date of birth</p>
+
+  <div class="card" style="max-width:480px;margin:0 auto 20px">
+    <label>Date of Birth (Solar)</label>
+    <div class="date-selects" id="dateSelects"></div>
+    <div class="row">
+      <div>
+        <label>Gender</label>
+        <select id="gender" onchange="saveInputs()">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div>
+        <label>Birth Hour (Optional)</label>
+        <select id="birthTime" onchange="saveInputs()">
+          <option value="">Unknown</option>
+          <option value="00:00">Ja (23:30~01:30)</option>
+          <option value="01:00">Chuk (01:30~03:30)</option>
+          <option value="03:00">In (03:30~05:30)</option>
+          <option value="05:00">Myo (05:30~07:30)</option>
+          <option value="07:00">Jin (07:30~09:30)</option>
+          <option value="09:00">Sa (09:30~11:30)</option>
+          <option value="11:00">O (11:30~13:30)</option>
+          <option value="13:00">Mi (13:30~15:30)</option>
+          <option value="15:00">Sin (15:30~17:30)</option>
+          <option value="17:00">Yu (17:30~19:30)</option>
+          <option value="19:00">Sul (19:30~21:30)</option>
+          <option value="21:00">Hae (21:30~23:30)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="analyzeBtn" onclick="doAnalyze()">Analyze</button>
+  </div>
+
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing your Saju...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Interpreting your Four Pillars of Destiny...</p>
+  </div>
+
+  <div id="result" class="fade-in saju-grid" style="display:none">
+    <!-- Top: Day Master + Pillars + Five Elements -->
+    <div class="saju-top-row">
+      <div class="card" style="text-align:center">
+        <p style="font-size:0.75rem;color:#aaa;margin-bottom:2px">The character that represents me</p>
+        <div style="margin:8px 0">
+          <span id="ilganText" style="font-size:3rem;font-weight:800;color:#ffd93d"></span>
+        </div>
+        <div id="ohangText" style="font-size:0.95rem;color:#81c784"></div>
+        <div id="ilganDesc" style="font-size:0.8rem;color:#ccc;margin-top:8px;line-height:1.5"></div>
+      </div>
+      <div class="card">
+        <h2>Four Pillars (四柱)</h2>
+        <div class="pillars" id="pillars"></div>
+        <div id="pillarDesc" style="margin-top:10px;font-size:0.72rem;color:#888;line-height:1.5"></div>
+      </div>
+      <div class="card">
+        <h2>Five Elements Distribution</h2>
+        <div id="ohangBars"></div>
+      </div>
+    </div>
+
+    <!-- Major Fortune Cycles -->
+    <div id="daeunSection" style="display:none">
+      <div class="card">
+        <h2><span>🔄 Major Fortune Cycles (10-Year Life Flow)</span> <span style="font-size:0.7rem;color:#888;font-weight:400">Click a card</span></h2>
+        <div id="daeunTimeline" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px"></div>
+        <div id="daeunAccordion" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;margin-top:12px;background:rgba(255,255,255,0.03);border:1px solid transparent;border-radius:12px">
+          <div id="daeunAccordionContent" style="padding:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Analysis -->
+    <div id="aiSection" style="display:none">
+      <!-- Personality Analysis -->
+      <div class="saju-personality">
+        <div class="card">
+          <h2>🧠 Personality Analysis</h2>
+          <p id="aiPersonality" style="line-height:1.7"></p>
+        </div>
+        <div class="card">
+          <h2>Strengths & Cautions</h2>
+          <div style="margin-bottom:12px">
+            <span style="font-size:0.8rem;color:#81c784;font-weight:600">Strengths</span>
+            <div class="tags" id="aiStrengths"></div>
+          </div>
+          <div>
+            <span style="font-size:0.8rem;color:#ffb74d;font-weight:600">Cautions</span>
+            <div class="tags" id="aiCautions"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-column grid: Love + Career -->
+      <div class="saju-ai-grid">
+        <div class="card">
+          <h2>💕 Love Style</h2>
+          <p id="aiLove" style="line-height:1.7"></p>
+        </div>
+        <div class="card">
+          <h2>💼 Career & Aptitude</h2>
+          <p id="aiCareer" style="line-height:1.7"></p>
+        </div>
+      </div>
+
+      <!-- Advice -->
+      <div class="card">
+        <h2>💡 Advice</h2>
+        <p id="aiAdvice" style="line-height:1.7"></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script src="/js/lunar.js?v=1"></script>
+<script src="/js/components.js?v=3"></script>
+<script>
+createDateSelects('dateSelects', 1995, 3, 20);
+
+const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
+const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
+const ILGAN_INFO = {
+  '갑': { symbol: 'Great Tree', nature: 'Wood (木)', desc: 'A steadfast leader with strong drive. Once a decision is made, they push through to the end.' },
+  '을': { symbol: 'Grass & Vines', nature: 'Wood (木)', desc: 'A soft and flexible socializer. Adapts well to any environment and gets along with everyone.' },
+  '병': { symbol: 'The Sun', nature: 'Fire (火)', desc: 'A bright and passionate mood-maker. Lights up the room and naturally draws attention.' },
+  '정': { symbol: 'Candlelight', nature: 'Fire (火)', desc: 'Quiet but warmly caring. Calm on the outside, but holds a burning passion within.' },
+  '무': { symbol: 'Great Mountain', nature: 'Earth (土)', desc: 'Reliable and trustworthy. Gives stability to those around and quietly holds their ground.' },
+  '기': { symbol: 'Farmland', nature: 'Earth (土)', desc: 'Practical and meticulous manager. Good at looking after details and caring for others.' },
+  '경': { symbol: 'Steel', nature: 'Metal (金)', desc: 'Strong-willed and just. A principled person who always stands up for what they believe is right.' },
+  '신': { symbol: 'Jewel', nature: 'Metal (金)', desc: 'Sharp and delicate perfectionist. Pursues beauty and possesses keen analytical skills.' },
+  '임': { symbol: 'Great Ocean', nature: 'Water (水)', desc: 'A free spirit with a broad mind. Deep thinker with great tolerance who embraces everyone.' },
+  '계': { symbol: 'Dew/Stream', nature: 'Water (水)', desc: 'Artistic temperament with rich sensitivity. Excellent intuition; calm on the surface but deep within.' },
+};
+const OHANG_EXCESS = {
+  '목': 'Full of drive but can be stubborn',
+  '화': 'Passionate but can be impulsive with mood swings',
+  '토': 'Stable but may fear change',
+  '금': 'Perfectionist but can be overly critical',
+  '수': 'Wise but can be indecisive',
+};
+const OHANG_LACK = {
+  '목': 'May lack drive and adventurous spirit',
+  '화': 'May lack passion and expressiveness',
+  '토': 'May lack stability and feel anxious',
+  '금': 'May lack decisiveness and judgment',
+  '수': 'May lack flexibility and adaptability',
+};
+
+const OHANG_EN = { '목': 'Wood', '화': 'Fire', '토': 'Earth', '금': 'Metal', '수': 'Water' };
+
+async function doAnalyze() {
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'flex';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/saju', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        birth_date: getBirthDate(),
+        birth_time: document.getElementById('birthTime').value,
+        gender: document.getElementById('gender').value,
+        lang: 'en',
+      }),
+    });
+    if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
+    const data = await resp.json();
+    if (data.error) { alert(data.error); return; }
+    renderResult(data);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderResult(d) {
+  document.getElementById('result').style.display = 'grid';
+  document.getElementById('ilganText').textContent = d.ilgan;
+  const info = ILGAN_INFO[d.ilgan] || {};
+  document.getElementById('ohangText').innerHTML =
+    OHANG_EMOJI[d.ilganOhang] + ' ' + esc(info.nature || d.ilganOhang) +
+    '<div style="font-size:0.85rem;color:#aaa;margin-top:4px">In nature, like <b style="color:#fff">' + esc(info.symbol || '') + '</b></div>';
+  document.getElementById('ilganDesc').textContent = info.desc || '';
+
+  const PILLAR_DESC = {
+    '년주': 'Year Pillar: Ancestors/parents, childhood',
+    '월주': 'Month Pillar: Parents/siblings, social life',
+    '일주': 'Day Pillar: Self, spouse fortune',
+    '시주': 'Hour Pillar: Children, later years',
+  };
+  document.getElementById('pillars').innerHTML = d.pillars.map(p =>
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+  ).join('');
+  document.getElementById('pillarDesc').innerHTML = d.pillars.map(p =>
+    '<span style="color:#ffd93d">'+esc(p.name)+'</span> '+esc(p.gan+p.ji)+' — '+esc(PILLAR_DESC[p.name]||'')
+  ).join(' · ');
+  window._pillarKeys = ['year','month','day','hour'];
+
+  const maxOh = Math.max(...Object.values(d.ohangCount), 1);
+  let ohangHtml = Object.entries(d.ohangCount).map(([k,v]) =>
+    '<div class="bar-item"><div class="bar-label"><span>'+OHANG_EMOJI[k]+' '+k+' ('+(OHANG_EN[k]||k)+')</span><span>'+v+'</span></div>' +
+    '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+OHANG_COLORS[k]+'"></div></div></div>'
+  ).join('');
+  // Excess/Lack tags
+  const ohangTags = [];
+  for (const [k,v] of Object.entries(d.ohangCount)) {
+    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + k + ' Excess: ' + esc(OHANG_EXCESS[k]) + '</span>');
+    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + k + ' Lacking: ' + esc(OHANG_LACK[k]) + '</span>');
+  }
+  if (ohangTags.length) ohangHtml += '<div class="tags" style="margin-top:8px">' + ohangTags.join('') + '</div>';
+  document.getElementById('ohangBars').innerHTML = ohangHtml;
+
+  // Major Fortune Cycles (Daeun)
+  if (d.daeun && d.daeun.length) {
+    document.getElementById('daeunSection').style.display = 'block';
+    const now = new Date();
+    const by = parseInt(document.getElementById('birthYear')?.value || 1995);
+    const currentAge = now.getFullYear() - by;
+
+    const daeunReadings = d.ai?.daeun_reading || [];
+    window._daeunData = d.daeun.map((du, i) => ({ ...du, reading: daeunReadings[i] || '', isCurrent: currentAge >= du.fromAge && currentAge <= du.toAge }));
+
+    document.getElementById('daeunTimeline').innerHTML = d.daeun.map((du, i) => {
+      const isCurrent = currentAge >= du.fromAge && currentAge <= du.toAge;
+      return '<div onclick="openDaeunModal('+i+', event)" style="min-width:90px;text-align:center;padding:12px 10px;border-radius:12px;flex-shrink:0;cursor:pointer;transition:transform 0.15s;' +
+        'background:' + (isCurrent ? 'rgba(233,69,96,0.2);border:2px solid #e94560' : 'rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)') + '" ' +
+        'onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'none\'">' +
+        '<div style="font-size:0.7rem;color:' + (isCurrent ? '#ff6b6b' : '#888') + ';margin-bottom:4px">' + esc(du.label) + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:700;color:#ffd93d">' + esc(du.gan) + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:700;color:#81c784">' + esc(du.ji) + '</div>' +
+        '<div style="font-size:0.7rem;color:#aaa;margin-top:4px">' + esc(du.ohang) + '/' + esc(du.jiOhang) + '</div>' +
+        (isCurrent ? '<div style="font-size:0.6rem;color:#ff6b6b;margin-top:2px;font-weight:700">Current</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  if (d.ai) {
+    document.getElementById('aiSection').style.display = 'block';
+
+    // Pillar-by-pillar AI reading
+    if (d.ai.pillar_reading) {
+      const pr = d.ai.pillar_reading;
+      const keys = ['year','month','day','hour'];
+      const labels = { year: 'Year Pillar', month: 'Month Pillar', day: 'Day Pillar', hour: 'Hour Pillar' };
+      let prHtml = '';
+      d.pillars.forEach((p, i) => {
+        const key = keys[i];
+        const reading = pr[key];
+        if (reading) {
+          prHtml += '<div style="margin-bottom:8px"><span style="color:#ffd93d;font-weight:600;font-size:0.8rem">'+esc(p.name)+' '+esc(p.gan+p.ji)+'</span> ' +
+            '<span style="color:#888;font-size:0.72rem">'+esc(PILLAR_DESC[p.name]||'')+'</span>' +
+            '<div style="color:#ccc;font-size:0.82rem;margin-top:3px;line-height:1.5">'+esc(reading)+'</div></div>';
+        }
+      });
+      if (prHtml) document.getElementById('pillarDesc').innerHTML = prHtml;
+    }
+
+    document.getElementById('aiPersonality').textContent = d.ai.personality || '';
+    document.getElementById('aiStrengths').innerHTML = (d.ai.strengths||[]).map(s => '<span class="tag tag-good">'+esc(s)+'</span>').join('');
+    document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
+    document.getElementById('aiLove').textContent = d.ai.love_style || '';
+    document.getElementById('aiCareer').textContent = d.ai.career || '';
+    document.getElementById('aiAdvice').textContent = d.ai.advice || '';
+  }
+
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+let _openDaeunIndex = -1;
+
+function openDaeunModal(index, event) {
+  const du = window._daeunData[index];
+  if (!du) return;
+
+  const accordion = document.getElementById('daeunAccordion');
+  const content = document.getElementById('daeunAccordionContent');
+
+  // Click same card again -> close
+  if (_openDaeunIndex === index) {
+    accordion.style.maxHeight = '0';
+    accordion.style.borderColor = 'transparent';
+    _openDaeunIndex = -1;
+    return;
+  }
+  _openDaeunIndex = index;
+
+  content.innerHTML =
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
+      '<div>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#ffd93d">' + esc(du.gan) + '</span>' +
+        '<span style="font-size:1.8rem;font-weight:800;color:#81c784;margin-left:2px">' + esc(du.ji) + '</span>' +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:0.9rem;font-weight:600;color:' + (du.isCurrent ? '#ff6b6b' : '#fff') + '">' +
+          esc(du.label) + (du.isCurrent ? ' (Current Cycle)' : '') +
+        '</div>' +
+        '<div style="font-size:0.8rem;color:#aaa">' +
+          (OHANG_EMOJI[du.ohang]||'') + ' ' + esc(du.ohang) + ' / ' + (OHANG_EMOJI[du.jiOhang]||'') + ' ' + esc(du.jiOhang) +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">You are currently under the influence of this major fortune cycle</div>' : '') +
+    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || 'No reading data available.') + '</p>';
+
+  // Measure content height and apply max-height (smooth transition)
+  accordion.style.maxHeight = '0';
+  accordion.style.borderColor = 'rgba(255,255,255,0.1)';
+  requestAnimationFrame(() => {
+    accordion.style.maxHeight = content.scrollHeight + 28 + 'px';
+  });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+</script>
+</body>
+</html>

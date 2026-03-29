@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Compatibility Analysis</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<script src="/js/browser-check.js"></script>
+<style>
+  .compat-cols { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 769px) { .compat-cols { grid-template-columns: 1fr 1fr; } }
+  .container.wide { max-width: 100%; width: 100%; }
+  @media (min-width: 769px) { .container.wide { max-width: 640px; } }
+  .date-selects { overflow: visible !important; }
+  .date-selects .combo { margin-bottom: 0; }
+  body.bg-compat, body.bg-compat .container { overflow: visible; }
+  html:has(body.bg-compat) { overflow: visible; }
+</style>
+</head>
+<body class="bg-compat">
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/compat.html">🇰🇷 한국어</a></nav>
+<div class="container wide">
+  <h1>💕 Compatibility Analysis</h1>
+  <p class="subtitle">Analyze the Five Elements compatibility between two people</p>
+
+  <div class="compat-cols">
+    <div class="card">
+      <h2>Person A</h2>
+      <label>Date of Birth</label>
+      <div class="date-selects" id="dateSelectsA"></div>
+      <label>Gender</label>
+      <select id="genderA">
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+      </select>
+      <label>Birth Hour</label>
+      <select id="timeA">
+        <option value="">Unknown</option>
+        <option value="00:00">Ja (23:30~01:30)</option>
+        <option value="01:00">Chuk (01:30~03:30)</option>
+        <option value="03:00">In (03:30~05:30)</option>
+        <option value="05:00">Myo (05:30~07:30)</option>
+        <option value="07:00">Jin (07:30~09:30)</option>
+        <option value="09:00">Sa (09:30~11:30)</option>
+        <option value="11:00">O (11:30~13:30)</option>
+        <option value="13:00">Mi (13:30~15:30)</option>
+        <option value="15:00">Sin (15:30~17:30)</option>
+        <option value="17:00">Yu (17:30~19:30)</option>
+        <option value="19:00">Sul (19:30~21:30)</option>
+        <option value="21:00">Hae (21:30~23:30)</option>
+      </select>
+    </div>
+    <div class="card">
+      <h2>Person B</h2>
+      <label>Date of Birth</label>
+      <div class="date-selects" id="dateSelectsB"></div>
+      <label>Gender</label>
+      <select id="genderB">
+        <option value="female">Female</option>
+        <option value="male">Male</option>
+      </select>
+      <label>Birth Hour</label>
+      <select id="timeB">
+        <option value="">Unknown</option>
+        <option value="00:00">Ja (23:30~01:30)</option>
+        <option value="01:00">Chuk (01:30~03:30)</option>
+        <option value="03:00">In (03:30~05:30)</option>
+        <option value="05:00">Myo (05:30~07:30)</option>
+        <option value="07:00">Jin (07:30~09:30)</option>
+        <option value="09:00">Sa (09:30~11:30)</option>
+        <option value="11:00">O (11:30~13:30)</option>
+        <option value="13:00">Mi (13:30~15:30)</option>
+        <option value="15:00">Sin (15:30~17:30)</option>
+        <option value="17:00">Yu (17:30~19:30)</option>
+        <option value="19:00">Sul (19:30~21:30)</option>
+        <option value="21:00">Hae (21:30~23:30)</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" id="compatBtn" onclick="doCompat()">Analyze Compatibility</button>
+
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing compatibility...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Interpreting Five Elements compatibility...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in">
+    <div class="card" style="text-align:center">
+      <p style="font-size:0.85rem;color:#aaa;margin-bottom:8px">Five Elements Compatibility</p>
+      <div style="margin:16px 0">
+        <span id="scoreNum" style="font-size:4rem;font-weight:800;background:linear-gradient(135deg,#ffd93d,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent"></span>
+        <span class="grade" id="gradeTag" style="margin-left:10px;font-size:1.3rem"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Saju Comparison</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <p style="font-size:0.82rem;color:#ffd93d;margin-bottom:6px" id="labelA"></p>
+          <div class="pillars" id="pillarsA"></div>
+        </div>
+        <div>
+          <p style="font-size:0.82rem;color:#ffd93d;margin-bottom:6px" id="labelB"></p>
+          <div class="pillars" id="pillarsB"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="relationsCard">
+      <h2>Five Elements Relations</h2>
+      <div id="relationsContent"></div>
+    </div>
+
+    <div id="aiSection" style="display:none">
+      <div class="card">
+        <h2>Compatibility Analysis</h2>
+        <p id="aiSummary" style="font-size:1rem;font-weight:600;margin-bottom:12px"></p>
+        <div style="margin-bottom:8px">
+          <span style="font-size:0.8rem;color:#81c784">Strengths</span>
+          <div class="tags" id="aiStrengths"></div>
+        </div>
+        <div style="margin-bottom:8px">
+          <span style="font-size:0.8rem;color:#ffb74d">Cautions</span>
+          <div class="tags" id="aiCautions"></div>
+        </div>
+        <div class="saju-box" id="aiReading"></div>
+        <div class="advice-box" id="aiAdvice" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/js/lunar.js?v=1"></script>
+<script src="/js/components.js?v=3"></script>
+<script>
+// Compat date selects (separate for A/B)
+const _compatCalType = { a: 'solar', b: 'solar' };
+function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  const thisYear = new Date().getFullYear();
+  const yearLabel = 'Year';
+  const monthLabel = 'Month';
+  const dayLabel = 'Day';
+  let html = '';
+  // Solar/Lunar toggle
+  html += '<div class="calendar-toggle">';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">Solar</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">Lunar</button>';
+  html += '</div>';
+  // Year
+  html += '<div class="date-select-group"><label>'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateMonthsFor(\''+prefix+'\');updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
+  for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
+  html += '</select></div>';
+  // Month
+  html += '<div class="date-select-group"><label>'+monthLabel+'</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
+  for (let m = 1; m <= 12; m++) html += '<option value="'+m+'" '+(m==defM?'selected':'')+'>'+m+'</option>';
+  html += '</select></div>';
+  // Day
+  html += '<div class="date-select-group"><label>'+dayLabel+'</label><select id="'+prefix+'Day">';
+  const days = new Date(defY, defM, 0).getDate();
+  for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d==defD?'selected':'')+'>'+d+'</option>';
+  html += '</select></div>';
+  c.innerHTML = html;
+  // Convert to custom combo
+  c.querySelectorAll('select').forEach(s => createCombo(s));
+}
+function setCompatCalType(btn, prefix, type) {
+  _compatCalType[prefix] = type;
+  const wrap = btn.closest('.calendar-toggle');
+  wrap.querySelectorAll('.cal-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateMonthsFor(prefix);
+  updateDaysFor(prefix);
+  saveCompatInputs();
+}
+function updateMonthsFor(prefix) {
+  const monthSelect = document.getElementById(prefix+'Month');
+  if (!monthSelect) return;
+  const curVal = monthSelect.value;
+  const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
+  monthSelect.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = String(m);
+    opt.textContent = m;
+    monthSelect.appendChild(opt);
+    if (_compatCalType[prefix] === 'lunar' && typeof hasLeapMonth === 'function' && hasLeapMonth(y, m)) {
+      const leapOpt = document.createElement('option');
+      leapOpt.value = 'leap_' + m;
+      leapOpt.textContent = 'Leap ' + m;
+      monthSelect.appendChild(leapOpt);
+    }
+  }
+  if (monthSelect.querySelector('option[value="'+curVal+'"]')) {
+    monthSelect.value = curVal;
+  } else {
+    monthSelect.value = monthSelect.options[0]?.value || '1';
+  }
+  // Recreate custom combo
+  const combo = monthSelect.closest('.combo');
+  if (combo) {
+    const dropdown = combo.querySelector('.combo-dropdown');
+    const trigger = combo.querySelector('.combo-trigger span:first-child');
+    dropdown.innerHTML = '';
+    Array.from(monthSelect.options).forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
+      div.textContent = opt.textContent;
+      div.dataset.value = opt.value;
+      div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        monthSelect.value = opt.value;
+        trigger.textContent = opt.textContent;
+        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
+        div.classList.add('selected');
+        combo.classList.remove('open');
+        updateDaysFor(prefix);
+        saveCompatInputs();
+      });
+      dropdown.appendChild(div);
+    });
+    const selOpt = monthSelect.options[monthSelect.selectedIndex];
+    if (trigger && selOpt) trigger.textContent = selOpt.textContent;
+  }
+}
+function updateDaysFor(prefix) {
+  const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
+  const mVal = document.getElementById(prefix+'Month')?.value || '1';
+  const sel = document.getElementById(prefix+'Day');
+  if (!sel) return;
+  const cur = parseInt(sel.value) || 1;
+  const days = (_compatCalType[prefix] === 'lunar') ? 30 : new Date(y, parseInt(mVal), 0).getDate();
+  let html = '';
+  for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d===Math.min(cur,days)?'selected':'')+'>'+d+'</option>';
+  sel.innerHTML = html;
+}
+function getDateFor(prefix) {
+  const y = document.getElementById(prefix+'Year')?.value;
+  const mVal = document.getElementById(prefix+'Month')?.value;
+  const d = document.getElementById(prefix+'Day')?.value;
+  if (!y || !mVal || !d) return '';
+  if (_compatCalType[prefix] === 'lunar' && typeof lunarToSolar === 'function') {
+    const isLeap = mVal.startsWith('leap_');
+    const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
+    const solar = lunarToSolar(+y, m, +d, isLeap);
+    if (!solar) { alert('Invalid lunar date'); return ''; }
+    return solar.year + '-' + String(solar.month).padStart(2,'0') + '-' + String(solar.day).padStart(2,'0');
+  }
+  return y + '-' + String(mVal).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+}
+
+// localStorage save/restore
+const COMPAT_KEY = 'karma_compat_input';
+function saveCompatInputs() {
+  const data = {};
+  ['aYear','aMonth','aDay','genderA','timeA','bYear','bMonth','bDay','genderB','timeB'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  localStorage.setItem(COMPAT_KEY, JSON.stringify(data));
+}
+function restoreCompatInputs() {
+  try {
+    const data = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
+    if (!data.aYear) return false;
+    Object.entries(data).forEach(([id, val]) => setComboValue(id, val));
+    return true;
+  } catch { return false; }
+}
+
+const saved = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
+createDateSelectsFor('dateSelectsA', 'a', +saved.aYear || 1995, +saved.aMonth || 3, +saved.aDay || 20);
+createDateSelectsFor('dateSelectsB', 'b', +saved.bYear || 1998, +saved.bMonth || 7, +saved.bDay || 11);
+restoreCompatInputs();
+
+// Auto-save on change (combo click event delegation)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.combo-option')) setTimeout(saveCompatInputs, 50);
+});
+
+async function doCompat() {
+  const btn = document.getElementById('compatBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'flex';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/compat-quick', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value },
+        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value },
+        lang: 'en',
+      }),
+    });
+    if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
+    const data = await resp.json();
+    if (data.error) { alert(data.error); return; }
+    renderResult(data);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderResult(d) {
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('scoreNum').textContent = d.score;
+  const gt = document.getElementById('gradeTag');
+  gt.textContent = d.grade;
+  gt.className = 'grade grade-' + d.grade;
+
+  document.getElementById('labelA').textContent = 'A: ' + d.saju_a.ilgan + ' ' + d.saju_a.ilganOhang + '(' + ohangEmoji(d.saju_a.ilganOhang) + ')';
+  document.getElementById('labelB').textContent = 'B: ' + d.saju_b.ilgan + ' ' + d.saju_b.ilganOhang + '(' + ohangEmoji(d.saju_b.ilganOhang) + ')';
+
+  document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
+  document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
+
+  // Five Elements relations
+  let relHtml = '';
+  if (d.relations.sangsaeng.length) relHtml += d.relations.sangsaeng.map(r => '<div class="tag tag-good">Harmony: ' + esc(r) + '</div>').join('');
+  if (d.relations.sanggeuk.length) relHtml += d.relations.sanggeuk.map(r => '<div class="tag tag-warn">Clash: ' + esc(r) + '</div>').join('');
+  if (d.relations.same) relHtml += '<div class="tag tag-good">Same Element (Bihwa)</div>';
+  if (!relHtml) relHtml = '<p style="color:#888;font-size:0.85rem">No special elemental relations</p>';
+  document.getElementById('relationsContent').innerHTML = '<div class="tags">' + relHtml + '</div>';
+
+  // AI
+  if (d.ai) {
+    document.getElementById('aiSection').style.display = 'block';
+    document.getElementById('aiSummary').textContent = d.ai.summary || '';
+    document.getElementById('aiStrengths').innerHTML = (d.ai.strengths||[]).map(s => '<span class="tag tag-good">'+esc(s)+'</span>').join('');
+    document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
+    document.getElementById('aiReading').textContent = '🔮 ' + (d.ai.saju_reading || '');
+    document.getElementById('aiAdvice').textContent = '💡 ' + (d.ai.advice || '');
+  }
+
+  result.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderPillars(pillars) {
+  return pillars.map(p =>
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+  ).join('');
+}
+
+function ohangEmoji(oh) { return {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'}[oh] || ''; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+</body>
+</html>

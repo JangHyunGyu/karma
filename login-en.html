@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Login</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<script src="/js/browser-check.js"></script>
+</head>
+<body>
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/login.html">🇰🇷 한국어</a></nav>
+<div class="container">
+  <h1>Karma</h1>
+  <p class="subtitle">Profile Matching Login</p>
+
+  <div class="card">
+    <h2>Login</h2>
+    <div class="error" id="loginError"></div>
+    <label>ID</label>
+    <input type="text" id="loginId" placeholder="Alphanumeric ID">
+    <label>Password</label>
+    <input type="password" id="loginPw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn" onclick="doLogin()">Login</button>
+    <p class="link"><a href="/register-en.html">Don't have an account? Register</a></p>
+  </div>
+
+</div>
+
+<script src="/js/components.js?v=3"></script>
+<script>
+function showError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doLogin() {
+  const user_id = document.getElementById('loginId').value.trim();
+  const password = document.getElementById('loginPw').value;
+  if (!user_id || !password) return showError('Please enter your ID and password');
+
+  try {
+    const resp = await fetch(API_BASE + '/api/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id, password }),
+    });
+    const data = await resp.json();
+    if (!data.success) return showError(data.error);
+    sessionStorage.setItem('user_id', user_id);
+    sessionStorage.setItem('password', password);
+    location.href = '/discover-en.html';
+  } catch(e) {
+    showError('Server error: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

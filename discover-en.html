@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Discover</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+</head>
+<body>
+<div class="container wide">
+  <div class="nav">
+    <span class="nav-title">🔍 Discover</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font-size:0.8rem;color:#888" id="myInfo"></span>
+      <button class="btn btn-small" onclick="location.href='/matches-en.html'">💬 Messages</button>
+      <button class="btn btn-small btn-secondary" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div id="loading" style="position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Finding compatible matches...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Analyzing potential matches...</p>
+  </div>
+
+  <div id="content" style="display:none">
+    <div id="matchList"></div>
+    <div id="empty" style="display:none" class="empty-state">
+      <p>No matches found yet</p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/components.js?v=3"></script>
+<script>
+const userId = sessionStorage.getItem('user_id');
+if (!userId) location.href = '/login-en.html';
+
+document.getElementById('myInfo').textContent = userId;
+
+async function loadMatches() {
+  try {
+    const resp = await fetch(API_BASE + '/api/match-list/' + encodeURIComponent(userId));
+    const data = await resp.json();
+    if (data.error) { alert(data.error); return; }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    if (!data.matches.length) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+    document.getElementById('matchList').innerHTML = data.matches.map(m => `
+      <div class="match-card fade-in" onclick="location.href='/match-en.html?a=${esc(userId)}&b=${esc(m.user_id)}'">
+        <div class="match-info">
+          <div class="name">${esc(m.nickname)}</div>
+          <div class="meta">Age ${m.age} · ${OHANG_EMOJI[m.ohang]||''} ${esc(m.ohang||'')} type</div>
+        </div>
+        <div class="match-scores">
+          <div class="score-badge score-saju">
+            <div class="num">${m.saju_score}</div>
+            <div class="lbl">Compat.</div>
+          </div>
+          <span class="grade grade-${m.grade}">${m.grade}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+function doLogout() {
+  sessionStorage.clear();
+  location.href = '/index-en.html';
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+loadMatches();
+</script>
+</body>
+</html>

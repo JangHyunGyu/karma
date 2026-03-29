@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Palm Reading</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<style>
+.upload-area {
+  border: 2px dashed rgba(201,160,68,0.25);
+  border-radius: 16px;
+  padding: 48px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+  position: relative;
+  background: radial-gradient(circle at 50% 40%, rgba(201,160,68,0.06) 0%, transparent 70%);
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: #c9a044;
+  background: radial-gradient(circle at 50% 40%, rgba(201,160,68,0.12) 0%, transparent 70%);
+  box-shadow: 0 0 30px rgba(201,160,68,0.08);
+}
+.upload-area.has-image {
+  padding: 0;
+  border-style: solid;
+  border-color: rgba(201,160,68,0.3);
+  background: none;
+}
+.upload-area .upload-visual {
+  width: 80px; height: 80px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201,160,68,0.15), rgba(123,94,167,0.15));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+  box-shadow: 0 4px 20px rgba(201,160,68,0.1);
+}
+.upload-area .upload-text {
+  color: #c9a044;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.upload-area .upload-hint {
+  color: #666;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.upload-area img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+}
+.upload-area input[type="file"] { display: none; }
+
+.options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.opt-group label {
+  font-size: 0.72rem;
+  color: #888;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.opt-group select { width: 100%; margin-bottom: 0; }
+
+.result-section { margin-top: 24px; }
+.score-ring {
+  width: 120px; height: 120px;
+  margin: 0 auto 16px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.score-ring .score-num { font-size: 2.8rem; font-weight: 900; color: #c9a044; z-index: 1; }
+.score-ring .score-grade { position: absolute; bottom: -4px; right: -4px; z-index: 2; }
+.score-header { text-align: center; padding: 28px 20px; margin-bottom: 16px; }
+.score-header .summary-text { color: #aaa; font-size: 0.88rem; margin-top: 12px; line-height: 1.5; }
+
+.line-item {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.line-item:last-child { border-bottom: none; }
+.line-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.line-name { font-weight: 700; color: #e8e0d0; font-size: 0.92rem; }
+.line-score { color: #c9a044; font-weight: 700; font-size: 1rem; }
+.line-length {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #b39ddb;
+  background: rgba(123,94,167,0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+.line-desc { font-size: 0.82rem; color: #999; line-height: 1.6; margin-top: 8px; }
+
+.hand-shape-box {
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(201,160,68,0.08), rgba(123,94,167,0.06));
+  border: 1px solid rgba(201,160,68,0.12);
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.hand-shape-box .hs-type { font-weight: 700; color: #c9a044; font-size: 1.05rem; margin-bottom: 8px; }
+.hand-shape-box .hs-desc { font-size: 0.85rem; color: #bbb; line-height: 1.6; }
+
+.fortune-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.fort-card {
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.fort-icon { font-size: 1.4rem; margin-bottom: 6px; }
+.fort-label { font-size: 0.7rem; color: #c9a044; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.fort-text { font-size: 0.8rem; color: #bbb; line-height: 1.5; }
+</style>
+<script src="/js/browser-check.js"></script>
+</head>
+<body class="bg-saju">
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/palm.html">🇰🇷 한국어</a></nav>
+<div class="container">
+  <h1>🤚 Palm Reading</h1>
+  <p class="subtitle">AI analyzes your palm lines</p>
+
+  <div class="card">
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-visual">🤚</div>
+      <div class="upload-text">Upload Palm Photo</div>
+      <div class="upload-hint">Tap to select a photo</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div style="font-size:0.72rem;color:#888;line-height:1.6;padding:0 4px;margin-bottom:16px">
+      <div style="color:#c9a044;font-weight:600;margin-bottom:4px">📌 Caution</div>
+      <span>• Spread your palm wide open for the photo</span><br>
+      <span>• Take the photo in a bright area so palm lines are clearly visible</span><br>
+      <span>• Take a close-up photo showing only the palm</span><br>
+      <span>• Dominant hand = acquired effort, Non-dominant = innate destiny</span><br>
+      <span>• Including fingers allows for more accurate analysis</span>
+    </div>
+    <div class="options-row">
+      <div class="opt-group">
+        <label>Dominant Hand</label>
+        <select id="dominant" onchange="updateHandLabels()">
+          <option value="right">Right-handed</option>
+          <option value="left">Left-handed</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label>Which Hand</label>
+        <select id="hand">
+          <option value="왼손" id="handLeft">Left (Innate)</option>
+          <option value="오른손" id="handRight">Right (Acquired)</option>
+        </select>
+      </div>
+    </div>
+    <div class="options-row">
+      <div class="opt-group">
+        <label>Gender</label>
+        <select id="gender" onchange="checkReady()">
+          <option value="" disabled selected>Select</option>
+          <option value="남성">Male</option>
+          <option value="여성">Female</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="analyzeBtn" disabled>Analyze Palm</button>
+  </div>
+
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing your palm lines...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">The analysis engine is reading your palm lines...</p>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="result-section" id="result" style="display:none">
+    <div class="card score-header">
+      <div class="score-ring">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/><circle id="scoreCircle" cx="60" cy="60" r="52" fill="none" stroke="#c9a044" stroke-width="8" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327"/></svg>
+        <span class="score-num" id="totalScore"></span>
+        <span class="score-grade" id="totalGrade"></span>
+      </div>
+      <div class="summary-text" id="summary"></div>
+    </div>
+
+    <div class="card" id="lines" style="padding:22px"></div>
+
+    <div class="card">
+      <h2>🖐️ Hand Shape</h2>
+      <div class="hand-shape-box" id="handShape"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔮 Fortune Reading</h2>
+      <div class="fortune-grid" id="fortune"></div>
+    </div>
+
+    <div class="card">
+      <h2>💡 Advice</h2>
+      <p id="advice" style="font-size:0.88rem;color:#bbb;line-height:1.7"></p>
+    </div>
+
+    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">Analyze Again</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://karma-api.yama5993.workers.dev';
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const analyzeBtn = document.getElementById('analyzeBtn');
+let imageData = null, imageMime = null;
+
+function checkReady() {
+  analyzeBtn.disabled = !(imageData && document.getElementById('gender').value);
+}
+
+function updateHandLabels() {
+  const dom = document.getElementById('dominant').value;
+  const leftEl = document.getElementById('handLeft');
+  const rightEl = document.getElementById('handRight');
+  if (dom === 'right') {
+    leftEl.textContent = 'Left (Innate)';
+    rightEl.textContent = 'Right (Acquired)';
+  } else {
+    leftEl.textContent = 'Left (Acquired)';
+    rightEl.textContent = 'Right (Innate)';
+  }
+}
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  if (file.size > 15 * 1024 * 1024) {
+    alert('Image size exceeds 15MB. Please use a smaller photo.');
+    return;
+  }
+  imageMime = file.type;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageData = e.target.result.split(',')[1];
+    uploadArea.classList.add('has-image');
+    uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
+    document.getElementById('fileInput').addEventListener('change', e2 => { if (e2.target.files[0]) handleFile(e2.target.files[0]); });
+    checkReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!imageData) return;
+  analyzeBtn.disabled = true;
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const resp = await fetch(`${API}/api/palm-reading`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: imageData, mimeType: imageMime,
+        hand: document.getElementById('hand').value,
+        gender: document.getElementById('gender').value,
+        lang: 'en',
+      }),
+    });
+    if (!resp.ok) throw new Error('A server error occurred. Please try again later.');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderResult(data);
+  } catch (e) {
+    const err = document.getElementById('error');
+    err.textContent = e.message || 'An error occurred during analysis';
+    err.style.display = 'block';
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    analyzeBtn.disabled = false;
+  }
+});
+
+function renderResult(d) {
+  const score = d.overall_score || 0;
+  document.getElementById('totalScore').textContent = score;
+  const grade = d.overall_grade || getGrade(score);
+  document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
+  document.getElementById('summary').textContent = d.summary || '';
+
+  const offset = 327 - (327 * score / 100);
+  document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+
+  const linesEl = document.getElementById('lines');
+  linesEl.innerHTML = '<h2>📋 Detailed Palm Line Analysis</h2>' + (d.lines || []).map(l => `
+    <div class="line-item">
+      <div class="line-top">
+        <span class="line-name">${l.name}</span>
+        <span class="line-score">${l.score} pts</span>
+      </div>
+      ${l.length ? `<span class="line-length">${l.length}</span>` : ''}
+      <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${l.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
+      <div class="line-desc">${l.desc}</div>
+    </div>
+  `).join('');
+
+  const hs = d.hand_shape || {};
+  document.getElementById('handShape').innerHTML = `
+    <div class="hs-type">${hs.type || '-'}</div>
+    <div class="hs-desc">${hs.desc || ''}</div>
+  `;
+
+  const fort = d.fortune || {};
+  document.getElementById('fortune').innerHTML = [
+    ['💰', 'Wealth', fort.wealth],
+    ['💼', 'Career', fort.career],
+    ['❤️', 'Love', fort.love],
+    ['🏥', 'Health', fort.health],
+  ].map(([icon, label, text]) => `
+    <div class="fort-card">
+      <div class="fort-icon">${icon}</div>
+      <div class="fort-label">${label}</div>
+      <div class="fort-text">${text || '-'}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('advice').textContent = d.advice || '';
+  document.getElementById('result').style.display = '';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function getGrade(s) {
+  if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
+}
+
+function resetForm() {
+  imageData = null; imageMime = null;
+  uploadArea.classList.remove('has-image');
+  uploadArea.innerHTML = '<div class="upload-visual">🤚</div><div class="upload-text">Upload Palm Photo</div><div class="upload-hint">Tap to select a photo</div><input type="file" id="fileInput" accept="image/*">';
+  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  analyzeBtn.disabled = true;
+  document.getElementById('result').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

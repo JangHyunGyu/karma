@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Register</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<script src="/js/browser-check.js"></script>
+</head>
+<body>
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/register.html">🇰🇷 한국어</a></nav>
+<div class="container">
+  <h1>Karma</h1>
+  <p class="subtitle">Profile Matching Registration</p>
+
+  <div class="card">
+    <h2>Basic Information</h2>
+    <div class="error" id="regError"></div>
+    <label>ID (3-20 alphanumeric characters)</label>
+    <input type="text" id="regId" placeholder="myid123">
+    <label>Password</label>
+    <input type="password" id="regPw1" placeholder="Password">
+    <label>Confirm Password</label>
+    <input type="password" id="regPw2" placeholder="Re-enter password">
+    <label>Nickname</label>
+    <input type="text" id="regNick" placeholder="Your nickname">
+    <div class="row">
+      <div>
+        <label>Gender</label>
+        <select id="regGender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div>
+        <label>Interested In</label>
+        <select id="regInterest">
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+    </div>
+    <label>Date of Birth (Solar)</label>
+    <input type="date" id="regBirthDate" value="1995-03-20">
+    <label>Birth Hour (Optional)</label>
+    <select id="regBirthTime">
+      <option value="">Unknown</option>
+      <option value="00:00">Ja (23:30~01:30)</option>
+      <option value="01:00">Chuk (01:30~03:30)</option>
+      <option value="03:00">In (03:30~05:30)</option>
+      <option value="05:00">Myo (05:30~07:30)</option>
+      <option value="07:00">Jin (07:30~09:30)</option>
+      <option value="09:00">Sa (09:30~11:30)</option>
+      <option value="11:00">O (11:30~13:30)</option>
+      <option value="13:00">Mi (13:30~15:30)</option>
+      <option value="15:00">Sin (15:30~17:30)</option>
+      <option value="17:00">Yu (17:30~19:30)</option>
+      <option value="19:00">Sul (19:30~21:30)</option>
+      <option value="21:00">Hae (21:30~23:30)</option>
+    </select>
+  </div>
+
+  <button class="btn" onclick="doRegister()">Register</button>
+  <p class="link"><a href="/login-en.html">Already have an account? Login</a></p>
+</div>
+
+<script src="/js/components.js?v=3"></script>
+<script>
+function showError(msg) {
+  const el = document.getElementById('regError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doRegister() {
+  const user_id = document.getElementById('regId').value.trim();
+  const pw1 = document.getElementById('regPw1').value;
+  const pw2 = document.getElementById('regPw2').value;
+  const nickname = document.getElementById('regNick').value.trim();
+  const gender = document.getElementById('regGender').value;
+  const interest_gender = document.getElementById('regInterest').value;
+  const birth_date = document.getElementById('regBirthDate').value;
+  const birth_time = document.getElementById('regBirthTime').value;
+
+  if (!user_id || !pw1 || !nickname || !birth_date) return showError('Please fill in all required fields');
+  if (pw1 !== pw2) return showError('Passwords do not match');
+  if (!/^[a-zA-Z0-9]{3,20}$/.test(user_id)) return showError('ID must be 3-20 alphanumeric characters');
+
+  try {
+    const resp = await fetch(API_BASE + '/api/register', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id, password: pw1, nickname, gender, interest_gender, birth_date, birth_time }),
+    });
+    const data = await resp.json();
+    if (!data.success) return showError(data.error);
+    sessionStorage.setItem('user_id', user_id);
+    sessionStorage.setItem('password', pw1);
+    location.href = '/discover-en.html';
+  } catch(e) {
+    showError('Server error: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

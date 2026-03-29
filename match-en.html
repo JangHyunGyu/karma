@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Detailed Compatibility</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+</head>
+<body>
+<div class="container">
+  <p class="link" style="text-align:left;margin-bottom:16px"><a href="/discover-en.html">← Back to Discover</a></p>
+
+  <div id="loading" style="position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing compatibility...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Interpreting detailed compatibility...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in">
+    <div class="card" style="text-align:center">
+      <div id="headerInfo"></div>
+      <div style="margin:20px 0">
+        <span id="scoreNum" style="font-size:3.5rem;font-weight:800;background:linear-gradient(135deg,#ffd93d,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent"></span>
+        <span class="grade" id="gradeTag" style="margin-left:10px;font-size:1.2rem"></span>
+      </div>
+      <p style="font-size:0.85rem;color:#aaa">Five Elements Compatibility</p>
+    </div>
+
+    <div class="card">
+      <h2>Saju Comparison</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <p style="font-size:0.82rem;color:#ffd93d;margin-bottom:6px" id="labelA"></p>
+          <div class="pillars" id="pillarsA"></div>
+        </div>
+        <div>
+          <p style="font-size:0.82rem;color:#ffd93d;margin-bottom:6px" id="labelB"></p>
+          <div class="pillars" id="pillarsB"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Five Elements Relations</h2>
+      <div id="relations" class="tags"></div>
+    </div>
+
+    <div id="aiSection" style="display:none">
+      <div class="card">
+        <h2>Compatibility Analysis</h2>
+        <p id="aiSummary" style="font-size:1rem;font-weight:600;margin-bottom:12px"></p>
+        <div style="margin-bottom:8px">
+          <span style="font-size:0.8rem;color:#81c784">Strengths</span>
+          <div class="tags" id="aiStrengths"></div>
+        </div>
+        <div style="margin-bottom:8px">
+          <span style="font-size:0.8rem;color:#ffb74d">Cautions</span>
+          <div class="tags" id="aiCautions"></div>
+        </div>
+        <div class="saju-box" id="aiReading"></div>
+        <div class="advice-box" id="aiAdvice" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/components.js?v=3"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const idA = params.get('a'), idB = params.get('b');
+if (!idA || !idB) location.href = '/discover-en.html';
+
+const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+async function loadMatch() {
+  try {
+    const resp = await fetch(API_BASE + '/api/match/' + encodeURIComponent(idA) + '/' + encodeURIComponent(idB));
+    const d = await resp.json();
+    if (d.error) { alert(d.error); return; }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('result').style.display = 'block';
+
+    document.getElementById('headerInfo').innerHTML =
+      '<span style="font-size:1.1rem;font-weight:600">' + esc(d.user_a.nickname) + '</span>' +
+      ' <span style="color:#888;font-size:0.8rem">Age ' + d.user_a.age + '</span>' +
+      ' <span style="color:#e94560;margin:0 8px">💕</span> ' +
+      '<span style="font-size:1.1rem;font-weight:600">' + esc(d.user_b.nickname) + '</span>' +
+      ' <span style="color:#888;font-size:0.8rem">Age ' + d.user_b.age + '</span>';
+
+    document.getElementById('scoreNum').textContent = d.score;
+    const gt = document.getElementById('gradeTag');
+    gt.textContent = d.grade;
+    gt.className = 'grade grade-' + d.grade;
+
+    document.getElementById('labelA').textContent = esc(d.user_a.nickname) + ' (' + d.saju_a.ilgan + ' ' + (OHANG_EMOJI[d.user_a.ohang]||'') + d.user_a.ohang + ')';
+    document.getElementById('labelB').textContent = esc(d.user_b.nickname) + ' (' + d.saju_b.ilgan + ' ' + (OHANG_EMOJI[d.user_b.ohang]||'') + d.user_b.ohang + ')';
+
+    document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
+    document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
+
+    let relHtml = '';
+    if (d.relations.sangsaeng.length) relHtml += d.relations.sangsaeng.map(r => '<span class="tag tag-good">Harmony: ' + esc(r) + '</span>').join('');
+    if (d.relations.sanggeuk.length) relHtml += d.relations.sanggeuk.map(r => '<span class="tag tag-warn">Clash: ' + esc(r) + '</span>').join('');
+    if (d.relations.same) relHtml += '<span class="tag tag-good">Same Element</span>';
+    document.getElementById('relations').innerHTML = relHtml || '<span style="color:#888;font-size:0.85rem">No special relations</span>';
+
+    if (d.ai) {
+      document.getElementById('aiSection').style.display = 'block';
+      document.getElementById('aiSummary').textContent = d.ai.summary || '';
+      document.getElementById('aiStrengths').innerHTML = (d.ai.strengths||[]).map(s => '<span class="tag tag-good">'+esc(s)+'</span>').join('');
+      document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
+      document.getElementById('aiReading').textContent = '🔮 ' + (d.ai.saju_reading || '');
+      document.getElementById('aiAdvice').textContent = '💡 ' + (d.ai.advice || '');
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+function renderPillars(pillars) {
+  return pillars.map(p =>
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+  ).join('');
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+loadMatch();
+</script>
+</body>
+</html>

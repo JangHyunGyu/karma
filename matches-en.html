@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Matches & Messages</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+</head>
+<body>
+<div class="container wide">
+  <div class="nav">
+    <span class="nav-title">💬 Matches & Messages</span>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-small" onclick="location.href='/discover-en.html'">🔍 Discover</button>
+      <button class="btn btn-small btn-secondary" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div id="loading" style="position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Loading match list...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Please wait a moment...</p>
+  </div>
+
+  <div id="content" style="display:none">
+    <div id="matchList"></div>
+    <div id="empty" style="display:none" class="empty-state">
+      <p>No matches yet</p>
+      <p style="font-size:0.8rem;color:#555;margin-top:8px">Send a 💕 Like to someone on the Discover page</p>
+      <button class="btn" style="margin-top:16px;width:auto;padding:10px 24px" onclick="location.href='/discover-en.html'">Go to Discover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Message Modal -->
+<div id="chatModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;display:none">
+  <div style="max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">
+      <span id="chatTitle" style="font-weight:700;color:#ff6b6b"></span>
+      <button class="btn btn-small btn-secondary" onclick="closeChat()">Close</button>
+    </div>
+    <div id="chatMessages" style="flex:1;overflow-y:auto;padding:10px 0"></div>
+    <div style="display:flex;gap:8px;padding:10px 0">
+      <input type="text" id="chatInput" placeholder="Type a message..." style="flex:1" onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="btn btn-small" onclick="sendMsg()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/components.js?v=3"></script>
+<script>
+const userId = sessionStorage.getItem('user_id');
+if (!userId) location.href = '/login-en.html';
+
+let currentChatUser = null;
+
+async function loadMatches() {
+  try {
+    const resp = await fetch(API_BASE + '/api/matches/' + encodeURIComponent(userId));
+    const data = await resp.json();
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    if (!data.matches.length) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+    document.getElementById('matchList').innerHTML = data.matches.map(m => `
+      <div class="match-card fade-in" onclick="openChat('${esc(m.user_id)}','${esc(m.nickname)}')">
+        <div class="match-info">
+          <div class="name">${esc(m.nickname)} <span style="font-size:0.75rem;color:#888">${OHANG_EMOJI[m.ohang]||''} ${esc(m.ohang||'')}</span></div>
+          <div class="meta">${m.last_message ? esc(m.last_message) : 'No conversation started yet'}</div>
+        </div>
+        ${m.unread_count > 0 ? '<span style="background:#e94560;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">'+m.unread_count+'</span>' : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function openChat(otherId, nickname) {
+  currentChatUser = otherId;
+  document.getElementById('chatModal').style.display = 'block';
+  document.getElementById('chatTitle').textContent = 'Messages with ' + nickname;
+  document.getElementById('chatInput').focus();
+
+  // Mark as read
+  fetch(API_BASE + '/api/messages/' + otherId + '/read', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id: userId }),
+  });
+
+  // Load messages
+  const resp = await fetch(API_BASE + '/api/messages/' + userId + '/' + otherId);
+  const data = await resp.json();
+
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = data.messages.map(m => {
+    const isMine = m.sender_id === userId;
+    return '<div style="display:flex;justify-content:'+(isMine?'flex-end':'flex-start')+';margin-bottom:8px">' +
+      '<div style="max-width:70%;padding:10px 14px;border-radius:16px;font-size:0.9rem;' +
+      (isMine ? 'background:#e94560;color:#fff' : 'background:rgba(255,255,255,0.1);color:#e0e0e0') + '">' +
+      esc(m.content) +
+      '<div style="font-size:0.65rem;color:'+(isMine?'rgba(255,255,255,0.6)':'#666')+';margin-top:4px">' + formatTime(m.created_at) + '</div>' +
+      '</div></div>';
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function closeChat() {
+  document.getElementById('chatModal').style.display = 'none';
+  currentChatUser = null;
+  loadMatches(); // Refresh list
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if (!content || !currentChatUser) return;
+
+  input.value = '';
+  try {
+    await fetch(API_BASE + '/api/messages/' + currentChatUser, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: userId, content }),
+    });
+    openChat(currentChatUser, document.getElementById('chatTitle').textContent.replace('Messages with ',''));
+  } catch(e) {
+    alert('Send failed: ' + e.message);
+  }
+}
+
+function formatTime(dt) {
+  if (!dt) return '';
+  const d = new Date(dt + 'Z');
+  const now = new Date();
+  const diff = (now - d) / 60000;
+  if (diff < 1) return 'Just now';
+  if (diff < 60) return Math.floor(diff) + 'm ago';
+  if (diff < 1440) return Math.floor(diff/60) + 'h ago';
+  return d.toLocaleDateString('en');
+}
+
+function doLogout() { sessionStorage.clear(); location.href = '/index-en.html'; }
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+loadMatches();
+</script>
+</body>
+</html>

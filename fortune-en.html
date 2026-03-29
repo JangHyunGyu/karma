@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - This Year's Fortune</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<style>
+  .fortune-grid { display: grid; gap: 14px; }
+  .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  .container.fortune-page { max-width: 100%; width: 100%; }
+  @media (min-width: 769px) {
+    .container.fortune-page { max-width: 1000px; }
+    .fortune-2col { grid-template-columns: 1fr 1fr; }
+  }
+  .fortune-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); word-break: break-word; }
+</style>
+<script src="/js/browser-check.js"></script>
+</head>
+<body class="bg-fortune">
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/index-en.html">🏠 Home</a> <a href="/fortune.html">🇰🇷 한국어</a></nav>
+<div class="container fortune-page">
+  <h1>🌟 This Year's Fortune</h1>
+  <p class="subtitle">Get a detailed fortune analysis by date of birth</p>
+
+  <div class="card" style="max-width:480px;margin:0 auto 20px">
+    <label>Date of Birth (Solar)</label>
+    <div class="date-selects" id="dateSelects"></div>
+    <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+      <div>
+        <label>Gender</label>
+        <select id="gender" onchange="saveInputs()">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div>
+        <label>Birth Hour</label>
+        <select id="birthTime" onchange="saveInputs()">
+          <option value="">Unknown</option>
+          <option value="00:00">Ja (23:30~01:30)</option>
+          <option value="01:00">Chuk (01:30~03:30)</option>
+          <option value="03:00">In (03:30~05:30)</option>
+          <option value="05:00">Myo (05:30~07:30)</option>
+          <option value="07:00">Jin (07:30~09:30)</option>
+          <option value="09:00">Sa (09:30~11:30)</option>
+          <option value="11:00">O (11:30~13:30)</option>
+          <option value="13:00">Mi (13:30~15:30)</option>
+          <option value="15:00">Sin (15:30~17:30)</option>
+          <option value="17:00">Yu (17:30~19:30)</option>
+          <option value="19:00">Sul (19:30~21:30)</option>
+          <option value="21:00">Hae (21:30~23:30)</option>
+        </select>
+      </div>
+      <div>
+        <label>Fortune Year</label>
+        <select id="fortuneYear"></select>
+      </div>
+    </div>
+    <button class="btn" id="fortuneBtn" onclick="doFortune()">Analyze Fortune</button>
+  </div>
+
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing your fortune...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">Reading this year's fortune for you...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in fortune-grid">
+    <!-- Summary -->
+    <div class="card" style="text-align:center">
+      <h2 id="fortuneYearTitle"></h2>
+      <p style="font-size:0.8rem;color:#aaa;margin-bottom:8px" id="sajuInfo"></p>
+      <p id="fortuneSummary" style="line-height:1.7;text-align:left"></p>
+    </div>
+
+    <!-- 4 Major Fortunes -->
+    <div class="fortune-2col">
+      <div class="card">
+        <h2>💕 Love & Marriage</h2>
+        <p id="fortuneLove" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2>💰 Wealth & Finance</h2>
+        <p id="fortuneMoney" style="line-height:1.7"></p>
+      </div>
+    </div>
+    <div class="fortune-2col">
+      <div class="card">
+        <h2>💼 Career & Business</h2>
+        <p id="fortuneCareer" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2>🏥 Health</h2>
+        <p id="fortuneHealth" style="line-height:1.7"></p>
+      </div>
+    </div>
+
+    <!-- Lucky Items -->
+    <div class="card">
+      <h2>🍀 This Year's Lucky Items</h2>
+      <div id="fortuneLucky" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>
+
+    <!-- Advice -->
+    <div class="card">
+      <h2>💡 This Year's Advice</h2>
+      <p id="fortuneAdvice" style="line-height:1.7"></p>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/lunar.js?v=1"></script>
+<script src="/js/components.js?v=3"></script>
+<script>
+createDateSelects('dateSelects', 1995, 3, 20);
+
+// Year options
+const yearSelect = document.getElementById('fortuneYear');
+const thisYear = new Date().getFullYear();
+for (let y = thisYear - 5; y <= thisYear + 4; y++) {
+  const opt = document.createElement('option');
+  opt.value = y;
+  opt.textContent = y + (y === thisYear ? ' (This Year)' : '');
+  if (y === thisYear) opt.selected = true;
+  yearSelect.appendChild(opt);
+}
+
+async function doFortune() {
+  const btn = document.getElementById('fortuneBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'flex';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/fortune', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        birth_date: getBirthDate(),
+        birth_time: document.getElementById('birthTime').value,
+        gender: document.getElementById('gender').value,
+        year: parseInt(document.getElementById('fortuneYear').value),
+        lang: 'en',
+      }),
+    });
+    if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
+    const data = await resp.json();
+    if (data.error || !data.fortune) { alert(data.error || 'Fortune analysis failed'); return; }
+    renderFortune(data);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderFortune(d) {
+  const f = d.fortune;
+  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+  document.getElementById('fortuneYearTitle').textContent = '📅 ' + d.year + ' Fortune';
+  document.getElementById('sajuInfo').textContent = 'Day Master: ' + d.ilgan + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
+  document.getElementById('fortuneSummary').textContent = f.year_summary || '';
+  document.getElementById('fortuneLove').textContent = f.love || '';
+  document.getElementById('fortuneMoney').textContent = f.money || '';
+  document.getElementById('fortuneCareer').textContent = f.career || '';
+  document.getElementById('fortuneHealth').textContent = f.health || '';
+  document.getElementById('fortuneAdvice').textContent = f.advice || '';
+
+  // Lucky items
+  if (f.lucky) {
+    document.getElementById('fortuneLucky').innerHTML =
+      (f.lucky.color ? '<span class="tag tag-good">🎨 Lucky Color: ' + esc(f.lucky.color) + '</span>' : '') +
+      (f.lucky.number ? '<span class="tag tag-good">🔢 Lucky Number: ' + esc(String(f.lucky.number)) + '</span>' : '') +
+      (f.lucky.direction ? '<span class="tag tag-good">🧭 Lucky Direction: ' + esc(f.lucky.direction) + '</span>' : '') +
+      (f.lucky.month ? '<span class="tag tag-good">📅 Best Month: ' + esc(String(f.lucky.month)) + '</span>' : '');
+  }
+
+  document.getElementById('result').style.display = 'grid';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+</body>
+</html>

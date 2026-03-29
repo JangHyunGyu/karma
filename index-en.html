@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - Saju & Compatibility Matching</title>
+<meta property="og:title" content="Karma - Saju & Compatibility Matching Platform">
+<meta property="og:description" content="Saju, Fortune, Compatibility, Face Reading, Palm Reading - AI-powered Destiny Analysis">
+<meta property="og:image" content="https://karma.archerlab.dev/images/og-karma.png">
+<meta property="og:url" content="https://karma.archerlab.dev">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<script src="/js/browser-check.js"></script>
+</head>
+<body class="bg-main">
+<div class="header-bg"></div>
+<a href="https://archerlab.dev" target="_blank" rel="noopener noreferrer" class="archerlab-link">🏹 ArcherLab</a>
+<nav class="home-nav"><a href="/index.html">🇰🇷 한국어</a></nav>
+<div class="container">
+  <h1>Karma</h1>
+  <p class="subtitle">Saju & Compatibility Matching Platform</p>
+
+  <div class="menu-grid">
+    <div class="menu-card" onclick="location.href='/saju-en.html'">
+      <div class="menu-icon">🔮</div>
+      <div class="menu-title">Saju</div>
+      <div class="menu-desc">Four Pillars Analysis</div>
+    </div>
+    <div class="menu-card" onclick="location.href='/fortune-en.html'">
+      <div class="menu-icon">🌟</div>
+      <div class="menu-title">Fortune</div>
+      <div class="menu-desc">10-Year Fortune</div>
+    </div>
+    <div class="menu-card" onclick="location.href='/compat-en.html'">
+      <div class="menu-icon">💕</div>
+      <div class="menu-title">Compatibility</div>
+      <div class="menu-desc">Couple Compatibility</div>
+    </div>
+    <div class="menu-card" onclick="location.href='/face-en.html'">
+      <div class="menu-icon">🧑</div>
+      <div class="menu-title">Face Reading</div>
+      <div class="menu-desc">Face Photo Analysis</div>
+    </div>
+    <div class="menu-card" onclick="location.href='/palm-en.html'">
+      <div class="menu-icon">🤚</div>
+      <div class="menu-title">Palm Reading</div>
+      <div class="menu-desc">Palm Photo Analysis</div>
+    </div>
+    <div class="menu-card" onclick="document.getElementById('comingSoon').style.display='flex'">
+      <div class="menu-icon">👥</div>
+      <div class="menu-title">Matching</div>
+      <div class="menu-desc">Find Your Match</div>
+      <span class="menu-badge">Soon</span>
+    </div>
+  </div>
+
+</div>
+
+<div id="comingSoon" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;justify-content:center;align-items:center">
+  <div style="background:rgba(20,15,30,0.95);border:1px solid rgba(201,160,68,0.3);border-radius:16px;padding:32px 28px;text-align:center;max-width:320px;margin:20px">
+    <div style="font-size:2.5rem;margin-bottom:12px">🚧</div>
+    <div style="font-size:1.1rem;font-weight:700;color:#c9a044;margin-bottom:8px">Coming Soon</div>
+    <p style="font-size:0.85rem;color:#aaa;line-height:1.6;margin-bottom:20px">Profile matching service is currently under development.<br>Stay tuned for the launch!</p>
+    <button onclick="document.getElementById('comingSoon').style.display='none'" style="padding:10px 28px;border:none;border-radius:20px;background:linear-gradient(135deg,#8b5e2f,#c9a044);color:#fff;font-family:'Noto Serif KR',serif;font-size:0.85rem;font-weight:600;cursor:pointer">OK</button>
+  </div>
+</div>
+
+<script>
+// English-only page — no language switcher needed
+</script>
+</body>
+</html>
