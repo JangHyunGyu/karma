@@ -676,25 +676,6 @@ function isDST(year, month, day) {
 }
 
 // 태양시 보정: 표준시(KST, UTC+9, 동경135°) → 서울 태양시(~동경127°)
-// 차이: (135-127)/15 * 60 = 32분 → 약 30분 보정
-// 서머타임 기간: 추가 -60분
-function toSolarTime(year, month, day, hour, minute) {
-  let m = minute || 0;
-  let h = hour;
-  let d = day;
-  // 서머타임 보정 (-60분)
-  if (isDST(year, month, day)) { m -= 60; }
-  // 태양시 보정 (-30분)
-  m -= 30;
-  // 분 → 시 변환
-  while (m < 0) { m += 60; h--; }
-  while (m >= 60) { m -= 60; h++; }
-  // 시 → 일 변환
-  if (h < 0) { h += 24; d--; }
-  if (h >= 24) { h -= 24; d++; }
-  return { year, month, day: d, hour: h, minute: m };
-}
-
 function hourPillar(dayGan, hour) {
   const shiIndex = Math.floor(((hour + 1) % 24) / 2);
   const base = { 갑: 0, 을: 2, 병: 4, 정: 6, 무: 8, 기: 0, 경: 2, 신: 4, 임: 6, 계: 8 };
@@ -785,12 +766,15 @@ function calculateSaju(birthDate, birthTime, gender) {
   const rawHour = hasTime ? parseInt(birthTime.split(':')[0], 10) : null;
   const rawMinute = hasTime ? parseInt(birthTime.split(':')[1] || '0', 10) : 0;
 
-  // 태양시 보정 (표준시 → 태양시: -30분, 서머타임: 추가 -60분)
-  // 시주 판단에만 사용, 일주는 원래 생년월일 기준 (척척만세력 방식)
+  // UI가 태양시 기준(+30분 보정된) 시간대를 표시하므로 추가 -30분 보정 불필요
+  // 서머타임(1948~1988) 기간만 -60분 보정 적용
   let solarHour = rawHour;
-  if (rawHour !== null) {
-    const st = toSolarTime(year, month, day, rawHour, rawMinute);
-    solarHour = st.hour;
+  if (rawHour !== null && isDST(year, month, day)) {
+    let m = (rawMinute || 0) - 60;
+    let h = rawHour;
+    while (m < 0) { m += 60; h--; }
+    if (h < 0) h += 24;
+    solarHour = h;
   }
 
   // 입춘-adjusted year for year pillar (절기 시간 단위 정밀 판단)
