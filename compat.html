@@ -175,8 +175,8 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   let html = '';
   // 양력/음력 토글
   html += '<div class="calendar-toggle">';
-  html += '<button type="button" class="cal-btn active" data-cal="solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">'+_L('양력','Solar')+'</button>';
-  html += '<button type="button" class="cal-btn" data-cal="lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">'+_L('음력','Lunar')+'</button>';
+  html += '<button type="button" class="cal-btn active" data-cal="solar" data-ko="양력" data-en="Solar" onclick="setCompatCalType(this,\''+prefix+'\',\'solar\')">'+_L('양력','Solar')+'</button>';
+  html += '<button type="button" class="cal-btn" data-cal="lunar" data-ko="음력" data-en="Lunar" onclick="setCompatCalType(this,\''+prefix+'\',\'lunar\')">'+_L('음력','Lunar')+'</button>';
   html += '</div>';
   // 년
   html += '<div class="date-select-group"><label data-ko="년" data-en="Year">'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateMonthsFor(\''+prefix+'\');updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
