@@ -50,21 +50,35 @@ function updateYajasiState(timeSelectId, yajasiWrapperId) {
       toggle.dispatchEvent(new Event('change'));
     }
   }
-  // 비활성 상태에서 클릭 시 안내 메시지 (overlay)
+  // 비활성 상태에서 클릭 시 안내 팝업 (overlay)
   if (!wrap._yajasiOverlay) {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:absolute;inset:0;cursor:pointer;z-index:10';
-    overlay.addEventListener('click', () => {
-      alert(_L(
-        '태어난 시를 자시(23:30~01:30)로 선택하면 사용할 수 있습니다.',
-        'Available when birth hour is set to Ja-si (23:30~01:30).'
-      ));
-    });
+    overlay.addEventListener('click', () => showYajasiHint());
     wrap.style.position = 'relative';
     wrap.appendChild(overlay);
     wrap._yajasiOverlay = overlay;
   }
   wrap._yajasiOverlay.style.display = isJasi ? 'none' : 'block';
+}
+
+function showYajasiHint() {
+  if (document.getElementById('yajasiHintModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'yajasiHintModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;animation:fadeIn 0.2s';
+  modal.innerHTML = `
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid rgba(201,160,68,0.3);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="font-size:2.2rem;margin-bottom:12px">🌙</div>
+      <div style="font-size:1rem;font-weight:700;color:#ffd93d;margin-bottom:12px">${_L('야자시/조자시','Night/Morning Ja-si')}</div>
+      <p style="font-size:0.82rem;color:#ccc;line-height:1.7;margin-bottom:16px">${_L(
+        '태어난 시를 <b style="color:#ffd93d">자시(23:30~01:30)</b>로 선택하면 사용할 수 있는 옵션입니다.<br><br>밤 11시 30분~새벽 1시 30분 사이에 태어난 분의 사주를 더 정확하게 계산합니다.',
+        'This option becomes available when you select <b style="color:#ffd93d">Ja-si (23:30~01:30)</b> as your birth hour.<br><br>It provides more accurate calculation for those born between 11:30 PM and 1:30 AM.'
+      )}</p>
+      <button onclick="document.getElementById('yajasiHintModal').remove()" style="background:linear-gradient(135deg,#c9a044,#b8860b);color:#fff;border:none;padding:10px 32px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer">${_L('확인','OK')}</button>
+    </div>`;
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 
 // ===== localStorage =====
