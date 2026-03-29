@@ -389,8 +389,9 @@ document.addEventListener('click', () => {
   });
 });
 
-// 스크롤 시 드롭다운 닫기
-window.addEventListener('scroll', () => {
+// 스크롤 시 드롭다운 닫기 (드롭다운 내부 스크롤은 제외)
+window.addEventListener('scroll', (e) => {
+  if (e.target.closest && e.target.closest('.combo-dropdown')) return;
   document.querySelectorAll('.combo.open').forEach(c => {
     c.classList.remove('open');
     const card = c.closest('.card');
