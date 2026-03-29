@@ -76,11 +76,12 @@ async function loadMatches() {
     }
 
     const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+    const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
 
     document.getElementById('matchList').innerHTML = data.matches.map(m => `
       <div class="match-card fade-in" onclick="openChat('${esc(m.user_id)}','${esc(m.nickname)}')">
         <div class="match-info">
-          <div class="name">${esc(m.nickname)} <span style="font-size:0.75rem;color:#888">${OHANG_EMOJI[m.ohang]||''} ${esc(m.ohang||'')}</span></div>
+          <div class="name">${esc(m.nickname)} <span style="font-size:0.75rem;color:#888">${OHANG_EMOJI[m.ohang]||''} ${OHANG_EN[m.ohang]||esc(m.ohang||'')}</span></div>
           <div class="meta">${m.last_message ? esc(m.last_message) : 'No conversation started yet'}</div>
         </div>
         ${m.unread_count > 0 ? '<span style="background:#e94560;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">'+m.unread_count+'</span>' : ''}

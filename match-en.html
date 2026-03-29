@@ -79,6 +79,8 @@ const idA = params.get('a'), idB = params.get('b');
 if (!idA || !idB) location.href = '/discover-en.html';
 
 const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
+const PILLAR_NAME_EN = {'년주':'Year','월주':'Month','일주':'Day','시주':'Hour'};
 
 async function loadMatch() {
   try {
@@ -101,8 +103,8 @@ async function loadMatch() {
     gt.textContent = d.grade;
     gt.className = 'grade grade-' + d.grade;
 
-    document.getElementById('labelA').textContent = esc(d.user_a.nickname) + ' (' + d.saju_a.ilgan + ' ' + (OHANG_EMOJI[d.user_a.ohang]||'') + d.user_a.ohang + ')';
-    document.getElementById('labelB').textContent = esc(d.user_b.nickname) + ' (' + d.saju_b.ilgan + ' ' + (OHANG_EMOJI[d.user_b.ohang]||'') + d.user_b.ohang + ')';
+    document.getElementById('labelA').textContent = esc(d.user_a.nickname) + ' (' + d.saju_a.ilgan + ' ' + (OHANG_EMOJI[d.user_a.ohang]||'') + (OHANG_EN[d.user_a.ohang]||d.user_a.ohang) + ')';
+    document.getElementById('labelB').textContent = esc(d.user_b.nickname) + ' (' + d.saju_b.ilgan + ' ' + (OHANG_EMOJI[d.user_b.ohang]||'') + (OHANG_EN[d.user_b.ohang]||d.user_b.ohang) + ')';
 
     document.getElementById('pillarsA').innerHTML = renderPillars(d.saju_a.pillars);
     document.getElementById('pillarsB').innerHTML = renderPillars(d.saju_b.pillars);
@@ -128,7 +130,7 @@ async function loadMatch() {
 
 function renderPillars(pillars) {
   return pillars.map(p =>
-    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(p.name)+'</div></div>'
+    '<div class="pillar"><div class="gan">'+esc(p.gan)+'</div><div class="ji">'+esc(p.ji)+'</div><div class="name">'+esc(PILLAR_NAME_EN[p.name]||p.name)+'</div></div>'
   ).join('');
 }
 

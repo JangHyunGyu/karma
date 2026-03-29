@@ -61,12 +61,13 @@ async function loadMatches() {
     }
 
     const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+    const OHANG_EN = {'목':'Wood','화':'Fire','토':'Earth','금':'Metal','수':'Water'};
 
     document.getElementById('matchList').innerHTML = data.matches.map(m => `
       <div class="match-card fade-in" onclick="location.href='/match-en.html?a=${esc(userId)}&b=${esc(m.user_id)}'">
         <div class="match-info">
           <div class="name">${esc(m.nickname)}</div>
-          <div class="meta">Age ${m.age} · ${OHANG_EMOJI[m.ohang]||''} ${esc(m.ohang||'')} type</div>
+          <div class="meta">Age ${m.age} · ${OHANG_EMOJI[m.ohang]||''} ${OHANG_EN[m.ohang]||esc(m.ohang||'')} type</div>
         </div>
         <div class="match-scores">
           <div class="score-badge score-saju">
