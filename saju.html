@@ -97,12 +97,15 @@
         </select>
       </div>
     </div>
-    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:8px">
-      <label style="font-size:0.78rem;color:#888;cursor:pointer;display:flex;align-items:center;gap:5px">
-        <input type="checkbox" id="yajasiToggle" style="accent-color:#c9a044;width:15px;height:15px" onchange="saveInputs()">
-        <span data-ko="야자시 적용" data-en="Apply Yajasi">야자시 적용</span>
+    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px">
+      <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
+        <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
+          <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
+        </span>
+        <input type="checkbox" id="yajasiToggle" style="display:none" onchange="const sw=document.getElementById('yajasiSwitch');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}saveInputs();">
+        <span style="font-size:0.8rem;color:#aaa;margin-left:8px" data-ko="야자시 적용" data-en="Apply Yajasi">야자시 적용</span>
       </label>
-      <span style="font-size:0.68rem;color:#666;cursor:pointer" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="ⓘ 야자시란?" data-en="ⓘ What is Yajasi?">ⓘ 야자시란?</span>
+      <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="야자시란?" data-en="What is Yajasi?">야자시란?</span>
     </div>
     <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
       <span data-ko="사주에서 하루가 바뀌는 자시는 23:30에 해당합니다. 야자시는 이 자시를 둘로 나눠 12시에 날짜가 변경되는 현대 시간 개념을 적용하는 것입니다. 저녁 23:30~00:00 사이에 태어난 경우, 시간은 그대로 두고 일주를 다음날로 변환하여 해석합니다." data-en="In Saju, the day changes at Ja-si (23:30). Yajasi splits Ja-si into two parts, applying the modern midnight date change. If born between 23:30~00:00, the hour pillar stays as Ja-si but the day pillar uses the next day.">사주에서 하루가 바뀌는 자시는 23:30에 해당합니다. 야자시는 이 자시를 둘로 나눠 12시에 날짜가 변경되는 현대 시간 개념을 적용하는 것입니다. 저녁 23:30~00:00 사이에 태어난 경우, 시간은 그대로 두고 일주를 다음날로 변환하여 해석합니다.</span>
