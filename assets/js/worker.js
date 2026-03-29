@@ -1933,7 +1933,18 @@ export default {
 
     } catch (e) {
       console.error('Worker error:', e.message || e, e.stack || '');
+      logErrorToCentral('karma-server', e.message || String(e), e.stack || '', url.pathname);
       return json({ error: 'Internal Server Error' }, 500);
     }
   },
 };
+
+function logErrorToCentral(appId, message, stack, url) {
+  try {
+    fetch('https://chatbot-api.yama5993.workers.dev/error-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, message: (message || '').substring(0, 500), stack: (stack || '').substring(0, 2000), url: (url || '').substring(0, 500) }),
+    }).catch(() => {});
+  } catch (_) {}
+}

@@ -25,3 +25,34 @@
         }
     }
 })();
+
+// 글로벌 에러 핸들러 — 프론트엔드 에러를 중앙 D1에 기록
+(function() {
+    var ERROR_ENDPOINT = 'https://chatbot-api.yama5993.workers.dev/error-logs';
+    var lang = (document.documentElement.lang || 'ko').substring(0, 2);
+    var APP_ID = lang === 'ko' ? 'karma' : 'karma-' + lang;
+    var _lastError = '';
+    var _errorCount = 0;
+
+    function _sendError(message, stack, url) {
+        var key = message + (url || '');
+        if (key === _lastError) { _errorCount++; if (_errorCount > 3) return; }
+        else { _lastError = key; _errorCount = 1; }
+        try {
+            navigator.sendBeacon(ERROR_ENDPOINT, JSON.stringify({
+                appId: APP_ID, userId: '',
+                message: (message || '').substring(0, 500),
+                stack: (stack || '').substring(0, 2000),
+                url: (url || '').substring(0, 500)
+            }));
+        } catch (_) {}
+    }
+
+    window.addEventListener('error', function(e) {
+        _sendError(e.message, e.error?.stack || '', e.filename + ':' + e.lineno + ':' + e.colno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        var reason = e.reason;
+        _sendError(reason?.message || String(reason || 'Unhandled rejection'), reason?.stack || '', location.href);
+    });
+})();
