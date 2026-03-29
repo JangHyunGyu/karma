@@ -155,17 +155,26 @@
       <span data-ko="• 손바닥을 활짝 펴서 촬영해주세요" data-en="• Spread your palm wide open for the photo">• 손바닥을 활짝 펴서 촬영해주세요</span><br>
       <span data-ko="• 손금이 선명하게 보이도록 밝은 곳에서 촬영" data-en="• Take the photo in a bright area so palm lines are clearly visible">• 손금이 선명하게 보이도록 밝은 곳에서 촬영</span><br>
       <span data-ko="• 손바닥만 나오도록 가까이 촬영해주세요" data-en="• Take a close-up photo showing only the palm">• 손바닥만 나오도록 가까이 촬영해주세요</span><br>
-      <span data-ko="• 왼손 = 선천적 운명, 오른손 = 후천적 노력" data-en="• Left hand = innate destiny, Right hand = acquired effort">• 왼손 = 선천적 운명, 오른손 = 후천적 노력</span><br>
+      <span data-ko="• 주 사용 손 = 후천적 노력, 반대 손 = 선천적 운명" data-en="• Dominant hand = acquired effort, Non-dominant = innate destiny">• 주 사용 손 = 후천적 노력, 반대 손 = 선천적 운명</span><br>
       <span data-ko="• 손가락까지 나오면 더 정확한 분석이 가능합니다" data-en="• Including fingers allows for more accurate analysis">• 손가락까지 나오면 더 정확한 분석이 가능합니다</span>
     </div>
     <div class="options-row">
       <div class="opt-group">
-        <label data-ko="촬영한 손" data-en="Which Hand">촬영한 손</label>
-        <select id="hand">
-          <option value="왼손" data-ko="왼손 (선천운)" data-en="Left Hand (Innate)">왼손 (선천운)</option>
-          <option value="오른손" data-ko="오른손 (후천운)" data-en="Right Hand (Acquired)">오른손 (후천운)</option>
+        <label data-ko="주 사용 손" data-en="Dominant Hand">주 사용 손</label>
+        <select id="dominant" onchange="updateHandLabels()">
+          <option value="right" data-ko="오른손잡이" data-en="Right-handed">오른손잡이</option>
+          <option value="left" data-ko="왼손잡이" data-en="Left-handed">왼손잡이</option>
         </select>
       </div>
+      <div class="opt-group">
+        <label data-ko="촬영한 손" data-en="Which Hand">촬영한 손</label>
+        <select id="hand">
+          <option value="왼손" id="handLeft">왼손 (선천운)</option>
+          <option value="오른손" id="handRight">오른손 (후천운)</option>
+        </select>
+      </div>
+    </div>
+    <div class="options-row">
       <div class="opt-group">
         <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="checkReady()">
@@ -230,6 +239,20 @@ function getLang() {
 
 function checkReady() {
   analyzeBtn.disabled = !(imageData && document.getElementById('gender').value);
+}
+
+function updateHandLabels() {
+  const dom = document.getElementById('dominant').value;
+  const lang = getLang();
+  const leftEl = document.getElementById('handLeft');
+  const rightEl = document.getElementById('handRight');
+  if (dom === 'right') {
+    leftEl.textContent = lang === 'en' ? 'Left (Innate)' : '왼손 (선천운)';
+    rightEl.textContent = lang === 'en' ? 'Right (Acquired)' : '오른손 (후천운)';
+  } else {
+    leftEl.textContent = lang === 'en' ? 'Left (Acquired)' : '왼손 (후천운)';
+    rightEl.textContent = lang === 'en' ? 'Right (Innate)' : '오른손 (선천운)';
+  }
 }
 
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
