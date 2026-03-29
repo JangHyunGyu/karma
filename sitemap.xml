@@ -1,57 +1,200 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Homepage -->
   <url>
     <loc>https://karma.archerlab.dev/</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/index-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en.html" />
+  </url>
+
+  <!-- Saju (Four Pillars) -->
   <url>
     <loc>https://karma.archerlab.dev/saju.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/saju-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en.html" />
+  </url>
+
+  <!-- Fortune -->
   <url>
     <loc>https://karma.archerlab.dev/fortune.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/fortune-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en.html" />
+  </url>
+
+  <!-- Compatibility -->
   <url>
     <loc>https://karma.archerlab.dev/compat.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/compat-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en.html" />
+  </url>
+
+  <!-- Face Reading -->
   <url>
     <loc>https://karma.archerlab.dev/face.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/face-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en.html" />
+  </url>
+
+  <!-- Palm Reading -->
   <url>
     <loc>https://karma.archerlab.dev/palm.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en.html" />
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/palm-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en.html" />
+  </url>
+
+  <!-- Login -->
+  <url>
+    <loc>https://karma.archerlab.dev/login.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/login.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/login-en.html" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/login-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/login.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/login-en.html" />
+  </url>
+
+  <!-- Register -->
+  <url>
+    <loc>https://karma.archerlab.dev/register.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/register.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/register-en.html" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/register-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/register.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/register-en.html" />
+  </url>
+
+  <!-- Discover -->
   <url>
     <loc>https://karma.archerlab.dev/discover.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/discover.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/discover-en.html" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/match.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <loc>https://karma.archerlab.dev/discover-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/discover.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/discover-en.html" />
   </url>
+
+  <!-- Matches -->
   <url>
     <loc>https://karma.archerlab.dev/matches.html</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/matches.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/matches-en.html" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/matches-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/matches.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/matches-en.html" />
+  </url>
+
+  <!-- Match Detail -->
+  <url>
+    <loc>https://karma.archerlab.dev/match.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/match.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/match-en.html" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/match-en.html</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/match.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/match-en.html" />
   </url>
 </urlset>
