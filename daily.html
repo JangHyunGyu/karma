@@ -106,7 +106,7 @@
       <p id="dailySummary" style="line-height:1.7;text-align:left"></p>
     </div>
 
-    <!-- 3대 운세 -->
+    <!-- 4대 운세 -->
     <div class="fortune-2col">
       <div class="card">
         <h2 data-ko="💕 연애운" data-en="💕 Love">💕 연애운</h2>
@@ -117,9 +117,25 @@
         <p id="dailyMoney" style="line-height:1.7"></p>
       </div>
     </div>
-    <div class="card">
-      <h2 data-ko="🏥 건강운" data-en="🏥 Health">🏥 건강운</h2>
-      <p id="dailyHealth" style="line-height:1.7"></p>
+    <div class="fortune-2col">
+      <div class="card">
+        <h2 data-ko="💼 직장/사업운" data-en="💼 Career">💼 직장/사업운</h2>
+        <p id="dailyCareer" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2 data-ko="📚 학업운" data-en="📚 Study">📚 학업운</h2>
+        <p id="dailyStudy" style="line-height:1.7"></p>
+      </div>
+    </div>
+    <div class="fortune-2col">
+      <div class="card">
+        <h2 data-ko="🤝 대인운" data-en="🤝 Social">🤝 대인운</h2>
+        <p id="dailySocial" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2 data-ko="🏥 건강운" data-en="🏥 Health">🏥 건강운</h2>
+        <p id="dailyHealth" style="line-height:1.7"></p>
+      </div>
     </div>
 
     <!-- 행운 -->
@@ -183,6 +199,9 @@ function renderDaily(d) {
   document.getElementById('dailySummary').textContent = f.overall || '';
   document.getElementById('dailyLove').textContent = f.love || '';
   document.getElementById('dailyMoney').textContent = f.money || '';
+  document.getElementById('dailyCareer').textContent = f.career || '';
+  document.getElementById('dailyStudy').textContent = f.study || '';
+  document.getElementById('dailySocial').textContent = f.social || '';
   document.getElementById('dailyHealth').textContent = f.health || '';
   document.getElementById('dailyAdvice').textContent = f.advice || '';
 
