@@ -199,6 +199,8 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 900;
+  user-select: none;
+  -webkit-user-select: none;
   letter-spacing: 2px;
 }
 .subtitle {
