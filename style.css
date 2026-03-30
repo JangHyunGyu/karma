@@ -209,6 +209,8 @@ h1 {
   margin-bottom: 28px;
   font-size: 0.85rem;
   letter-spacing: 1px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* 커스텀 콤보박스 (div 기반) */
