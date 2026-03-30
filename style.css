@@ -15,10 +15,10 @@ body {
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
   background-color: #0a0a1e;
-  background-size: 100% 100%;
+  background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-attachment: scroll;
   min-height: 100vh;
 }
 /* PC: 가로 배경 (기본) */
