@@ -36,6 +36,24 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en.html" />
   </url>
 
+  <!-- Daily Fortune -->
+  <url>
+    <loc>https://karma.archerlab.dev/daily.html</loc>
+    <lastmod>2026-03-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en.html" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/daily-en.html</loc>
+    <lastmod>2026-03-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en.html" />
+  </url>
+
   <!-- Fortune -->
   <url>
     <loc>https://karma.archerlab.dev/fortune.html</loc>

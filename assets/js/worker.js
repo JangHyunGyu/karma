@@ -1436,6 +1436,78 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 }` + langInstruction(lang);
 }
 
+function buildDailyPrompt(saju, gender, todayStr, lang) {
+  const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
+  const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const { excess, lack } = getOhangAnalysis(saju.ohangCount);
+  const ilOhang = saju.ilganOhang;
+
+  const [tY, tM, tD] = todayStr.split('-').map(Number);
+  const yGan = yearCheongan(tY);
+  const yJi = yearJiji(tY);
+  const yOhang = CHEONGAN_OHANG[yGan];
+
+  // 오늘의 일진 (일간지)
+  const todayDP = dayPillar(tY, tM, tD);
+  const todayGan = todayDP.gan;
+  const todayJi = todayDP.ji;
+  const todayGanOhang = CHEONGAN_OHANG[todayGan];
+  const todayJiOhang = JIJI_OHANG[todayJi];
+
+  const relations = getOhangRelations(ilOhang, todayGanOhang);
+  const relDesc = [];
+  if (relations.sangsaeng.length) relDesc.push(`상생(${relations.sangsaeng.join(', ')})`);
+  if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
+  if (relations.same) relDesc.push('비화(같은 오행)');
+
+  return `당신은 사주명리학 기반 일일 운세 전문가입니다. 친근하고 구체적으로, 오늘 하루에 실질적으로 도움이 되도록 해석해주세요.
+반드시 이 사람의 사주 원국과 오늘의 일진(일간지) 관계를 기반으로 해석하세요.
+다른 사주와 구별되는 이 사람만의 고유한 오늘 운세를 만들어주세요.
+
+## 기본 정보
+${genderText ? `- 성별: ${genderText}` : ''}
+- 오늘 날짜: ${todayStr}
+
+## 오늘의 일진 (日辰)
+- 천간: ${todayGan} (${todayGanOhang})
+- 지지: ${todayJi} (${todayJiOhang})
+- 오늘 일진과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+
+## ${tY}년 세운 (참고)
+- 천간: ${yGan} (${yOhang})
+- 지지: ${yJi} (${JIJI_OHANG[yJi]})
+
+## 사주 원국
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+
+## 해석 지침 (중요!)
+1. 오늘의 일진 ${todayGan}${todayJi}(${todayGanOhang}/${todayJiOhang})가 이 사주의 일간 ${saju.ilgan}(${ilOhang})과 어떤 관계인지 구체적으로 분석
+2. 오늘의 천간(${todayGan})이 사주 원국의 각 천간과 합/충이 있는지 확인
+3. 오늘의 지지(${todayJi})가 사주 원국의 각 지지와 합/충/형이 있는지 확인
+4. 오행 과다/부족이 오늘 일진에 의해 어떤 영향을 받는지 분석
+5. 연애운, 금전운, 건강운을 사주 특성에 맞게 각각 구체적으로 (오늘 하루 기준)
+6. 전문용어 없이 쉽게 설명
+7. 오늘 하루에 초점을 맞춘 짧고 실용적인 조언
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답:
+{
+  "overall": "(오늘의 총운을 3~4문장으로 요약. 오늘의 전반적 분위기, 좋은 시간대, 주의할 점)",
+  "love": "(오늘의 연애운 3~4문장. 솔로: 새로운 만남 가능성, 좋은 장소. 커플: 오늘 관계 흐름, 데이트 팁)",
+  "money": "(오늘의 금전운 3~4문장. 수입/지출 흐름, 투자나 큰 구매 적합 여부, 금전적 주의사항)",
+  "health": "(오늘의 건강운 2~3문장. 조심해야 할 부분, 컨디션 관리 팁)",
+  "lucky": {
+    "color": "(오늘의 행운의 색)",
+    "number": "(오늘의 행운의 숫자)"
+  },
+  "advice": "(오늘 하루를 잘 보내기 위한 핵심 조언 1~2문장)"
+}` + langInstruction(lang);
+}
+
 function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
   const genderTextA = genderA === 'male' ? '남성' : genderA === 'female' ? '여성' : '';
   const genderTextB = genderB === 'male' ? '남성' : genderB === 'female' ? '여성' : '';
@@ -1640,6 +1712,22 @@ async function handleFortune(request, env) {
   const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang), 'fortune', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
+}
+
+async function handleDaily(request, env) {
+  const { birth_date, birth_time, gender, lang, yajasi } = await request.json();
+  if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
+
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const apiKeys = getGeminiKeys(env);
+  if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+
+  const ai = await callGemini(apiKeys, buildDailyPrompt(saju, gender, todayStr, lang), 'daily', env);
+  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
 
 async function handleQuickSaju(request, env) {
@@ -2019,6 +2107,9 @@ export default {
       }
       if (path === '/api/fortune' && method === 'POST') {
         return handleFortune(request, env);
+      }
+      if (path === '/api/daily' && method === 'POST') {
+        return handleDaily(request, env);
       }
       if (path === '/api/quick-saju' && method === 'POST') {
         return handleQuickSaju(request, env);

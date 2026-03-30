@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0RMB9BSYM1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0RMB9BSYM1');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karma - 오늘의 운세</title>
+<meta name="description" content="오늘의 무료 운세 - 사주 기반 AI 일일운세. 총운, 연애운, 금전운, 건강운, 행운의 색/숫자까지 매일 확인하세요.">
+<meta name="keywords" content="오늘의 운세, 무료 오늘 운세, 일일 운세, AI 오늘 운세, 사주 오늘 운세, 연애운, 금전운, 건강운, 무료 운세 보기, 데일리 운세">
+<link rel="canonical" href="https://karma.archerlab.dev/daily.html">
+<link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily.html">
+<link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en.html">
+<meta property="og:title" content="오늘의 무료 AI 운세 - 카르마">
+<meta property="og:description" content="사주 기반 AI 일일운세. 총운, 연애운, 금전운, 건강운과 행운 아이템까지 매일 무료 분석.">
+<meta property="og:image" content="https://karma.archerlab.dev/images/og-karma.png">
+<meta property="og:url" content="https://karma.archerlab.dev/daily.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="오늘의 무료 AI 운세 - 카르마">
+<meta name="twitter:description" content="사주 기반 오늘의 운세. 총운, 연애운, 금전운, 건강운 AI 분석.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=5">
+<style>
+  .fortune-grid { display: grid; gap: 14px; }
+  .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  .container.fortune-page { max-width: 100%; width: 100%; }
+  @media (min-width: 769px) {
+    .container.fortune-page { max-width: 1000px; }
+    .fortune-2col { grid-template-columns: 1fr 1fr; }
+  }
+  .fortune-page .card p { font-size: clamp(0.8rem, 1.8vw, 0.92rem); word-break: break-word; }
+</style>
+<script src="/js/browser-check.js"></script>
+</head>
+<body class="bg-fortune">
+<div class="header-bg"></div>
+<nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
+<div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en">🌐 English</option></select></div>
+<div class="container fortune-page">
+  <h1 data-ko="🌅 오늘의 운세" data-en="🌅 Today's Fortune">🌅 오늘의 운세</h1>
+  <p class="subtitle" data-ko="생년월일로 오늘의 운세를 상세히 분석합니다" data-en="Get a detailed daily fortune analysis by date of birth">생년월일로 오늘의 운세를 상세히 분석합니다</p>
+
+  <div class="card" style="max-width:480px;margin:0 auto 20px">
+    <label data-ko="생년월일 (양력)" data-en="Date of Birth (Solar)">생년월일 (양력)</label>
+    <div class="date-selects" id="dateSelects"></div>
+    <div class="row" style="grid-template-columns:1fr 1fr">
+      <div>
+        <label data-ko="성별" data-en="Gender">성별</label>
+        <select id="gender" onchange="saveInputs()">
+          <option value="male" data-ko="남성" data-en="Male">남성</option>
+          <option value="female" data-ko="여성" data-en="Female">여성</option>
+        </select>
+      </div>
+      <div>
+        <label data-ko="태어난 시" data-en="Birth Hour">태어난 시</label>
+        <select id="birthTime" onchange="saveInputs();updateYajasiState('birthTime','yajasiWrap')">
+          <option value="" data-ko="모름" data-en="Unknown">모름</option>
+          <option value="00:00" data-ko="자시 (23:30~01:30)" data-en="Ja (23:30~01:30)">자시 (23:30~01:30)</option>
+          <option value="02:00" data-ko="축시 (01:30~03:30)" data-en="Chuk (01:30~03:30)">축시 (01:30~03:30)</option>
+          <option value="04:00" data-ko="인시 (03:30~05:30)" data-en="In (03:30~05:30)">인시 (03:30~05:30)</option>
+          <option value="06:00" data-ko="묘시 (05:30~07:30)" data-en="Myo (05:30~07:30)">묘시 (05:30~07:30)</option>
+          <option value="08:00" data-ko="진시 (07:30~09:30)" data-en="Jin (07:30~09:30)">진시 (07:30~09:30)</option>
+          <option value="10:00" data-ko="사시 (09:30~11:30)" data-en="Sa (09:30~11:30)">사시 (09:30~11:30)</option>
+          <option value="12:00" data-ko="오시 (11:30~13:30)" data-en="O (11:30~13:30)">오시 (11:30~13:30)</option>
+          <option value="14:00" data-ko="미시 (13:30~15:30)" data-en="Mi (13:30~15:30)">미시 (13:30~15:30)</option>
+          <option value="16:00" data-ko="신시 (15:30~17:30)" data-en="Sin (15:30~17:30)">신시 (15:30~17:30)</option>
+          <option value="18:00" data-ko="유시 (17:30~19:30)" data-en="Yu (17:30~19:30)">유시 (17:30~19:30)</option>
+          <option value="20:00" data-ko="술시 (19:30~21:30)" data-en="Sul (19:30~21:30)">술시 (19:30~21:30)</option>
+          <option value="22:00" data-ko="해시 (21:30~23:30)" data-en="Hae (21:30~23:30)">해시 (21:30~23:30)</option>
+        </select>
+      </div>
+    </div>
+    <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3">
+      <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
+        <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
+          <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#666;border-radius:50%;transition:all 0.2s"></span>
+        </span>
+        <input type="checkbox" id="yajasiToggle" style="display:none" onchange="const sw=document.getElementById('yajasiSwitch');const dot=sw.querySelector('span');if(this.checked){sw.style.background='rgba(201,160,68,0.5)';dot.style.left='18px';dot.style.background='#c9a044';}else{sw.style.background='rgba(255,255,255,0.12)';dot.style.left='2px';dot.style.background='#666';}saveInputs();">
+        <span style="font-size:0.8rem;color:#aaa;margin-left:8px" data-ko="야자시/조자시" data-en="Night/Morning Ja-si">야자시/조자시</span>
+      </label>
+      <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
+    </div>
+    <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
+      <span data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.</span>
+    </div>
+    <button class="btn" id="dailyBtn" onclick="doDaily()" data-ko="오늘의 운세 보기" data-en="See Today's Fortune">오늘의 운세 보기</button>
+  </div>
+
+  <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
+    <div class="spinner"></div>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="오늘의 운세를 분석하고 있습니다" data-en="Analyzing today's fortune...">오늘의 운세를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="오늘의 운세를 풀이하고 있어요..." data-en="Reading today's fortune for you...">오늘의 운세를 풀이하고 있어요...</p>
+  </div>
+
+  <div id="result" style="display:none" class="fade-in fortune-grid">
+    <!-- 요약 -->
+    <div class="card" style="text-align:center">
+      <h2 id="dailyDateTitle"></h2>
+      <p style="font-size:0.8rem;color:#aaa;margin-bottom:8px" id="sajuInfo"></p>
+      <p id="dailySummary" style="line-height:1.7;text-align:left"></p>
+    </div>
+
+    <!-- 3대 운세 -->
+    <div class="fortune-2col">
+      <div class="card">
+        <h2 data-ko="💕 연애운" data-en="💕 Love">💕 연애운</h2>
+        <p id="dailyLove" style="line-height:1.7"></p>
+      </div>
+      <div class="card">
+        <h2 data-ko="💰 금전운" data-en="💰 Money">💰 금전운</h2>
+        <p id="dailyMoney" style="line-height:1.7"></p>
+      </div>
+    </div>
+    <div class="card">
+      <h2 data-ko="🏥 건강운" data-en="🏥 Health">🏥 건강운</h2>
+      <p id="dailyHealth" style="line-height:1.7"></p>
+    </div>
+
+    <!-- 행운 -->
+    <div class="card">
+      <h2 data-ko="🍀 오늘의 행운" data-en="🍀 Today's Lucky Items">🍀 오늘의 행운</h2>
+      <div id="dailyLucky" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>
+
+    <!-- 조언 -->
+    <div class="card">
+      <h2 data-ko="💡 오늘의 조언" data-en="💡 Today's Advice">💡 오늘의 조언</h2>
+      <p id="dailyAdvice" style="line-height:1.7"></p>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/lunar.js?v=1"></script>
+<script src="/js/components.js?v=3"></script>
+<script>
+createDateSelects('dateSelects');
+
+async function doDaily() {
+  const btn = document.getElementById('dailyBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  loading.style.display = 'flex';
+  result.style.display = 'none';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/daily', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        birth_date: getBirthDate(),
+        birth_time: document.getElementById('birthTime').value,
+        gender: document.getElementById('gender').value,
+        lang: 'ko',
+        yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      }),
+    });
+    if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
+    const data = await resp.json();
+    if (data.error || !data.daily) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
+    renderDaily(data);
+  } catch(e) {
+    alert(_L('오류: ','Error: ') + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderDaily(d) {
+  const f = d.daily;
+  const OHANG_EMOJI = {'목':'🌿','화':'🔥','토':'🏔','금':'⚔','수':'🌊'};
+
+  document.getElementById('dailyDateTitle').textContent = '📅 ' + _L(d.date + ' 운세', d.date + ' Fortune');
+  document.getElementById('sajuInfo').textContent = _L('일간: ','Day Master: ') + d.ilgan + ' ' + (OHANG_EMOJI[d.ilganOhang]||'') + d.ilganOhang + ' | ' + d.saju_summary;
+  document.getElementById('dailySummary').textContent = f.overall || '';
+  document.getElementById('dailyLove').textContent = f.love || '';
+  document.getElementById('dailyMoney').textContent = f.money || '';
+  document.getElementById('dailyHealth').textContent = f.health || '';
+  document.getElementById('dailyAdvice').textContent = f.advice || '';
+
+  if (f.lucky) {
+    document.getElementById('dailyLucky').innerHTML =
+      (f.lucky.color ? '<span class="tag tag-good">' + _L('🎨 행운의 색: ','🎨 Lucky Color: ') + esc(f.lucky.color) + '</span>' : '') +
+      (f.lucky.number ? '<span class="tag tag-good">' + _L('🔢 행운의 숫자: ','🔢 Lucky Number: ') + esc(String(f.lucky.number)) + '</span>' : '');
+  }
+
+  document.getElementById('result').style.display = 'grid';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+<script>
+(function() {
+  const saved = localStorage.getItem('karma_lang');
+  if (saved && saved !== 'ko') { changeLang(saved); return; }
+})();
+</script>
+</body>
+</html>
