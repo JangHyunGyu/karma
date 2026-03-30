@@ -684,52 +684,69 @@ function hourPillar(dayGan, hour) {
   return { gan, ji };
 }
 
+// 두 날짜/시간 사이의 일수 차이
+function dateDiffDays(y1, m1, d1, h1, min1, y2, m2, d2, h2, min2) {
+  const dateA = new Date(y1, m1 - 1, d1, h1, min1);
+  const dateB = new Date(y2, m2 - 1, d2, h2, min2);
+  return Math.abs(dateA.getTime() - dateB.getTime()) / 86400000;
+}
+
+// 일수 → 대운 시작 나이 (3일 = 1년, 나머지 2일 이상이면 +1)
+function daysToAge(days) {
+  const q = Math.floor(days / 3);
+  const r = days % 3;
+  return r >= 2 ? q + 1 : q;
+}
+
+// 분 단위 비교값 (날짜+시간을 단일 숫자로 변환)
+function toMinuteVal(m, d, h, min) {
+  return ((m - 1) * 31 + d) * 1440 + h * 60 + min;
+}
+
 // 정운법: 생일에서 가장 가까운 절기까지 일수 / 3 = 대운 시작 나이
 // 절기 시:분까지 비교하여 같은 날 절기도 정확히 처리
 function calcDaeunStartAge(year, month, day, hour, minute, direction) {
   hour = hour || 0;
   minute = minute || 0;
   const terms = getExactSolarTerms(year);
-
-  // 분 단위 비교값 (getSajuMonthExact과 동일 패턴)
-  const birthMin = ((month - 1) * 31 + day) * 1440 + hour * 60 + minute;
-
-  function daysToAge(diffDays) {
-    const q = Math.floor(diffDays / 3);
-    const r = diffDays % 3;
-    return r >= 2 ? q + 1 : q;
-  }
+  const birthMin = toMinuteVal(month, day, hour, minute);
 
   if (direction === 1) {
     // 순행: 다가올 절기 (미래)
     for (let i = 0; i < 12; i++) {
-      const [tm, td, th, tmin] = terms[i];
-      const termMin = ((tm - 1) * 31 + td) * 1440 + (th || 0) * 60 + (tmin || 0);
-      if (termMin > birthMin) {
-        const diffDays = Math.abs(new Date(year, tm - 1, td, th || 0, tmin || 0) - new Date(year, month - 1, day, hour, minute)) / 86400000;
-        return daysToAge(diffDays);
+      const t = terms[i];
+      const th = t[2] || 0, tmin = t[3] || 0;
+      if (toMinuteVal(t[0], t[1], th, tmin) > birthMin) {
+        return daysToAge(dateDiffDays(
+          year, t[0], t[1], th, tmin,
+          year, month, day, hour, minute
+        ));
       }
     }
     // 올해 남은 절기 없음 → 내년 소한
-    const nextTerms = getExactSolarTerms(year + 1);
-    const [nm, nd, nh, nmin] = nextTerms[0];
-    const diffDays = Math.abs(new Date(year + 1, nm - 1, nd, nh || 0, nmin || 0) - new Date(year, month - 1, day, hour, minute)) / 86400000;
-    return daysToAge(diffDays);
+    const n = getExactSolarTerms(year + 1)[0];
+    return daysToAge(dateDiffDays(
+      year + 1, n[0], n[1], n[2] || 0, n[3] || 0,
+      year, month, day, hour, minute
+    ));
   } else {
     // 역행: 지난 절기 (과거)
     for (let i = 11; i >= 0; i--) {
-      const [tm, td, th, tmin] = terms[i];
-      const termMin = ((tm - 1) * 31 + td) * 1440 + (th || 0) * 60 + (tmin || 0);
-      if (termMin <= birthMin) {
-        const diffDays = Math.abs(new Date(year, month - 1, day, hour, minute) - new Date(year, tm - 1, td, th || 0, tmin || 0)) / 86400000;
-        return daysToAge(diffDays);
+      const t = terms[i];
+      const th = t[2] || 0, tmin = t[3] || 0;
+      if (toMinuteVal(t[0], t[1], th, tmin) <= birthMin) {
+        return daysToAge(dateDiffDays(
+          year, month, day, hour, minute,
+          year, t[0], t[1], th, tmin
+        ));
       }
     }
     // 올해 이전 절기 없음 → 작년 대설
-    const prevTerms = getExactSolarTerms(year - 1);
-    const [pm, pd, ph, pmin] = prevTerms[11];
-    const diffDays = Math.abs(new Date(year, month - 1, day, hour, minute) - new Date(year - 1, pm - 1, pd, ph || 0, pmin || 0)) / 86400000;
-    return daysToAge(diffDays);
+    const p = getExactSolarTerms(year - 1)[11];
+    return daysToAge(dateDiffDays(
+      year, month, day, hour, minute,
+      year - 1, p[0], p[1], p[2] || 0, p[3] || 0
+    ));
   }
 }
 
