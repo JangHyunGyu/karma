@@ -73,6 +73,76 @@ const JIJI_OHANG = {
 const SANGSAENG = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };
 const SANGGEUK = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };
 
+// 천간합 (甲己합토, 乙庚합금, 丙辛합수, 丁壬합목, 戊癸합화)
+const CHEONGAN_HAP = [
+  [0, 5, '토'], [1, 6, '금'], [2, 7, '수'], [3, 8, '목'], [4, 9, '화']
+];
+// 지지육합 (子丑합토, 寅亥합목, 卯戌합화, 辰酉합금, 巳申합수, 午未합토)
+const JIJI_YUKHAP = [
+  [0, 1, '토'], [2, 11, '목'], [3, 10, '화'], [4, 9, '금'], [5, 8, '수'], [6, 7, '토']
+];
+// 지지충 (子午, 丑未, 寅申, 卯酉, 辰戌, 巳亥)
+const JIJI_CHUNG = [[0,6],[1,7],[2,8],[3,9],[4,10],[5,11]];
+
+// 사주 내부의 합/충 관계 분석 (자기 사주 4주 간)
+function analyzeInternalRelations(pillars) {
+  const ganHap = [], jiHap = [], jiChung = [];
+  for (let a = 0; a < pillars.length; a++) {
+    for (let b = a + 1; b < pillars.length; b++) {
+      const gA = CHEONGAN.indexOf(pillars[a].gan);
+      const gB = CHEONGAN.indexOf(pillars[b].gan);
+      const jA = JIJI.indexOf(pillars[a].ji);
+      const jB = JIJI.indexOf(pillars[b].ji);
+      for (const [x, y, oh] of CHEONGAN_HAP) {
+        if ((gA === x && gB === y) || (gA === y && gB === x))
+          ganHap.push(`${pillars[a].gan}(${pillars[a].name})-${pillars[b].gan}(${pillars[b].name}) 합${oh}`);
+      }
+      for (const [x, y, oh] of JIJI_YUKHAP) {
+        if ((jA === x && jB === y) || (jA === y && jB === x))
+          jiHap.push(`${pillars[a].ji}(${pillars[a].name})-${pillars[b].ji}(${pillars[b].name}) 합${oh}`);
+      }
+      for (const [x, y] of JIJI_CHUNG) {
+        if ((jA === x && jB === y) || (jA === y && jB === x))
+          jiChung.push(`${pillars[a].ji}(${pillars[a].name})-${pillars[b].ji}(${pillars[b].name}) 충`);
+      }
+    }
+  }
+  return { ganHap, jiHap, jiChung };
+}
+
+// 두 사주 간의 합/충 관계 분석
+function analyzeSajuRelations(pillarsA, pillarsB) {
+  const ganHap = [], jiHap = [], jiChung = [];
+
+  for (const pA of pillarsA) {
+    const gA = CHEONGAN.indexOf(pA.gan);
+    const jA = JIJI.indexOf(pA.ji);
+    for (const pB of pillarsB) {
+      const gB = CHEONGAN.indexOf(pB.gan);
+      const jB = JIJI.indexOf(pB.ji);
+      // 천간합
+      for (const [a, b, oh] of CHEONGAN_HAP) {
+        if ((gA === a && gB === b) || (gA === b && gB === a)) {
+          ganHap.push(`${pA.gan}(${pA.name})-${pB.gan}(${pB.name}) 합${oh}`);
+        }
+      }
+      // 지지육합
+      for (const [a, b, oh] of JIJI_YUKHAP) {
+        if ((jA === a && jB === b) || (jA === b && jB === a)) {
+          jiHap.push(`${pA.ji}(${pA.name})-${pB.ji}(${pB.name}) 합${oh}`);
+        }
+      }
+      // 지지충
+      for (const [a, b] of JIJI_CHUNG) {
+        if ((jA === a && jB === b) || (jA === b && jB === a)) {
+          jiChung.push(`${pA.ji}(${pA.name})-${pB.ji}(${pB.name}) 충`);
+        }
+      }
+    }
+  }
+  return { ganHap, jiHap, jiChung };
+}
+
 // =============================================================================
 // solar-terms.js — Precise 24절기 (Solar Terms) Calculator for Saju (사주)
 //
@@ -1239,6 +1309,7 @@ function buildSajuPrompt(saju, gender, lang) {
   const { excess, lack } = getOhangAnalysis(saju.ohangCount);
   const yinYang = ilganInfo.yin ? '음(陰)' : '양(陽)';
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const rel = analyzeInternalRelations(saju.pillars);
 
   return `당신은 동양 사주명리학 전문가이자 상담사입니다. 사주를 처음 보는 일반인도 쉽게 이해할 수 있도록 친근하고 구체적으로 해석해주세요.
 전문 용어는 괄호 안에 쉬운 설명을 덧붙이고, 실생활 예시를 들어 설명하세요.
@@ -1248,7 +1319,7 @@ function buildSajuPrompt(saju, gender, lang) {
 ${genderText ? `- 성별: ${genderText}` : ''}
 
 ## 사주 원국 (四柱 原局)
-${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
 
 ## 일간 (日干) 분석
 - 일간: ${saju.ilgan} (${saju.ilganOhang}, ${yinYang})
@@ -1258,6 +1329,11 @@ ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
 - 목: ${saju.ohangCount.목} | 화: ${saju.ohangCount.화} | 토: ${saju.ohangCount.토} | 금: ${saju.ohangCount.금} | 수: ${saju.ohangCount.수}
 ${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
 ${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+
+## 사주 내부 합/충 관계 (코드로 계산된 결과)
+${rel.ganHap.length ? `- 천간합: ${rel.ganHap.join(', ')}` : '- 천간합: 없음'}
+${rel.jiHap.length ? `- 지지육합: ${rel.jiHap.join(', ')}` : '- 지지육합: 없음'}
+${rel.jiChung.length ? `- 지지충: ${rel.jiChung.join(', ')}` : '- 지지충: 없음'}
 
 ## 오행 상생/상극 기본 원리
 ${OHANG_RELATIONS}
@@ -1269,7 +1345,7 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 ## 해석 지침
 1. 일간의 본성 + 주변 간지와의 관계를 종합하여 성격을 분석
 2. 오행 과다/부족이 실제 성격과 행동에 미치는 구체적 영향
-3. 천간 간의 합/충, 지지 간의 합/충/형이 있으면 언급
+3. 위의 합/충 데이터를 반드시 반영하여 해석 (천간합은 조화/끌림, 지지충은 갈등/변화 요소)
 4. 연애/대인관계에서 이 사주의 특징적 패턴
 5. 직업/적성에 대한 구체적 조언
 6. 대운 흐름에 따른 시기별 인생 해석 (각 대운이 일간에 어떤 영향을 주는지)
@@ -1368,47 +1444,63 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
   const { excess: excessA, lack: lackA } = getOhangAnalysis(sajuA.ohangCount);
   const { excess: excessB, lack: lackB } = getOhangAnalysis(sajuB.ohangCount);
 
+  // 보완 관계 (완화: 차이 3 이상이면 보완으로 판정)
   const complementary = [];
   for (const key of Object.keys(sajuA.ohangCount)) {
-    if (sajuA.ohangCount[key] === 0 && sajuB.ohangCount[key] >= 2) {
-      complementary.push(`B가 A에게 부족한 ${key}을 보완`);
-    }
-    if (sajuB.ohangCount[key] === 0 && sajuA.ohangCount[key] >= 2) {
-      complementary.push(`A가 B에게 부족한 ${key}을 보완`);
-    }
+    const diff = sajuB.ohangCount[key] - sajuA.ohangCount[key];
+    if (diff >= 3) complementary.push(`B가 A의 부족한 ${key}(${sajuA.ohangCount[key]}→${sajuB.ohangCount[key]})을 보완`);
+    if (diff <= -3) complementary.push(`A가 B의 부족한 ${key}(${sajuB.ohangCount[key]}→${sajuA.ohangCount[key]})을 보완`);
+    if (sajuA.ohangCount[key] === 0 && sajuB.ohangCount[key] >= 2) complementary.push(`B가 A에게 없는 ${key}을 채워줌`);
+    if (sajuB.ohangCount[key] === 0 && sajuA.ohangCount[key] >= 2) complementary.push(`A가 B에게 없는 ${key}을 채워줌`);
   }
+
+  // 합/충 관계 계산
+  const rel = analyzeSajuRelations(sajuA.pillars, sajuB.pillars);
+  const ilganRel = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
+  const relDesc = [];
+  if (ilganRel.sangsaeng.length) relDesc.push(`상생(${ilganRel.sangsaeng.join(', ')})`);
+  if (ilganRel.sanggeuk.length) relDesc.push(`상극(${ilganRel.sanggeuk.join(', ')})`);
+  if (ilganRel.same) relDesc.push('비화(같은 오행)');
 
   return `당신은 동양 사주명리학 궁합 전문가입니다. 40년 경력의 역학자처럼 두 사람의 궁합을 깊이 있게 해석해주세요.
 이미 계산된 점수를 바탕으로, 그 점수의 근거를 사주 원리로 설명하세요. 점수를 새로 매기지 마세요.
+반드시 아래 합/충/보완 데이터를 근거로 해석하세요.
 
 ## Person A ${genderTextA ? `(${genderTextA})` : ''}
-${sajuA.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
+${sajuA.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
 - 일간: ${sajuA.ilgan} (${sajuA.ilganOhang}, ${ilganA.yin ? '음' : '양'}) — ${ilganA.desc || ''}
 - 오행: 목${sajuA.ohangCount.목} 화${sajuA.ohangCount.화} 토${sajuA.ohangCount.토} 금${sajuA.ohangCount.금} 수${sajuA.ohangCount.수}
 ${excessA.length ? `- 과다: ${excessA.join(', ')}` : ''}
 ${lackA.length ? `- 부족: ${lackA.join(', ')}` : ''}
+${sajuA.daeun ? `- 대운: ${sajuA.daeun.map(d => d.gan + d.ji + '(' + d.label + ')').join(', ')}` : ''}
 
 ## Person B ${genderTextB ? `(${genderTextB})` : ''}
-${sajuB.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
+${sajuB.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
 - 일간: ${sajuB.ilgan} (${sajuB.ilganOhang}, ${ilganB.yin ? '음' : '양'}) — ${ilganB.desc || ''}
 - 오행: 목${sajuB.ohangCount.목} 화${sajuB.ohangCount.화} 토${sajuB.ohangCount.토} 금${sajuB.ohangCount.금} 수${sajuB.ohangCount.수}
 ${excessB.length ? `- 과다: ${excessB.join(', ')}` : ''}
 ${lackB.length ? `- 부족: ${lackB.join(', ')}` : ''}
+${sajuB.daeun ? `- 대운: ${sajuB.daeun.map(d => d.gan + d.ji + '(' + d.label + ')').join(', ')}` : ''}
 
-## 두 사람의 관계
-- 궁합 점수: ${score}/100 (${grade}급)
-- 일간 관계: ${sajuA.ilgan}(${sajuA.ilganOhang}) vs ${sajuB.ilgan}(${sajuB.ilganOhang})
-${complementary.length ? `- 보완 관계: ${complementary.join(', ')}` : '- 보완 관계: 특별한 보완 없음'}
+## 두 사주 간 합/충 분석 (코드로 계산된 결과)
+- 일간 오행 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+${rel.ganHap.length ? `- 천간합: ${rel.ganHap.join(', ')}` : '- 천간합: 없음'}
+${rel.jiHap.length ? `- 지지육합: ${rel.jiHap.join(', ')}` : '- 지지육합: 없음'}
+${rel.jiChung.length ? `- 지지충: ${rel.jiChung.join(', ')}` : '- 지지충: 없음'}
+${complementary.length ? `- 오행 보완: ${complementary.join(', ')}` : '- 오행 보완: 없음'}
+
+## 궁합 점수
+- ${score}/100 (${grade}급)
 
 ## 오행 상생/상극 원리
 ${OHANG_RELATIONS}
 
 ## 해석 지침
-1. 두 일간의 오행 관계 (상생/상극/비화)가 실제 관계에 미치는 영향
-2. 음양 조합이 맞는지 (양+음이 이상적)
-3. 오행 과다/부족을 서로 보완하는지 여부
-4. 이 커플이 갈등할 수 있는 구체적 상황
-5. 관계를 발전시키기 위한 실질적 조언
+1. 위 합/충 데이터를 반드시 반영하여 해석 (천간합이 있으면 끌림, 지지충이 있으면 갈등 요소 등)
+2. 두 일간의 오행 관계 (${relDesc.join('/')})가 실제 관계에 미치는 영향
+3. 음양 조합: A(${ilganA.yin ? '음' : '양'}) + B(${ilganB.yin ? '음' : '양'}) — 양+음이 이상적
+4. 오행 과다/부족을 서로 보완하는지 여부
+5. 이 커플이 갈등할 수 있는 구체적 상황과 해결법
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답하세요:
