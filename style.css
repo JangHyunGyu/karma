@@ -15,23 +15,29 @@ body {
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
   background-color: #0a0a1e;
+  min-height: 100vh;
+}
+body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  background-attachment: scroll;
-  min-height: 100vh;
+  pointer-events: none;
 }
 /* PC: 가로 배경 (기본) */
-body.bg-main {
+body.bg-main::after {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main.webp');
 }
-body.bg-saju {
+body.bg-saju::after {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju.webp');
 }
-body.bg-fortune {
+body.bg-fortune::after {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune.webp');
 }
-body.bg-compat {
+body.bg-compat::after {
   background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat.webp');
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
@@ -667,11 +673,8 @@ option { background: #1a1a2e; color: #e0e0e0; }
 
 /* 모바일: 세로 배경 (맨 마지막에 위치해야 PC 규칙을 덮어씀) */
 @media (max-width: 768px) {
-  body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
-    background-attachment: scroll;
-  }
-  body.bg-main { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main-mobile.webp'); }
-  body.bg-saju { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju-mobile.webp'); }
-  body.bg-fortune { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune-mobile.webp'); }
-  body.bg-compat { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat-mobile.webp'); }
+  body.bg-main::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-main-mobile.webp'); }
+  body.bg-saju::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju-mobile.webp'); }
+  body.bg-fortune::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune-mobile.webp'); }
+  body.bg-compat::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat-mobile.webp'); }
 }
