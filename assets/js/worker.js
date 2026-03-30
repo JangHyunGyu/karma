@@ -685,57 +685,64 @@ function hourPillar(dayGan, hour) {
 }
 
 // 정운법: 생일에서 가장 가까운 절기까지 일수 / 3 = 대운 시작 나이
-function calcDaeunStartAge(year, month, day, direction) {
+// 절기 시:분까지 비교하여 같은 날 절기도 정확히 처리
+function calcDaeunStartAge(year, month, day, hour, minute, direction) {
+  hour = hour || 0;
+  minute = minute || 0;
   const terms = getExactSolarTerms(year);
-  const birthVal = month * 100 + day;
 
-  if (direction === 1) {
-    // 순행: 다가올 절기 (미래)
-    for (let i = 0; i < 12; i++) {
-      const [tm, td] = terms[i];
-      if (tm * 100 + td > birthVal) {
-        const diffDays = Math.abs(new Date(year, tm - 1, td) - new Date(year, month - 1, day)) / 86400000;
-        const q = Math.floor(diffDays / 3);
-        const r = diffDays % 3;
-        return r >= 2 ? q + 1 : q;
-      }
-    }
-    // 올해 남은 절기 없음 → 내년 소한
-    const nextTerms = getExactSolarTerms(year + 1);
-    const diffDays = Math.abs(new Date(year + 1, nextTerms[0][0] - 1, nextTerms[0][1]) - new Date(year, month - 1, day)) / 86400000;
-    const q = Math.floor(diffDays / 3);
-    const r = diffDays % 3;
-    return r >= 2 ? q + 1 : q;
-  } else {
-    // 역행: 지난 절기 (과거)
-    for (let i = 11; i >= 0; i--) {
-      const [tm, td] = terms[i];
-      if (tm * 100 + td <= birthVal) {
-        const diffDays = Math.abs(new Date(year, month - 1, day) - new Date(year, tm - 1, td)) / 86400000;
-        const q = Math.floor(diffDays / 3);
-        const r = diffDays % 3;
-        return r >= 2 ? q + 1 : q;
-      }
-    }
-    // 올해 이전 절기 없음 → 작년 대설
-    const prevTerms = getExactSolarTerms(year - 1);
-    const diffDays = Math.abs(new Date(year, month - 1, day) - new Date(year - 1, prevTerms[11][0] - 1, prevTerms[11][1])) / 86400000;
+  // 분 단위 비교값 (getSajuMonthExact과 동일 패턴)
+  const birthMin = ((month - 1) * 31 + day) * 1440 + hour * 60 + minute;
+
+  function daysToAge(diffDays) {
     const q = Math.floor(diffDays / 3);
     const r = diffDays % 3;
     return r >= 2 ? q + 1 : q;
   }
+
+  if (direction === 1) {
+    // 순행: 다가올 절기 (미래)
+    for (let i = 0; i < 12; i++) {
+      const [tm, td, th, tmin] = terms[i];
+      const termMin = ((tm - 1) * 31 + td) * 1440 + (th || 0) * 60 + (tmin || 0);
+      if (termMin > birthMin) {
+        const diffDays = Math.abs(new Date(year, tm - 1, td, th || 0, tmin || 0) - new Date(year, month - 1, day, hour, minute)) / 86400000;
+        return daysToAge(diffDays);
+      }
+    }
+    // 올해 남은 절기 없음 → 내년 소한
+    const nextTerms = getExactSolarTerms(year + 1);
+    const [nm, nd, nh, nmin] = nextTerms[0];
+    const diffDays = Math.abs(new Date(year + 1, nm - 1, nd, nh || 0, nmin || 0) - new Date(year, month - 1, day, hour, minute)) / 86400000;
+    return daysToAge(diffDays);
+  } else {
+    // 역행: 지난 절기 (과거)
+    for (let i = 11; i >= 0; i--) {
+      const [tm, td, th, tmin] = terms[i];
+      const termMin = ((tm - 1) * 31 + td) * 1440 + (th || 0) * 60 + (tmin || 0);
+      if (termMin <= birthMin) {
+        const diffDays = Math.abs(new Date(year, month - 1, day, hour, minute) - new Date(year, tm - 1, td, th || 0, tmin || 0)) / 86400000;
+        return daysToAge(diffDays);
+      }
+    }
+    // 올해 이전 절기 없음 → 작년 대설
+    const prevTerms = getExactSolarTerms(year - 1);
+    const [pm, pd, ph, pmin] = prevTerms[11];
+    const diffDays = Math.abs(new Date(year, month - 1, day, hour, minute) - new Date(year - 1, pm - 1, pd, ph || 0, pmin || 0)) / 86400000;
+    return daysToAge(diffDays);
+  }
 }
 
-function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex) {
+function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex, birthHour, birthMinute) {
   const [year, month, day] = birthDate.split('-').map(Number);
-  const sajuYear = getSajuYear(year, month, day);
+  const sajuYear = getSajuYear(year, month, day, birthHour, birthMinute);
   const yearGan = yearCheongan(sajuYear);
   const yearGanIndex = CHEONGAN.indexOf(yearGan);
 
   const isYangGan = yearGanIndex % 2 === 0;
   const isMale = gender === 'male';
   const direction = (isYangGan && isMale) || (!isYangGan && !isMale) ? 1 : -1;
-  const startAge = calcDaeunStartAge(year, month, day, direction) || 1;
+  const startAge = calcDaeunStartAge(year, month, day, birthHour || 0, birthMinute || 0, direction) || 1;
 
   const daeunList = [];
   for (let i = 1; i <= 8; i++) {
@@ -822,7 +829,7 @@ function calculateSaju(birthDate, birthTime, gender, yajasi) {
   if (gender) {
     const mGanIdx = CHEONGAN.indexOf(mGan);
     const mJiIdx = JIJI.indexOf(mJi);
-    daeun = calculateDaeun(birthDate, gender, mGanIdx, mJiIdx);
+    daeun = calculateDaeun(birthDate, gender, mGanIdx, mJiIdx, rawHour, rawMinute);
   }
 
   return {
