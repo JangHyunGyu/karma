@@ -67,7 +67,7 @@ body.bg-compat .home-nav, body.bg-compat .header-bg {
   position: fixed;
   top: 14px;
   left: 20px;
-  z-index: 50;
+  z-index: 60;
   background: linear-gradient(135deg, #8b5e2f, #c9a044, #8b5e2f);
   background-size: 200% 200%;
   animation: al-gradient 3s ease infinite, al-glow-pulse 2s ease-in-out infinite;
