@@ -15,7 +15,7 @@ body {
 body.bg-main, body.bg-saju, body.bg-fortune, body.bg-compat {
   position: relative;
   background-color: #0a0a1e;
-  background-size: cover;
+  background-size: 100% 100%;
   background-position: center center;
   background-repeat: no-repeat;
   background-attachment: fixed;
