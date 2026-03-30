@@ -42,6 +42,13 @@ body.bg-compat::after {
 }
 body.bg-main .container, body.bg-saju .container, body.bg-fortune .container, body.bg-compat .container {
   position: relative;
+  z-index: 1;
+}
+body.bg-main .home-nav, body.bg-saju .home-nav,
+body.bg-main .header-bg, body.bg-saju .header-bg,
+body.bg-fortune .home-nav, body.bg-fortune .header-bg,
+body.bg-compat .home-nav, body.bg-compat .header-bg {
+  z-index: 60;
 }
 .archerlab-link, .home-nav, .lang-select-wrap {
   z-index: 60;
