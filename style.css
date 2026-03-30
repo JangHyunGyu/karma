@@ -22,8 +22,7 @@ body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-size: cover;
-  background-position: center center;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   pointer-events: none;
 }
