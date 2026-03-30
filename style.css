@@ -558,6 +558,8 @@ option { background: #1a1a2e; color: #e0e0e0; }
   cursor: pointer;
   transition: all 0.25s;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .menu-card::before {
   content: '';
