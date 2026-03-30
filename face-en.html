@@ -259,16 +259,28 @@ function handleFile(file) {
     alert('Image size exceeds 15MB. Please use a smaller photo.');
     return;
   }
-  imageMime = file.type;
-  const reader = new FileReader();
-  reader.onload = e => {
-    imageData = e.target.result.split(',')[1];
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 2048;
+    let w = img.width, h = img.height;
+    if (w > MAX || h > MAX) {
+      const r = Math.min(MAX / w, MAX / h);
+      w = Math.round(w * r); h = Math.round(h * r);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    imageData = jpegDataUrl.split(',')[1];
+    imageMime = 'image/jpeg';
     uploadArea.classList.add('has-image');
-    uploadArea.innerHTML = `<img src="${e.target.result}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
+    uploadArea.innerHTML = `<img src="${jpegDataUrl}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
     document.getElementById('fileInput').addEventListener('change', e2 => { if (e2.target.files[0]) handleFile(e2.target.files[0]); });
     checkReady();
+    URL.revokeObjectURL(url);
   };
-  reader.readAsDataURL(file);
+  img.src = url;
 }
 
 analyzeBtn.addEventListener('click', async () => {
