@@ -1297,23 +1297,50 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 function buildFortunePrompt(saju, gender, year, lang) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const { excess, lack } = getOhangAnalysis(saju.ohangCount);
+  const yGan = yearCheongan(year);
+  const yJi = yearJiji(year);
+  const yOhang = CHEONGAN_OHANG[yGan];
+  const yJiOhang = JIJI_OHANG[yJi];
+  const ilOhang = saju.ilganOhang;
+  const relations = getOhangRelations(ilOhang, yOhang);
+
+  // 세운과 일간의 관계 요약
+  const relDesc = [];
+  if (relations.sangsaeng.length) relDesc.push(`상생(${relations.sangsaeng.join(', ')})`);
+  if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
+  if (relations.same) relDesc.push('비화(같은 오행)');
 
   return `당신은 사주명리학 기반 운세 전문가입니다. 친근하고 구체적으로, 실생활에 도움이 되도록 해석해주세요.
+반드시 이 사람의 사주 원국과 세운 간지의 구체적 관계를 기반으로 해석하세요.
+다른 사주와 구별되는 이 사람만의 고유한 운세를 만들어주세요.
 
 ## 기본 정보
 ${genderText ? `- 성별: ${genderText}` : ''}
 - 올해: ${year}년
 
-## 사주 원국
-${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji}`).join('\n')}
-- 일간: ${saju.ilgan} (${saju.ilganOhang}) — ${ilganInfo.desc || ''}
-- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+## ${year}년 세운 (年運)
+- 천간: ${yGan} (${yOhang})
+- 지지: ${yJi} (${yJiOhang})
+- 세운과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
 
-## 해석 지침
-1. ${year}년의 천간/지지가 이 사주의 일간과 어떤 관계인지 분석
-2. 연애운, 재물운, 건강운, 직장/사업운을 각각 구체적으로
-3. 월별 운세는 실생활 조언 포함 (예: '이 달에는 큰 결정을 미루세요')
-4. 전문용어 없이 쉽게 설명
+## 사주 원국
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+${saju.daeun ? `
+## 대운 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+## 해석 지침 (중요!)
+1. ${year}년 세운 ${yGan}${yJi}(${yOhang}/${yJiOhang})가 이 사주의 일간 ${saju.ilgan}(${ilOhang})과 ${relDesc.length ? relDesc.join(', ') + ' 관계' : '어떤 관계'}인지 구체적으로 분석
+2. 세운의 천간(${yGan})이 사주 원국의 각 천간과 합/충이 있는지 확인
+3. 세운의 지지(${yJi})가 사주 원국의 각 지지와 합/충/형이 있는지 확인
+4. 이 사람의 오행 과다/부족이 올해 세운에 의해 어떻게 변하는지 분석
+5. 연애운, 재물운, 건강운, 직장/사업운을 사주 특성에 맞게 각각 구체적으로
+6. 전문용어 없이 쉽게 설명
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답:
