@@ -1721,12 +1721,17 @@ async function handleFortune(request, env) {
 }
 
 async function handleDaily(request, env) {
-  const { birth_date, birth_time, gender, lang, yajasi } = await request.json();
+  const { birth_date, birth_time, gender, lang, yajasi, target_date } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false);
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  let todayStr;
+  if (target_date && /^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
+    todayStr = target_date;
+  } else {
+    const today = new Date();
+    todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  }
 
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);

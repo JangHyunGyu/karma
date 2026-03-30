@@ -49,7 +49,7 @@
   <div class="card" style="max-width:480px;margin:0 auto 20px">
     <label data-ko="생년월일 (양력)" data-en="Date of Birth (Solar)">생년월일 (양력)</label>
     <div class="date-selects" id="dateSelects"></div>
-    <div class="row" style="grid-template-columns:1fr 1fr">
+    <div class="row" style="grid-template-columns:1fr 1fr 1fr">
       <div>
         <label data-ko="성별" data-en="Gender">성별</label>
         <select id="gender" onchange="saveInputs()">
@@ -74,6 +74,10 @@
           <option value="20:00" data-ko="술시 (19:30~21:30)" data-en="Sul (19:30~21:30)">술시 (19:30~21:30)</option>
           <option value="22:00" data-ko="해시 (21:30~23:30)" data-en="Hae (21:30~23:30)">해시 (21:30~23:30)</option>
         </select>
+      </div>
+      <div>
+        <label data-ko="운세 날짜" data-en="Fortune Date">운세 날짜</label>
+        <select id="targetDate"></select>
       </div>
     </div>
     <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3">
@@ -158,6 +162,29 @@
 <script>
 createDateSelects('dateSelects');
 
+// 날짜 선택 (어제 ~ +7일)
+(function() {
+  const sel = document.getElementById('targetDate');
+  const now = new Date();
+  const labels = { '-1': '어제', '0': '오늘', '1': '내일', '2': '모레' };
+  const labelsEn = { '-1': 'Yesterday', '0': 'Today', '1': 'Tomorrow', '2': 'Day after' };
+  for (let i = -1; i <= 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const mm = d.getMonth() + 1, dd = d.getDate();
+    const koLabel = labels[String(i)] ? `${mm}/${dd} (${labels[String(i)]})` : `${mm}/${dd}`;
+    const enLabel = labelsEn[String(i)] ? `${mm}/${dd} (${labelsEn[String(i)]})` : `${mm}/${dd}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.dataset.ko = koLabel;
+    opt.dataset.en = enLabel;
+    opt.textContent = koLabel;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+})();
+
 async function doDaily() {
   const btn = document.getElementById('dailyBtn');
   const loading = document.getElementById('loading');
@@ -174,6 +201,7 @@ async function doDaily() {
         birth_date: getBirthDate(),
         birth_time: document.getElementById('birthTime').value,
         gender: document.getElementById('gender').value,
+        target_date: document.getElementById('targetDate').value,
         lang: 'ko',
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),

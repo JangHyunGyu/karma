@@ -49,7 +49,7 @@
   <div class="card" style="max-width:480px;margin:0 auto 20px">
     <label>Date of Birth (Solar)</label>
     <div class="date-selects" id="dateSelects"></div>
-    <div class="row" style="grid-template-columns:1fr 1fr">
+    <div class="row" style="grid-template-columns:1fr 1fr 1fr">
       <div>
         <label>Gender</label>
         <select id="gender" onchange="saveInputs()">
@@ -74,6 +74,10 @@
           <option value="20:00">Sul (19:30~21:30)</option>
           <option value="22:00">Hae (21:30~23:30)</option>
         </select>
+      </div>
+      <div>
+        <label>Fortune Date</label>
+        <select id="targetDate"></select>
       </div>
     </div>
     <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3">
@@ -158,6 +162,25 @@
 <script>
 createDateSelects('dateSelects');
 
+// Date selector (yesterday ~ +7 days)
+(function() {
+  const sel = document.getElementById('targetDate');
+  const now = new Date();
+  const labels = { '-1': 'Yesterday', '0': 'Today', '1': 'Tomorrow', '2': 'Day after' };
+  for (let i = -1; i <= 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const mm = d.getMonth() + 1, dd = d.getDate();
+    const label = labels[String(i)] ? `${mm}/${dd} (${labels[String(i)]})` : `${mm}/${dd}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+})();
+
 async function doDaily() {
   const btn = document.getElementById('dailyBtn');
   const loading = document.getElementById('loading');
@@ -174,6 +197,7 @@ async function doDaily() {
         birth_date: getBirthDate(),
         birth_time: document.getElementById('birthTime').value,
         gender: document.getElementById('gender').value,
+        target_date: document.getElementById('targetDate').value,
         lang: 'en',
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
       }),
