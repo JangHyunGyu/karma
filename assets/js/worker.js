@@ -1072,6 +1072,153 @@ async function callGemini(apiKeys, prompt, _caller, _env) {
   return null;
 }
 
+// ============================================================
+// Tarot Reading
+// ============================================================
+
+const TAROT_MAJOR_ARCANA = [
+  { id: 0, name: 'The Fool', nameKo: '광대', keywords: '새로운 시작, 모험, 자유, 순수' },
+  { id: 1, name: 'The Magician', nameKo: '마법사', keywords: '창조력, 의지, 능력, 집중' },
+  { id: 2, name: 'The High Priestess', nameKo: '여사제', keywords: '직관, 지혜, 비밀, 내면의 목소리' },
+  { id: 3, name: 'The Empress', nameKo: '여황제', keywords: '풍요, 모성, 아름다움, 자연' },
+  { id: 4, name: 'The Emperor', nameKo: '황제', keywords: '권위, 안정, 리더십, 질서' },
+  { id: 5, name: 'The Hierophant', nameKo: '교황', keywords: '전통, 가르침, 신앙, 규범' },
+  { id: 6, name: 'The Lovers', nameKo: '연인', keywords: '사랑, 선택, 조화, 관계' },
+  { id: 7, name: 'The Chariot', nameKo: '전차', keywords: '승리, 의지력, 전진, 자기 통제' },
+  { id: 8, name: 'Strength', nameKo: '힘', keywords: '내면의 힘, 용기, 인내, 부드러운 통제' },
+  { id: 9, name: 'The Hermit', nameKo: '은둔자', keywords: '성찰, 고독, 지혜, 내면 탐구' },
+  { id: 10, name: 'Wheel of Fortune', nameKo: '운명의 수레바퀴', keywords: '변화, 운명, 순환, 전환점' },
+  { id: 11, name: 'Justice', nameKo: '정의', keywords: '공정, 균형, 결과, 진실' },
+  { id: 12, name: 'The Hanged Man', nameKo: '매달린 사람', keywords: '희생, 새로운 관점, 기다림, 깨달음' },
+  { id: 13, name: 'Death', nameKo: '죽음', keywords: '끝과 시작, 변화, 전환, 해방' },
+  { id: 14, name: 'Temperance', nameKo: '절제', keywords: '균형, 조화, 인내, 중용' },
+  { id: 15, name: 'The Devil', nameKo: '악마', keywords: '유혹, 집착, 구속, 물질' },
+  { id: 16, name: 'The Tower', nameKo: '탑', keywords: '급변, 파괴, 해방, 깨달음' },
+  { id: 17, name: 'The Star', nameKo: '별', keywords: '희망, 영감, 치유, 평화' },
+  { id: 18, name: 'The Moon', nameKo: '달', keywords: '불안, 환상, 직관, 무의식' },
+  { id: 19, name: 'The Sun', nameKo: '태양', keywords: '성공, 기쁨, 활력, 긍정' },
+  { id: 20, name: 'Judgement', nameKo: '심판', keywords: '부활, 각성, 결단, 자기 평가' },
+  { id: 21, name: 'The World', nameKo: '세계', keywords: '완성, 성취, 통합, 여행' },
+];
+
+function buildTarotPrompt(cards, question, lang) {
+  const isEn = lang === 'en';
+  const cardDescs = cards.map((c, i) => {
+    const pos = i === 0 ? (isEn ? 'Past' : '과거') : i === 1 ? (isEn ? 'Present' : '현재') : (isEn ? 'Future' : '미래');
+    const rev = c.reversed ? (isEn ? '(Reversed)' : '(역방향)') : (isEn ? '(Upright)' : '(정방향)');
+    return `- ${pos}: ${c.nameKo} (${c.name}) ${rev} — ${c.keywords}`;
+  }).join('\n');
+
+  if (isEn) {
+    return `You are a professional tarot reader with deep knowledge of the Rider-Waite tarot tradition. Provide an insightful, empathetic reading.
+
+## Question
+${question || 'General reading'}
+
+## Cards Drawn (Past - Present - Future spread)
+${cardDescs}
+
+## Guidelines
+1. Interpret each card's meaning considering its position and orientation (upright/reversed)
+2. Connect the three cards as a narrative flowing from past through present to future
+3. Provide specific, actionable advice based on the reading
+4. Be encouraging but honest — don't sugarcoat reversed cards
+5. Reference the card imagery from the Rider-Waite deck to enrich the reading
+
+## Response Format
+Respond ONLY with the following JSON:
+{
+  "cards": [
+    {"position": "Past", "interpretation": "(3-4 sentences interpreting this card in the past position)"},
+    {"position": "Present", "interpretation": "(3-4 sentences interpreting this card in the present position)"},
+    {"position": "Future", "interpretation": "(3-4 sentences interpreting this card in the future position)"}
+  ],
+  "overall": "(4-5 sentences weaving all three cards into a cohesive narrative and overall message)",
+  "advice": "(3-4 sentences of specific, practical advice based on the reading)",
+  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+}`;
+  }
+
+  return `당신은 Rider-Waite 타로 전통에 깊은 지식을 가진 전문 타로 리더입니다. 통찰력 있고 공감적인 리딩을 제공하세요.
+
+## 질문
+${question || '전체 운세'}
+
+## 뽑힌 카드 (과거 - 현재 - 미래 스프레드)
+${cardDescs}
+
+## 해석 지침
+1. 각 카드를 위치(과거/현재/미래)와 방향(정방향/역방향)을 고려하여 해석
+2. 세 장의 카드를 과거에서 현재, 미래로 흐르는 하나의 이야기로 연결
+3. 리딩을 바탕으로 구체적이고 실천 가능한 조언 제공
+4. 격려하되 솔직하게 — 역방향 카드를 무조건 긍정적으로 포장하지 마세요
+5. Rider-Waite 덱의 카드 이미지를 참조하여 풍부한 해석 제공
+6. 전문 용어는 쉬운 말로 풀어서 설명
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+  "cards": [
+    {"position": "과거", "interpretation": "(이 카드가 과거 위치에서 의미하는 것 3~4문장. 구체적 상황 묘사)"},
+    {"position": "현재", "interpretation": "(이 카드가 현재 위치에서 의미하는 것 3~4문장. 현재 상황에 대한 통찰)"},
+    {"position": "미래", "interpretation": "(이 카드가 미래 위치에서 의미하는 것 3~4문장. 앞으로의 방향성)"}
+  ],
+  "overall": "(세 장의 카드를 하나의 일관된 이야기로 엮은 종합 메시지 4~5문장)",
+  "advice": "(리딩을 바탕으로 한 구체적이고 실천 가능한 조언 3~4문장)",
+  "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
+}`;
+}
+
+async function handleTarotReading(request, env) {
+  try {
+    const body = await request.json();
+    const { cards: selectedCards, question, lang } = body;
+
+    if (!selectedCards || !Array.isArray(selectedCards) || selectedCards.length !== 3) {
+      return json({ error: 'cards must be an array of 3 card objects' }, 400);
+    }
+
+    // 카드 정보 매핑
+    const cards = selectedCards.map(c => {
+      const card = TAROT_MAJOR_ARCANA.find(t => t.id === c.id);
+      if (!card) return null;
+      return { ...card, reversed: !!c.reversed };
+    }).filter(Boolean);
+
+    if (cards.length !== 3) {
+      return json({ error: 'Invalid card IDs' }, 400);
+    }
+
+    const apiKeys = getGeminiKeys(env);
+    if (!apiKeys.length) {
+      return json({ error: 'AI service unavailable' }, 503);
+    }
+
+    const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
+    const ai = await callGemini(apiKeys, prompt, 'tarot', env);
+
+    if (!ai) {
+      return json({ error: 'AI interpretation failed' }, 500);
+    }
+
+    return json({
+      cards: cards.map((c, i) => ({
+        id: c.id,
+        name: c.name,
+        nameKo: c.nameKo,
+        reversed: c.reversed,
+        keywords: c.keywords,
+        interpretation: ai.cards?.[i]?.interpretation || '',
+      })),
+      overall: ai.overall || '',
+      advice: ai.advice || '',
+      keywords: ai.keywords || [],
+    });
+  } catch (e) {
+    return json({ error: e.message || 'Server error' }, 500);
+  }
+}
+
 async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
   const body = JSON.stringify({
     contents: [{
@@ -2124,6 +2271,9 @@ export default {
       }
       if (path === '/api/quick-saju' && method === 'POST') {
         return handleQuickSaju(request, env);
+      }
+      if (path === '/api/tarot' && method === 'POST') {
+        return handleTarotReading(request, env);
       }
       if (path === '/api/face-reading' && method === 'POST') {
         return handleFaceReading(request, env);
