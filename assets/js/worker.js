@@ -1077,94 +1077,166 @@ async function callGemini(apiKeys, prompt, _caller, _env) {
 // ============================================================
 
 const TAROT_MAJOR_ARCANA = [
-  { id: 0, name: 'The Fool', nameKo: '광대', keywords: '새로운 시작, 모험, 자유, 순수' },
-  { id: 1, name: 'The Magician', nameKo: '마법사', keywords: '창조력, 의지, 능력, 집중' },
-  { id: 2, name: 'The High Priestess', nameKo: '여사제', keywords: '직관, 지혜, 비밀, 내면의 목소리' },
-  { id: 3, name: 'The Empress', nameKo: '여황제', keywords: '풍요, 모성, 아름다움, 자연' },
-  { id: 4, name: 'The Emperor', nameKo: '황제', keywords: '권위, 안정, 리더십, 질서' },
-  { id: 5, name: 'The Hierophant', nameKo: '교황', keywords: '전통, 가르침, 신앙, 규범' },
-  { id: 6, name: 'The Lovers', nameKo: '연인', keywords: '사랑, 선택, 조화, 관계' },
-  { id: 7, name: 'The Chariot', nameKo: '전차', keywords: '승리, 의지력, 전진, 자기 통제' },
-  { id: 8, name: 'Strength', nameKo: '힘', keywords: '내면의 힘, 용기, 인내, 부드러운 통제' },
-  { id: 9, name: 'The Hermit', nameKo: '은둔자', keywords: '성찰, 고독, 지혜, 내면 탐구' },
-  { id: 10, name: 'Wheel of Fortune', nameKo: '운명의 수레바퀴', keywords: '변화, 운명, 순환, 전환점' },
-  { id: 11, name: 'Justice', nameKo: '정의', keywords: '공정, 균형, 결과, 진실' },
-  { id: 12, name: 'The Hanged Man', nameKo: '매달린 사람', keywords: '희생, 새로운 관점, 기다림, 깨달음' },
-  { id: 13, name: 'Death', nameKo: '죽음', keywords: '끝과 시작, 변화, 전환, 해방' },
-  { id: 14, name: 'Temperance', nameKo: '절제', keywords: '균형, 조화, 인내, 중용' },
-  { id: 15, name: 'The Devil', nameKo: '악마', keywords: '유혹, 집착, 구속, 물질' },
-  { id: 16, name: 'The Tower', nameKo: '탑', keywords: '급변, 파괴, 해방, 깨달음' },
-  { id: 17, name: 'The Star', nameKo: '별', keywords: '희망, 영감, 치유, 평화' },
-  { id: 18, name: 'The Moon', nameKo: '달', keywords: '불안, 환상, 직관, 무의식' },
-  { id: 19, name: 'The Sun', nameKo: '태양', keywords: '성공, 기쁨, 활력, 긍정' },
-  { id: 20, name: 'Judgement', nameKo: '심판', keywords: '부활, 각성, 결단, 자기 평가' },
-  { id: 21, name: 'The World', nameKo: '세계', keywords: '완성, 성취, 통합, 여행' },
+  { id: 0, name: 'The Fool', nameKo: '광대',
+    up: '새로운 시작, 모험, 자유, 순수, 무한한 가능성',
+    rev: '무모함, 무책임, 방향 상실, 경솔한 판단',
+    imagery: '절벽 끝에 서서 하늘을 바라보는 청년, 작은 개, 흰 장미, 배낭' },
+  { id: 1, name: 'The Magician', nameKo: '마법사',
+    up: '창조력, 의지, 능력, 집중, 자원의 활용',
+    rev: '재능 낭비, 속임수, 조작, 잠재력 미발휘',
+    imagery: '한 손은 하늘, 한 손은 땅을 가리키는 남자, 테이블 위 4원소(컵/지팡이/검/동전), 무한대 기호' },
+  { id: 2, name: 'The High Priestess', nameKo: '여사제',
+    up: '직관, 지혜, 비밀, 내면의 목소리, 무의식',
+    rev: '비밀의 폭로, 직관 무시, 표면적 판단, 내면 단절',
+    imagery: '두 기둥(B와 J) 사이에 앉은 여성, 달의 왕관, 토라 두루마리, 석류 커튼' },
+  { id: 3, name: 'The Empress', nameKo: '여황제',
+    up: '풍요, 모성, 아름다움, 자연, 감각적 기쁨',
+    rev: '의존, 공허함, 창조적 정체, 과잉보호',
+    imagery: '밀밭 속 왕좌에 앉은 여성, 12개 별 왕관, 금성 기호 방패, 풍성한 자연' },
+  { id: 4, name: 'The Emperor', nameKo: '황제',
+    up: '권위, 안정, 리더십, 질서, 구조와 통제',
+    rev: '독재, 경직, 통제 상실, 미성숙한 권위',
+    imagery: '돌 왕좌에 앉은 갑옷 입은 남자, 양 머리 장식, 구, 홀, 붉은 로브' },
+  { id: 5, name: 'The Hierophant', nameKo: '교황',
+    up: '전통, 가르침, 신앙, 규범, 영적 인도',
+    rev: '기존 관념 탈피, 반항, 교조주의, 독자적 길',
+    imagery: '두 제자 앞 왕좌의 종교 지도자, 삼중 왕관, 교차 열쇠, 축복 손짓' },
+  { id: 6, name: 'The Lovers', nameKo: '연인',
+    up: '사랑, 선택, 조화, 관계, 가치관의 합일',
+    rev: '불화, 잘못된 선택, 유혹, 가치관 충돌',
+    imagery: '벌거벗은 남녀, 천사 라파엘, 생명나무와 지식의 나무, 산' },
+  { id: 7, name: 'The Chariot', nameKo: '전차',
+    up: '승리, 의지력, 전진, 자기 통제, 결단력',
+    rev: '방향 상실, 공격성, 통제력 상실, 좌절',
+    imagery: '전차 위의 갑옷 전사, 흑백 스핑크스, 별 캐노피, 도시 배경' },
+  { id: 8, name: 'Strength', nameKo: '힘',
+    up: '내면의 힘, 용기, 인내, 부드러운 통제, 자비',
+    rev: '자기 의심, 나약함, 폭발적 감정, 자신감 결여',
+    imagery: '사자의 입을 부드럽게 닫는 여성, 무한대 기호, 흰 옷, 꽃 화관' },
+  { id: 9, name: 'The Hermit', nameKo: '은둔자',
+    up: '성찰, 고독, 지혜, 내면 탐구, 안내',
+    rev: '고립, 외로움, 현실 도피, 은둔으로의 도망',
+    imagery: '산꼭대기의 회색 로브 노인, 등불(다윗의 별), 지팡이' },
+  { id: 10, name: 'Wheel of Fortune', nameKo: '운명의 수레바퀴',
+    up: '변화, 운명, 순환, 전환점, 행운',
+    rev: '불운, 변화 저항, 통제 불능, 예상치 못한 역전',
+    imagery: '거대한 수레바퀴, 스핑크스, 뱀, 아누비스, 네 모서리의 천사들, TARO 글자' },
+  { id: 11, name: 'Justice', nameKo: '정의',
+    up: '공정, 균형, 결과, 진실, 인과응보',
+    rev: '불공정, 책임 회피, 편견, 부정직',
+    imagery: '왕좌의 여성, 천칭 저울, 양날검, 붉은 로브, 보라색 커튼' },
+  { id: 12, name: 'The Hanged Man', nameKo: '매달린 사람',
+    up: '희생, 새로운 관점, 기다림, 깨달음, 항복',
+    rev: '지연, 무의미한 희생, 저항, 이기심',
+    imagery: '한쪽 발로 나무에 거꾸로 매달린 남자, 후광, 평온한 표정, T자 나무' },
+  { id: 13, name: 'Death', nameKo: '죽음',
+    up: '끝과 시작, 변화, 전환, 해방, 필연적 변화',
+    rev: '변화 저항, 정체, 두려움, 낡은 것에 집착',
+    imagery: '흰 말 위의 갑옷 해골, 쓰러진 왕, 기도하는 성직자, 아이, 강, 떠오르는 태양' },
+  { id: 14, name: 'Temperance', nameKo: '절제',
+    up: '균형, 조화, 인내, 중용, 치유',
+    rev: '불균형, 과잉, 조급함, 극단, 부조화',
+    imagery: '두 컵 사이 물을 옮기는 천사, 한 발은 물 한 발은 땅, 길, 태양의 왕관' },
+  { id: 15, name: 'The Devil', nameKo: '악마',
+    up: '유혹, 집착, 구속, 물질주의, 중독',
+    rev: '해방, 구속에서 벗어남, 자각, 독립',
+    imagery: '박쥐 날개의 악마, 사슬에 묶인 남녀, 거꾸로 된 오각별, 어둠' },
+  { id: 16, name: 'The Tower', nameKo: '탑',
+    up: '급변, 파괴, 해방, 깨달음, 충격적 진실',
+    rev: '파국 회피, 변화 두려움, 느린 붕괴, 내적 전환',
+    imagery: '번개 맞은 탑, 떨어지는 사람들, 왕관, 불꽃, 어두운 하늘' },
+  { id: 17, name: 'The Star', nameKo: '별',
+    up: '희망, 영감, 치유, 평화, 내면의 빛',
+    rev: '절망, 영감 상실, 자기 불신, 단절감',
+    imagery: '별 아래 벌거벗은 여성, 두 항아리의 물(땅과 연못), 큰 별 하나와 작은 별 일곱' },
+  { id: 18, name: 'The Moon', nameKo: '달',
+    up: '불안, 환상, 직관, 무의식, 두려움',
+    rev: '진실 드러남, 불안 해소, 혼란 극복, 명확해짐',
+    imagery: '달(초승달 속 얼굴), 짖는 개와 늑대, 가재, 두 탑, 구불구불한 길' },
+  { id: 19, name: 'The Sun', nameKo: '태양',
+    up: '성공, 기쁨, 활력, 긍정, 명확함',
+    rev: '낙관 과잉, 지연된 성공, 자만, 일시적 우울',
+    imagery: '밝은 태양, 해바라기, 흰 말 위의 벌거벗은 아이, 붉은 깃발, 돌담' },
+  { id: 20, name: 'Judgement', nameKo: '심판',
+    up: '부활, 각성, 결단, 자기 평가, 소명',
+    rev: '자기 의심, 판단 보류, 과거 미련, 소명 무시',
+    imagery: '구름 위 천사의 나팔, 관에서 일어나는 사람들, 산맥, 십자가 깃발' },
+  { id: 21, name: 'The World', nameKo: '세계',
+    up: '완성, 성취, 통합, 여행, 하나의 순환 완료',
+    rev: '미완성, 마무리 부족, 목표 지연, 아쉬운 결말',
+    imagery: '월계관 안에서 춤추는 여성, 두 지팡이, 네 모서리의 동물(사자/황소/독수리/천사)' },
 ];
 
 function buildTarotPrompt(cards, question, lang) {
   const isEn = lang === 'en';
   const cardDescs = cards.map((c, i) => {
     const pos = i === 0 ? (isEn ? 'Past' : '과거') : i === 1 ? (isEn ? 'Present' : '현재') : (isEn ? 'Future' : '미래');
-    const rev = c.reversed ? (isEn ? '(Reversed)' : '(역방향)') : (isEn ? '(Upright)' : '(정방향)');
-    return `- ${pos}: ${c.nameKo} (${c.name}) ${rev} — ${c.keywords}`;
+    const dir = c.reversed ? (isEn ? 'REVERSED' : '역방향') : (isEn ? 'UPRIGHT' : '정방향');
+    const keywords = c.reversed ? c.rev : c.up;
+    return `- ${pos}: ${c.nameKo} (${c.name}) [${dir}]
+  키워드: ${keywords}
+  카드 그림: ${c.imagery}`;
   }).join('\n');
 
+  const hasQuestion = question && question.trim().length > 0;
+
   if (isEn) {
-    return `You are a professional tarot reader with deep knowledge of the Rider-Waite tarot tradition. Provide an insightful, empathetic reading.
+    return `You are a warm, insightful tarot reader in the Rider-Waite tradition. You speak as if sitting across from the querent, making them feel understood.
 
-## Question
-${question || 'General reading'}
+## Querent's Question
+${hasQuestion ? question : 'General life reading — no specific question'}
 
-## Cards Drawn (Past - Present - Future spread)
+## Cards Drawn (Past → Present → Future)
 ${cardDescs}
 
-## Guidelines
-1. Interpret each card's meaning considering its position and orientation (upright/reversed)
-2. Connect the three cards as a narrative flowing from past through present to future
-3. Provide specific, actionable advice based on the reading
-4. Be encouraging but honest — don't sugarcoat reversed cards
-5. Reference the card imagery from the Rider-Waite deck to enrich the reading
+## Interpretation Rules
+1. **Direction matters**: Upright = the card's full energy flows freely. Reversed = that energy is blocked, internalized, or manifesting as its shadow. Never ignore the direction.
+2. **Card imagery**: Weave specific visual elements from the Rider-Waite illustration into your interpretation (e.g., "The lightning in The Tower suggests..."). This makes the reading vivid and grounded.
+3. **Narrative arc**: The three cards tell ONE story — past shaped the present, present is shaping the future. Find the thread.
+${hasQuestion ? `4. **Answer the question**: Every interpretation must relate back to "${question}". Don't give a generic reading.` : '4. **Life overview**: Cover love, career, and personal growth themes.'}
+5. **Tone**: Empathetic and specific. Use "you" language. Avoid vague fortune-cookie statements. Give concrete examples of situations ("In your workplace, you might notice..." / "In relationships, this suggests...").
+6. **Reversed cards**: Be honest. A reversed card is not bad — it's a message about what needs attention. Explain what's blocked and how to unblock it.
+7. **No jargon**: Explain everything in everyday language.
 
-## Response Format
-Respond ONLY with the following JSON:
+## Response — JSON only
 {
   "cards": [
-    {"position": "Past", "interpretation": "(3-4 sentences interpreting this card in the past position)"},
-    {"position": "Present", "interpretation": "(3-4 sentences interpreting this card in the present position)"},
-    {"position": "Future", "interpretation": "(3-4 sentences interpreting this card in the future position)"}
+    {"position": "Past", "interpretation": "(4-5 sentences. Reference the card's imagery. Connect to past experiences or patterns.)"},
+    {"position": "Present", "interpretation": "(4-5 sentences. What the querent is experiencing NOW. Be specific and relatable.)"},
+    {"position": "Future", "interpretation": "(4-5 sentences. What's coming. Be encouraging but realistic about reversed cards.)"}
   ],
-  "overall": "(4-5 sentences weaving all three cards into a cohesive narrative and overall message)",
-  "advice": "(3-4 sentences of specific, practical advice based on the reading)",
+  "overall": "(5-6 sentences weaving all three cards into one cohesive narrative arc. What is the universe telling the querent?)  ",
+  "advice": "(4-5 sentences. SPECIFIC, ACTIONABLE advice. Not 'trust yourself' but 'When you face X situation, try Y approach because Z.')  ",
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
 }`;
   }
 
-  return `당신은 Rider-Waite 타로 전통에 깊은 지식을 가진 전문 타로 리더입니다. 통찰력 있고 공감적인 리딩을 제공하세요.
+  return `당신은 따뜻하고 통찰력 있는 Rider-Waite 전통의 타로 리더입니다. 마치 질문자와 마주 앉아 이야기하듯, 공감하며 리딩하세요.
 
-## 질문
-${question || '전체 운세'}
+## 질문자의 질문
+${hasQuestion ? question : '특별한 질문 없이 전체 운세를 봅니다'}
 
-## 뽑힌 카드 (과거 - 현재 - 미래 스프레드)
+## 뽑힌 카드 (과거 → 현재 → 미래)
 ${cardDescs}
 
-## 해석 지침
-1. 각 카드를 위치(과거/현재/미래)와 방향(정방향/역방향)을 고려하여 해석
-2. 세 장의 카드를 과거에서 현재, 미래로 흐르는 하나의 이야기로 연결
-3. 리딩을 바탕으로 구체적이고 실천 가능한 조언 제공
-4. 격려하되 솔직하게 — 역방향 카드를 무조건 긍정적으로 포장하지 마세요
-5. Rider-Waite 덱의 카드 이미지를 참조하여 풍부한 해석 제공
-6. 전문 용어는 쉬운 말로 풀어서 설명
+## 해석 규칙
+1. **방향이 중요합니다**: 정방향 = 카드의 에너지가 자유롭게 흐름. 역방향 = 그 에너지가 막혀있거나 내면화되거나 그림자로 나타남. 방향을 절대 무시하지 마세요.
+2. **카드 그림 활용**: Rider-Waite 카드의 구체적인 시각 요소를 해석에 녹여주세요 (예: "탑 카드의 번개는...", "여사제의 석류 커튼 뒤에는..."). 이것이 리딩을 생생하게 만듭니다.
+3. **서사적 흐름**: 세 장의 카드는 하나의 이야기입니다 — 과거가 현재를 만들었고, 현재가 미래를 만들고 있습니다. 그 연결고리를 찾으세요.
+${hasQuestion ? `4. **질문에 답하세요**: 모든 해석은 "${question}"이라는 질문과 연결되어야 합니다. 뜬구름 잡는 해석은 하지 마세요.` : '4. **인생 전반**: 연애, 직업, 개인적 성장 주제를 골고루 다뤄주세요.'}
+5. **말투**: 공감적이고 구체적으로. "당신"이라는 호칭을 사용. 모호한 점술 문구는 피하세요. 구체적 상황 예시를 들어주세요 ("직장에서 이런 상황을 겪고 있다면...", "연애에서 이것은...").
+6. **역방향 해석**: 솔직하게. 역방향은 나쁜 게 아니라, 주의가 필요한 메시지입니다. 무엇이 막혀있는지, 어떻게 풀 수 있는지 설명하세요.
+7. **전문 용어 금지**: 일상 언어로 모든 것을 설명하세요.
 
-## 응답 형식
-반드시 아래 JSON 형식으로만 응답하세요:
+## 응답 — JSON만
 {
   "cards": [
-    {"position": "과거", "interpretation": "(이 카드가 과거 위치에서 의미하는 것 3~4문장. 구체적 상황 묘사)"},
-    {"position": "현재", "interpretation": "(이 카드가 현재 위치에서 의미하는 것 3~4문장. 현재 상황에 대한 통찰)"},
-    {"position": "미래", "interpretation": "(이 카드가 미래 위치에서 의미하는 것 3~4문장. 앞으로의 방향성)"}
+    {"position": "과거", "interpretation": "(4~5문장. 카드 그림의 요소를 인용하며 해석. 과거 경험이나 패턴과 연결.)"},
+    {"position": "현재", "interpretation": "(4~5문장. 지금 질문자가 겪고 있는 것. 구체적이고 공감 가능하게.)"},
+    {"position": "미래", "interpretation": "(4~5문장. 다가오는 것. 격려하되 역방향은 솔직하게.)"}
   ],
-  "overall": "(세 장의 카드를 하나의 일관된 이야기로 엮은 종합 메시지 4~5문장)",
-  "advice": "(리딩을 바탕으로 한 구체적이고 실천 가능한 조언 3~4문장)",
+  "overall": "(5~6문장. 세 장을 하나의 이야기로 엮은 종합 메시지. 우주가 질문자에게 말하는 것은?)",
+  "advice": "(4~5문장. 구체적이고 실천 가능한 조언. '자신을 믿으세요' 같은 뻔한 말이 아니라, 'X 상황에서 Y 방법을 시도해보세요. 왜냐하면 Z이기 때문입니다' 같은 조언.)",
   "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
 }`;
 }
@@ -1207,7 +1279,7 @@ async function handleTarotReading(request, env) {
         name: c.name,
         nameKo: c.nameKo,
         reversed: c.reversed,
-        keywords: c.keywords,
+        keywords: c.reversed ? c.rev : c.up,
         interpretation: ai.cards?.[i]?.interpretation || '',
       })),
       overall: ai.overall || '',
