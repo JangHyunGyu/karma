@@ -24,185 +24,165 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css?v=5">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
-/* 타로 페이지 전용 스타일 */
-#tarot-canvas {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  z-index: 1;
-  touch-action: none;
-}
-.tarot-ui {
-  position: relative;
-  z-index: 10;
-  pointer-events: none;
-}
-.tarot-ui > * {
-  pointer-events: auto;
-}
-.tarot-header {
-  text-align: center;
-  padding: 60px 20px 10px;
-}
-.tarot-header h1 {
-  font-size: 1.8rem;
-  margin-bottom: 6px;
-}
-.tarot-question-wrap {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 0 20px 16px;
-}
+/* ===== 타로 페이지 전용 스타일 ===== */
+.tarot-page { max-width: 700px; margin: 0 auto; padding: 24px 16px; padding-top: 56px; }
+.tarot-page h1 { font-size: 1.8rem; margin-bottom: 4px; }
+
+/* 질문 입력 */
+.tarot-question-wrap { margin-bottom: 20px; }
 .tarot-question {
   width: 100%;
   padding: 14px 18px;
   border: 1px solid rgba(201,160,68,0.3);
   border-radius: 12px;
-  background: rgba(10,10,30,0.85);
+  background: rgba(15,12,28,0.8);
   color: #e8e0d0;
   font-family: 'Noto Serif KR', serif;
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.3s;
-  backdrop-filter: blur(8px);
 }
-.tarot-question:focus {
-  border-color: #c9a044;
-}
-.tarot-question::placeholder {
-  color: #666;
-}
+.tarot-question:focus { border-color: #c9a044; }
+.tarot-question::placeholder { color: #555; }
+
+/* 안내 문구 */
 .tarot-instruction {
   text-align: center;
   color: #c9a044;
   font-size: 0.9rem;
-  padding: 8px 20px;
-  animation: tarotPulse 2s ease-in-out infinite;
+  margin-bottom: 6px;
+  animation: pulse 2s ease-in-out infinite;
 }
-@keyframes tarotPulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+.tarot-selected-info { text-align: center; color: #9a8e7e; font-size: 0.82rem; margin-bottom: 16px; }
+
+/* ===== 카드 그리드 (선택 화면) ===== */
+.tarot-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  perspective: 1200px;
 }
-.tarot-selected-info {
-  text-align: center;
-  color: #9a8e7e;
-  font-size: 0.8rem;
-  padding: 4px 20px;
+@media (min-width: 600px) { .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 12px; } }
+@media (min-width: 900px) { .tarot-grid { grid-template-columns: repeat(11, 1fr); gap: 14px; } }
+
+/* ===== 카드 (2D + CSS 3D 플립) ===== */
+.tarot-card {
+  position: relative;
+  aspect-ratio: 5 / 8.5;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.3s, box-shadow 0.3s;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(40px) scale(0.8);
 }
-/* 결과 영역 */
-.tarot-result-wrap {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-  display: none;
+.tarot-card:hover {
+  transform: translateY(-6px) scale(1.06);
+  box-shadow: 0 8px 25px rgba(201,160,68,0.4);
+  z-index: 10;
 }
-.tarot-result-wrap.show {
-  display: block;
+.tarot-card.selected {
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 0 20px rgba(201,160,68,0.6), 0 12px 30px rgba(201,160,68,0.3);
+  z-index: 20;
 }
-.tarot-result-card {
-  background: rgba(15,12,28,0.9);
-  border: 1px solid rgba(201,160,68,0.2);
-  border-radius: 16px;
-  padding: 24px 20px;
-  margin-bottom: 16px;
-  backdrop-filter: blur(10px);
-}
-.tarot-result-card h3 {
-  color: #c9a044;
-  font-size: 1rem;
-  margin-bottom: 12px;
+.tarot-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: -8px; right: -8px;
+  width: 24px; height: 24px;
+  background: #c9a044;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.tarot-result-card p {
-  color: #ccc;
-  font-size: 0.88rem;
-  line-height: 1.8;
-}
-.tarot-card-name {
-  color: #f0d48a;
+  justify-content: center;
+  font-size: 14px;
+  color: #fff;
   font-weight: 700;
-  font-size: 0.85rem;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-.tarot-card-reversed {
-  color: #e94560;
-  font-size: 0.75rem;
-  margin-left: 6px;
+.tarot-card.unselected {
+  opacity: 0.3;
+  pointer-events: none;
+  transform: scale(0.9);
+  filter: grayscale(0.5);
 }
-.tarot-keywords {
+.tarot-card.flipping { animation: cardFlip 0.8s ease-in-out forwards; }
+@keyframes cardFlip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+/* 카드 앞/뒤 */
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+.card-back {
+  background: linear-gradient(145deg, #3d2266, #1e1040);
+  border: 2px solid #c9a044;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
 }
-.tarot-keyword {
-  background: rgba(201,160,68,0.15);
+.card-back-pattern {
+  width: 60%;
+  height: 60%;
+  border: 1.5px solid rgba(201,160,68,0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.card-back-pattern::before {
+  content: '✦';
   color: #c9a044;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  border: 1px solid rgba(201,160,68,0.2);
+  font-size: clamp(16px, 4vw, 28px);
 }
-.tarot-loading {
-  text-align: center;
-  padding: 40px 20px;
-  display: none;
+.card-back-pattern::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(201,160,68,0.25);
+  border-radius: 50%;
 }
-.tarot-loading.show {
+.card-back-text {
+  color: rgba(201,160,68,0.6);
+  font-size: clamp(7px, 1.6vw, 10px);
+  letter-spacing: 2px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.card-front {
+  border: 2px solid rgba(201,160,68,0.4);
+}
+.card-front img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
-.tarot-loading-text {
-  color: #c9a044;
-  font-size: 0.95rem;
-  margin-top: 16px;
-}
-.tarot-spinner {
-  width: 40px; height: 40px;
-  border: 3px solid rgba(201,160,68,0.2);
-  border-top-color: #c9a044;
-  border-radius: 50%;
-  margin: 0 auto;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.tarot-retry-btn, .tarot-reset-btn {
-  display: inline-block;
-  padding: 12px 32px;
-  border: none;
-  border-radius: 25px;
-  background: linear-gradient(135deg, #8b5e2f, #c9a044);
-  color: #fff;
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin: 8px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.tarot-retry-btn:hover, .tarot-reset-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(201,160,68,0.4);
-}
-.tarot-btn-wrap {
-  text-align: center;
-  margin-top: 20px;
-}
-/* 결과 카드 이미지 3장 가로 배치 */
+
+/* ===== 결과 카드 3장 (크게) ===== */
 .tarot-cards-display {
   display: flex;
   justify-content: center;
   gap: 16px;
-  padding: 24px 16px 8px;
-  max-width: 700px;
-  margin: 0 auto;
+  padding: 20px 0 24px;
 }
 .tarot-card-column {
   flex: 1;
-  max-width: 200px;
+  max-width: 180px;
   text-align: center;
 }
 .tarot-card-position {
@@ -223,17 +203,9 @@
   transform: scale(1.03);
   box-shadow: 0 8px 30px rgba(201,160,68,0.3);
 }
-.tarot-card-img-wrap.reversed {
-  transform: rotate(180deg);
-}
-.tarot-card-img-wrap.reversed:hover {
-  transform: rotate(180deg) scale(1.03);
-}
-.tarot-card-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
+.tarot-card-img-wrap.reversed { transform: rotate(180deg); }
+.tarot-card-img-wrap.reversed:hover { transform: rotate(180deg) scale(1.03); }
+.tarot-card-img { width: 100%; height: auto; display: block; }
 .tarot-card-label {
   margin-top: 10px;
   display: flex;
@@ -241,46 +213,152 @@
   align-items: center;
   gap: 4px;
 }
-/* 모바일 카드 이미지 */
 @media (max-width: 480px) {
-  .tarot-cards-display {
-    gap: 8px;
-    padding: 16px 8px 4px;
-  }
-  .tarot-card-position {
-    font-size: 0.75rem;
-  }
-  .tarot-card-name {
-    font-size: 0.72rem;
-  }
+  .tarot-cards-display { gap: 8px; }
+  .tarot-card-position { font-size: 0.75rem; }
+}
+
+/* ===== 결과 카드 ===== */
+.tarot-result-wrap { display: none; }
+.tarot-result-wrap.show { display: block; }
+.tarot-result-card {
+  background: rgba(15,12,28,0.9);
+  border: 1px solid rgba(201,160,68,0.2);
+  border-radius: 16px;
+  padding: 24px 20px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+}
+.tarot-result-card h3 {
+  color: #c9a044;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+.tarot-result-card p {
+  color: #ccc;
+  font-size: 0.88rem;
+  line-height: 1.8;
+}
+.tarot-card-name { color: #f0d48a; font-weight: 700; font-size: 0.85rem; }
+.tarot-card-reversed { color: #e94560; font-size: 0.75rem; }
+.tarot-keywords { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tarot-keyword {
+  background: rgba(201,160,68,0.15);
+  color: #c9a044;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  border: 1px solid rgba(201,160,68,0.2);
+}
+
+/* 로딩 */
+.tarot-loading { text-align: center; padding: 40px 20px; display: none; }
+.tarot-loading.show { display: block; }
+.tarot-loading-text { color: #c9a044; font-size: 0.95rem; margin-top: 16px; }
+.tarot-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(201,160,68,0.2);
+  border-top-color: #c9a044;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 버튼 */
+.tarot-reset-btn {
+  display: inline-block;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(135deg, #8b5e2f, #c9a044);
+  color: #fff;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tarot-reset-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(201,160,68,0.4);
+}
+.tarot-btn-wrap { text-align: center; margin-top: 20px; }
+
+/* ===== 별 배경 ===== */
+.stars-bg {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+}
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle var(--dur) ease-in-out infinite;
+}
+@keyframes twinkle { 0%,100%{opacity:0.2;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
+
+/* ===== 카드 공개 파티클 ===== */
+.reveal-particles {
+  position: fixed; inset: 0; z-index: 999; pointer-events: none; overflow: hidden;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFly 1.5s ease-out forwards;
+}
+@keyframes particleFly {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+}
+
+/* ===== 결과 카드 떠다니는 효과 ===== */
+.tarot-card-img-wrap { animation: cardFloat 3s ease-in-out infinite; }
+.tarot-card-column:nth-child(1) .tarot-card-img-wrap { animation-delay: 0s; }
+.tarot-card-column:nth-child(2) .tarot-card-img-wrap { animation-delay: 1s; }
+.tarot-card-column:nth-child(3) .tarot-card-img-wrap { animation-delay: 2s; }
+@keyframes cardFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.tarot-card-img-wrap.reversed { animation: cardFloatReversed 3s ease-in-out infinite; }
+@keyframes cardFloatReversed {
+  0%,100% { transform: rotate(180deg) translateY(0); }
+  50% { transform: rotate(180deg) translateY(-6px); }
+}
+
+/* ===== 카드 골드 글로우 ===== */
+.tarot-card.selected {
+  animation: selectedGlow 1.5s ease-in-out infinite;
+}
+@keyframes selectedGlow {
+  0%,100% { box-shadow: 0 0 15px rgba(201,160,68,0.4), 0 8px 20px rgba(201,160,68,0.2); }
+  50% { box-shadow: 0 0 30px rgba(201,160,68,0.7), 0 12px 30px rgba(201,160,68,0.4); }
 }
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
 </head>
-<body style="background-color:#0a0a1e;overflow-x:hidden;">
+<body class="bg-main">
 <div class="header-bg"></div>
 <nav class="home-nav"><a href="/" data-ko="🏠 메인" data-en="🏠 Home">🏠 메인</a></nav>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en" selected>🌐 English</option></select></div>
 
-<canvas id="tarot-canvas"></canvas>
-
-<div class="tarot-ui">
-  <div class="tarot-header">
-    <h1 data-ko="🃏 타로 리딩" data-en="🃏 Tarot Reading">🃏 Tarot Reading</h1>
-    <p class="subtitle" data-ko="카드 3장을 선택하세요" data-en="Select 3 cards">Select 3 cards</p>
-  </div>
+<div class="stars-bg" id="starsBg"></div>
+<div class="container tarot-page">
+  <h1 data-ko="🃏 타로 리딩" data-en="🃏 Tarot Reading">🃏 Tarot Reading</h1>
+  <p class="subtitle" data-ko="카드 3장을 선택하세요" data-en="Select 3 cards">Select 3 cards</p>
 
   <div class="tarot-question-wrap" id="questionWrap">
     <input type="text" class="tarot-question" id="tarotQuestion"
       placeholder="질문을 입력하세요 (선택사항)"
-      data-ko-placeholder="질문을 입력하세요 (선택사항)"
-      data-en-placeholder="Enter your question (optional)"
       maxlength="100">
   </div>
 
   <div class="tarot-instruction" id="tarotInstruction" data-ko="카드를 클릭하여 3장을 선택하세요" data-en="Click cards to select 3">카드를 클릭하여 3장을 선택하세요</div>
   <div class="tarot-selected-info" id="selectedInfo"></div>
+
+  <div class="tarot-grid" id="tarotGrid"></div>
 
   <div class="tarot-loading" id="tarotLoading">
     <div class="tarot-spinner"></div>
@@ -298,7 +376,49 @@
   const lang = () => document.documentElement.lang || 'ko';
   const _L = (ko, en) => lang() === 'en' ? en : ko;
 
-  // ===== Tarot Card Data =====
+  // ===== 별 배경 생성 =====
+  (function createStars() {
+    const bg = document.getElementById('starsBg');
+    for (let i = 0; i < 80; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      const size = Math.random() * 3 + 1;
+      star.style.cssText = `
+        width:${size}px; height:${size}px;
+        left:${Math.random()*100}%; top:${Math.random()*100}%;
+        --dur:${2+Math.random()*3}s;
+        animation-delay:${Math.random()*3}s;
+      `;
+      bg.appendChild(star);
+    }
+  })();
+
+  // ===== 파티클 폭발 이펙트 =====
+  function createRevealParticles() {
+    const container = document.createElement('div');
+    container.className = 'reveal-particles';
+    document.body.appendChild(container);
+    const colors = ['#c9a044','#f0d48a','#e0c060','#4466ff','#88aaff','#fff'];
+    for (let i = 0; i < 60; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 8 + 3;
+      const tx = (Math.random() - 0.5) * window.innerWidth * 0.8;
+      const ty = (Math.random() - 0.5) * window.innerHeight * 0.8;
+      p.style.cssText = `
+        width:${size}px; height:${size}px;
+        left:50%; top:50%;
+        background:${colors[Math.floor(Math.random()*colors.length)]};
+        --tx:${tx}px; --ty:${ty}px;
+        animation-delay:${Math.random()*0.3}s;
+        animation-duration:${1+Math.random()*1}s;
+      `;
+      container.appendChild(p);
+    }
+    setTimeout(() => container.remove(), 2500);
+  }
+
+  // ===== 카드 데이터 =====
   const MAJOR_ARCANA = [
     { id: 0, name: 'The Fool', nameKo: '광대' },
     { id: 1, name: 'The Magician', nameKo: '마법사' },
@@ -324,397 +444,83 @@
     { id: 21, name: 'The World', nameKo: '세계' },
   ];
 
-  // Rider-Waite 카드 이미지 (퍼블릭 도메인 — 로컬 호스팅, WebP)
   function getCardImageUrl(id) {
     return '/images/tarot/ar' + String(id).padStart(2, '0') + '.webp';
   }
 
-  // ===== Three.js Scene Setup =====
-  const canvas = document.getElementById('tarot-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x0a0a1e, 1);
-
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0a1e, 0.02);
-
-  // 해상도별 카메라 설정 (큰 카드에 맞게)
-  function getCameraConfig() {
-    const w = window.innerWidth;
-    if (w <= 400) return { fov: 68, y: 14, z: 18 };       // 소형 모바일
-    if (w <= 480) return { fov: 64, y: 13, z: 17 };       // 일반 모바일
-    if (w <= 768) return { fov: 58, y: 12, z: 16 };       // 대형 모바일 / 소형 태블릿
-    if (w <= 1024) return { fov: 52, y: 11, z: 15 };      // 태블릿
-    return { fov: 48, y: 10, z: 14 };                      // 데스크톱
-  }
-  const camCfg = getCameraConfig();
-  const camera = new THREE.PerspectiveCamera(camCfg.fov, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0, camCfg.y, camCfg.z);
-  camera.lookAt(0, 0, 0);
-
-  // Lighting — 밝고 따뜻한 조명
-  const ambientLight = new THREE.AmbientLight(0x8888aa, 1.2);
-  scene.add(ambientLight);
-  const pointLight = new THREE.PointLight(0xffd080, 2.0, 40);
-  pointLight.position.set(0, 10, 6);
-  scene.add(pointLight);
-  const pointLight2 = new THREE.PointLight(0x6688ff, 0.6, 25);
-  pointLight2.position.set(-6, 6, -3);
-  scene.add(pointLight2);
-  const pointLight3 = new THREE.PointLight(0xffc060, 1.0, 30);
-  pointLight3.position.set(5, 5, 4);
-  scene.add(pointLight3);
-
-  // ===== Card Creation =====
-  const CARD_W = 1.0;
-  const CARD_H = 1.7;
-  const cardMeshes = [];
+  // ===== 상태 =====
   const selectedCards = [];
-  let phase = 'selecting'; // selecting, reading, result
+  let phase = 'selecting';
 
-  // 카드 뒷면 텍스처 (프로시저럴 — 고퀄리티)
-  function createBackTexture() {
-    const c = document.createElement('canvas');
-    c.width = 512; c.height = 840;
-    const ctx = c.getContext('2d');
-    const W = 512, H = 840;
+  // ===== 카드 그리드 생성 =====
+  const grid = document.getElementById('tarotGrid');
 
-    // 배경 — 진한 보라+파랑 (배경과 확실히 구분)
-    const bgGrad = ctx.createRadialGradient(W/2, H/2, 30, W/2, H/2, W * 0.6);
-    bgGrad.addColorStop(0, '#3d2266');
-    bgGrad.addColorStop(0.4, '#2d1855');
-    bgGrad.addColorStop(1, '#1e1040');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
+  MAJOR_ARCANA.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'tarot-card';
+    el.dataset.id = card.id;
+    el.innerHTML = `
+      <div class="card-face card-back">
+        <div class="card-back-pattern"></div>
+        <div class="card-back-text">KARMA</div>
+      </div>
+    `;
+    el.addEventListener('click', () => toggleCard(el, card));
+    grid.appendChild(el);
 
-    // 외곽 밝은 골드 테두리 (두껍게)
-    ctx.strokeStyle = '#e0c060';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(10, 10, W-20, H-20);
-    ctx.strokeStyle = '#c9a044';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(26, 26, W-52, H-52);
-
-    // 4 모서리 장식
-    const cornerSize = 40;
-    [[28, 28], [W-28, 28], [28, H-28], [W-28, H-28]].forEach(([cx, cy]) => {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.beginPath();
-      ctx.arc(0, 0, cornerSize, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(201,160,68,0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      for (let a = 0; a < 4; a++) {
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        const angle = a * Math.PI / 2;
-        ctx.lineTo(Math.cos(angle) * cornerSize * 0.8, Math.sin(angle) * cornerSize * 0.8);
-        ctx.strokeStyle = 'rgba(240,212,138,0.3)';
-        ctx.stroke();
-      }
-      ctx.restore();
+    // 딜링 애니메이션 (순차적으로 나타남)
+    gsap.to(el, {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.4,
+      delay: i * 0.03,
+      ease: 'back.out(1.5)',
     });
+  });
 
-    // 중앙 문양
-    ctx.save();
-    ctx.translate(W/2, H/2);
-
-    // 외곽 원환
-    for (let r = 120; r >= 40; r -= 40) {
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.strokeStyle = r === 120 ? '#c9a044' : 'rgba(201,160,68,0.3)';
-      ctx.lineWidth = r === 120 ? 3 : 1;
-      ctx.stroke();
-    }
-
-    // 8방향 다이아몬드
-    for (let i = 0; i < 8; i++) {
-      ctx.save();
-      ctx.rotate(i * Math.PI / 4);
-      ctx.beginPath();
-      ctx.moveTo(0, -110);
-      ctx.lineTo(18, -60);
-      ctx.lineTo(0, -45);
-      ctx.lineTo(-18, -60);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(201,160,68,0.12)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(201,160,68,0.5)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // 바깥 선
-      ctx.beginPath();
-      ctx.moveTo(0, -120);
-      ctx.lineTo(0, -130);
-      ctx.strokeStyle = 'rgba(201,160,68,0.4)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 중앙 오망성 (펜타그램)
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-      const method = i === 0 ? 'moveTo' : 'lineTo';
-      ctx[method](Math.cos(angle) * 38, Math.sin(angle) * 38);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = '#f0d48a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(240,212,138,0.08)';
-    ctx.fill();
-
-    // 중앙 원 + 글로우
-    const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
-    glowGrad.addColorStop(0, 'rgba(201,160,68,0.3)');
-    glowGrad.addColorStop(1, 'rgba(201,160,68,0)');
-    ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
-    ctx.fillStyle = glowGrad;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(0, 0, 12, 0, Math.PI * 2);
-    ctx.fillStyle = '#c9a044';
-    ctx.fill();
-
-    ctx.restore();
-
-    // 상단 / 하단 장식 패턴
-    [80, H - 80].forEach(yPos => {
-      ctx.save();
-      ctx.translate(W/2, yPos);
-      ctx.beginPath();
-      ctx.moveTo(-80, 0);
-      ctx.lineTo(-40, -12);
-      ctx.lineTo(0, -16);
-      ctx.lineTo(40, -12);
-      ctx.lineTo(80, 0);
-      ctx.lineTo(40, 12);
-      ctx.lineTo(0, 16);
-      ctx.lineTo(-40, 12);
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(201,160,68,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(201,160,68,0.06)';
-      ctx.fill();
-      ctx.restore();
-    });
-
-    // KARMA 텍스트 (하단)
-    ctx.fillStyle = '#c9a044';
-    ctx.font = 'bold 28px serif';
-    ctx.textAlign = 'center';
-    ctx.letterSpacing = '6px';
-    ctx.fillText('K A R M A', W/2, H - 40);
-
-    // 미세한 노이즈 텍스처
-    const imgData = ctx.getImageData(0, 0, W, H);
-    for (let i = 0; i < imgData.data.length; i += 4) {
-      const noise = (Math.random() - 0.5) * 8;
-      imgData.data[i] += noise;
-      imgData.data[i+1] += noise;
-      imgData.data[i+2] += noise;
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    return new THREE.CanvasTexture(c);
-  }
-
-  const backTexture = createBackTexture();
-
-  // 카드 앞면 텍스처 로더
-  const textureLoader = new THREE.TextureLoader();
-  textureLoader.crossOrigin = 'anonymous';
-
-  function createCard(card, index) {
-    const group = new THREE.Group();
-    group.userData = { card, index, selected: false, faceLoaded: false };
-
-    // 카드 지오메트리
-    const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
-
-    // 뒷면 (보이는 면) — 밝게
-    const backMat = new THREE.MeshStandardMaterial({
-      map: backTexture,
-      side: THREE.FrontSide,
-      roughness: 0.6,
-      metalness: 0.1,
-      emissive: 0x1a0a2e,
-      emissiveIntensity: 0.3,
-    });
-    const backMesh = new THREE.Mesh(geo, backMat);
-    group.add(backMesh);
-
-    // 앞면 (뒤집혔을 때 보임) — 로딩 전 기본 색상
-    const frontMat = new THREE.MeshStandardMaterial({
-      color: 0xf5f0e0,
-      side: THREE.FrontSide,
-      roughness: 0.5,
-      metalness: 0.1,
-    });
-    const frontMesh = new THREE.Mesh(geo, frontMat);
-    frontMesh.rotation.y = Math.PI; // 뒤집어서
-    group.add(frontMesh);
-
-    group.userData.frontMat = frontMat;
-    group.userData.frontMesh = frontMesh;
-
-    // 카드 테두리 빛 (선택 시)
-    const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(CARD_W + 0.04, CARD_H + 0.04, 0.02));
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0xc9a044, transparent: true, opacity: 0 });
-    const edgeLine = new THREE.LineSegments(edgeGeo, edgeMat);
-    group.add(edgeLine);
-    group.userData.edgeMat = edgeMat;
-
-    scene.add(group);
-    cardMeshes.push(group);
-    return group;
-  }
-
-  // ===== Card Layout — 해상도별 최적화 =====
-  function layoutCards() {
-    const total = MAJOR_ARCANA.length;
-    const w = window.innerWidth;
-    let cols, spacingX, spacingZ;
-    if (w <= 400) {        // 소형 모바일
-      cols = 4;
-      spacingX = CARD_W * 1.6;
-      spacingZ = CARD_H * 0.9;
-    } else if (w <= 480) { // 일반 모바일
-      cols = 5;
-      spacingX = CARD_W * 1.5;
-      spacingZ = CARD_H * 0.85;
-    } else if (w <= 768) { // 대형 모바일 / 소형 태블릿
-      cols = 6;
-      spacingX = CARD_W * 1.45;
-      spacingZ = CARD_H * 0.8;
-    } else if (w <= 1024) { // 태블릿
-      cols = 8;
-      spacingX = CARD_W * 1.4;
-      spacingZ = CARD_H * 0.75;
-    } else {               // 데스크톱
-      cols = 11;
-      spacingX = CARD_W * 1.4;
-      spacingZ = CARD_H * 0.75;
-    }
-    const rows = Math.ceil(total / cols);
-
-    cardMeshes.forEach((mesh, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const rowCount = row < rows - 1 ? cols : total - row * cols;
-      const x = (col - (rowCount - 1) / 2) * spacingX;
-      const z = (row - (rows - 1) / 2) * spacingZ - 1;
-
-      mesh.position.set(x, 0.02, z);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.rotation.y = 0;
-      mesh.rotation.z = 0;
-      mesh.scale.set(1, 1, 1);
-    });
-  }
-
-  // ===== Initial Animation — Cards Deal =====
-  function dealCards() {
-    cardMeshes.forEach((mesh, i) => {
-      const target = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
-      mesh.position.set(0, 5, 0);
-      mesh.rotation.x = 0;
-      mesh.scale.set(0.01, 0.01, 0.01);
-
-      gsap.to(mesh.position, {
-        x: target.x, y: target.y, z: target.z,
-        duration: 0.6,
-        delay: i * 0.04,
-        ease: 'back.out(1.2)',
-      });
-      gsap.to(mesh.rotation, {
-        x: -Math.PI / 2,
-        duration: 0.5,
-        delay: i * 0.04,
-        ease: 'power2.out',
-      });
-      gsap.to(mesh.scale, {
-        x: 1, y: 1, z: 1,
-        duration: 0.5,
-        delay: i * 0.04,
-        ease: 'power2.out',
-      });
-    });
-  }
-
-  // ===== Card Hover & Selection =====
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  let hoveredCard = null;
-
-  function onPointerMove(e) {
+  // ===== 카드 선택/해제 =====
+  function toggleCard(el, card) {
     if (phase !== 'selecting') return;
-    const rect = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  }
 
-  function onPointerClick(e) {
-    if (phase !== 'selecting') return;
-    const rect = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(cardMeshes, true);
-
-    if (intersects.length > 0) {
-      let cardGroup = intersects[0].object;
-      while (cardGroup.parent && !cardGroup.userData.card) cardGroup = cardGroup.parent;
-      if (!cardGroup.userData.card) return;
-
-      toggleCardSelection(cardGroup);
-    }
-  }
-
-  function toggleCardSelection(cardGroup) {
-    const idx = selectedCards.indexOf(cardGroup);
+    const idx = selectedCards.findIndex(c => c.id === card.id);
     if (idx !== -1) {
       // 선택 해제
       selectedCards.splice(idx, 1);
-      cardGroup.userData.selected = false;
-      gsap.to(cardGroup.position, { y: 0.02, duration: 0.3, ease: 'power2.out' });
-      gsap.to(cardGroup.userData.edgeMat, { opacity: 0, duration: 0.3 });
+      el.classList.remove('selected');
+      updateCards();
     } else if (selectedCards.length < 3) {
       // 선택
-      selectedCards.push(cardGroup);
-      cardGroup.userData.selected = true;
-      gsap.to(cardGroup.position, { y: 0.5, duration: 0.3, ease: 'back.out(2)' });
-      gsap.to(cardGroup.userData.edgeMat, { opacity: 1, duration: 0.3 });
+      selectedCards.push({ ...card, el });
+      el.classList.add('selected');
+      updateCards();
 
       if (selectedCards.length === 3) {
-        setTimeout(startReading, 600);
+        setTimeout(startReading, 500);
       }
     }
-
     updateSelectedInfo();
+  }
+
+  function updateCards() {
+    const allCards = grid.querySelectorAll('.tarot-card');
+    if (selectedCards.length === 3) {
+      allCards.forEach(c => {
+        if (!c.classList.contains('selected')) c.classList.add('unselected');
+      });
+    } else {
+      allCards.forEach(c => c.classList.remove('unselected'));
+    }
   }
 
   function updateSelectedInfo() {
     const info = document.getElementById('selectedInfo');
-    if (selectedCards.length === 0) {
-      info.textContent = '';
-    } else {
-      info.textContent = _L(
-        `${selectedCards.length}/3 장 선택됨`,
-        `${selectedCards.length}/3 cards selected`
-      );
-    }
+    info.textContent = selectedCards.length > 0
+      ? _L(`${selectedCards.length}/3 장 선택됨`, `${selectedCards.length}/3 cards selected`)
+      : '';
   }
 
-  // ===== Reading Animation =====
+  // ===== 리딩 시작 =====
   function startReading() {
     phase = 'reading';
     document.getElementById('tarotInstruction').style.display = 'none';
@@ -722,241 +528,59 @@
     document.getElementById('questionWrap').style.display = 'none';
 
     // 선택되지 않은 카드 사라지기
-    cardMeshes.forEach(mesh => {
-      if (!mesh.userData.selected) {
-        gsap.to(mesh.position, { y: -3, duration: 0.5, ease: 'power2.in' });
-        gsap.to(mesh.scale, { x: 0, y: 0, z: 0, duration: 0.4, ease: 'power2.in' });
-      }
+    grid.querySelectorAll('.tarot-card:not(.selected)').forEach(c => {
+      gsap.to(c, { opacity: 0, scale: 0.5, duration: 0.3, ease: 'power2.in' });
     });
 
-    // 선택된 3장을 앞으로 이동
-    const positions = [
-      { x: -2.5, y: 1.5, z: 4 },
-      { x: 0, y: 1.5, z: 4 },
-      { x: 2.5, y: 1.5, z: 4 },
-    ];
-
-    const labels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
-
-    selectedCards.forEach((card, i) => {
-      // 역방향 랜덤 결정 (50% 확률)
-      card.userData.reversed = Math.random() < 0.5;
-
-      gsap.to(card.position, {
-        x: positions[i].x, y: positions[i].y, z: positions[i].z,
-        duration: 0.8,
-        delay: 0.5 + i * 0.2,
-        ease: 'power2.inOut',
-      });
-      gsap.to(card.rotation, {
-        x: -0.3,
-        z: card.userData.reversed ? Math.PI : 0,
-        duration: 0.8,
-        delay: 0.5 + i * 0.2,
-        ease: 'power2.inOut',
-      });
-    });
-
-    // 카드 뒤집기 (앞면 보여주기)
+    // 선택된 카드 플립 (뒷면 → 앞면)
     setTimeout(() => {
       selectedCards.forEach((card, i) => {
-        loadFrontTexture(card);
-        gsap.to(card.rotation, {
-          y: Math.PI,
-          duration: 0.8,
-          delay: i * 0.3,
-          ease: 'power2.inOut',
-          onComplete: () => {
+        card.reversed = Math.random() < 0.5;
+        const el = card.el;
+
+        setTimeout(() => {
+          el.classList.add('flipping');
+
+          // 플립 중간(0.4초)에 앞면으로 교체
+          setTimeout(() => {
+            el.innerHTML = `
+              <div class="card-face card-front" style="${card.reversed ? 'transform:rotate(180deg)' : ''}">
+                <img src="${getCardImageUrl(card.id)}" alt="${card.nameKo}">
+              </div>
+            `;
+          }, 400);
+
+          // 플립 완료 후
+          setTimeout(() => {
+            el.classList.remove('flipping');
             if (i === 2) {
-              // 파티클 이펙트
+              // 마지막 카드 플립 후 → 파티클 + API 호출
               createRevealParticles();
-              // AI 해석 요청
-              requestReading();
+              setTimeout(() => {
+                grid.style.display = 'none';
+                document.getElementById('tarotLoading').classList.add('show');
+                requestReading();
+              }, 800);
             }
-          }
-        });
+          }, 800);
+        }, i * 400);
       });
-    }, 2000);
+    }, 600);
   }
 
-  function loadFrontTexture(cardGroup) {
-    if (cardGroup.userData.faceLoaded) return;
-    const id = cardGroup.userData.card.id;
-    const url = getCardImageUrl(id);
-    textureLoader.load(url, (texture) => {
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      cardGroup.userData.frontMat.map = texture;
-      cardGroup.userData.frontMat.color.set(0xffffff);
-      cardGroup.userData.frontMat.needsUpdate = true;
-      cardGroup.userData.faceLoaded = true;
-    }, undefined, () => {
-      // 로드 실패 시 텍스트 표시
-      const c = document.createElement('canvas');
-      c.width = 256; c.height = 420;
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#f5f0e0';
-      ctx.fillRect(0, 0, 256, 420);
-      ctx.fillStyle = '#1a0a2e';
-      ctx.font = 'bold 24px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(cardGroup.userData.card.nameKo, 128, 200);
-      ctx.font = '14px serif';
-      ctx.fillText(cardGroup.userData.card.name, 128, 230);
-      const fallback = new THREE.CanvasTexture(c);
-      cardGroup.userData.frontMat.map = fallback;
-      cardGroup.userData.frontMat.color.set(0xffffff);
-      cardGroup.userData.frontMat.needsUpdate = true;
-      cardGroup.userData.faceLoaded = true;
-    });
-  }
-
-  // ===== Particle Effects =====
-  function createRevealParticles() {
-    const count = 200;
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 8;
-      positions[i * 3 + 1] = Math.random() * 4 + 0.5;
-      positions[i * 3 + 2] = Math.random() * 4 + 1;
-      const gold = Math.random() > 0.3;
-      colors[i * 3] = gold ? 0.9 : 0.3;
-      colors[i * 3 + 1] = gold ? 0.7 : 0.3;
-      colors[i * 3 + 2] = gold ? 0.2 : 0.9;
-      sizes[i] = Math.random() * 3 + 1;
-    }
-
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-    const mat = new THREE.PointsMaterial({
-      size: 0.08,
-      vertexColors: true,
-      transparent: true,
-      opacity: 1,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-
-    const particles = new THREE.Points(geo, mat);
-    scene.add(particles);
-
-    // 파티클 애니메이션
-    const startTime = Date.now();
-    function animateParticles() {
-      const elapsed = (Date.now() - startTime) / 1000;
-      if (elapsed > 3) {
-        scene.remove(particles);
-        geo.dispose();
-        mat.dispose();
-        return;
-      }
-      const posArr = geo.attributes.position.array;
-      for (let i = 0; i < count; i++) {
-        posArr[i * 3 + 1] += 0.02;
-        posArr[i * 3] += (Math.random() - 0.5) * 0.02;
-      }
-      geo.attributes.position.needsUpdate = true;
-      mat.opacity = 1 - elapsed / 3;
-      requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
-  }
-
-  // ===== Floating animation for selected cards =====
-  function floatSelectedCards(time) {
-    if (phase === 'reading' || phase === 'result') {
-      selectedCards.forEach((card, i) => {
-        card.position.y = 1.5 + Math.sin(time * 0.001 + i * 1.5) * 0.06;
-      });
-    }
-  }
-
-  // ===== Hover check =====
-  function checkHover() {
-    if (phase !== 'selecting') {
-      document.body.style.cursor = 'default';
-      return;
-    }
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(cardMeshes, true);
-
-    if (hoveredCard) {
-      if (!hoveredCard.userData.selected) {
-        gsap.to(hoveredCard.position, { y: 0.02, duration: 0.2 });
-        gsap.to(hoveredCard.userData.edgeMat, { opacity: 0, duration: 0.2 });
-      }
-      hoveredCard = null;
-    }
-
-    if (intersects.length > 0) {
-      let cardGroup = intersects[0].object;
-      while (cardGroup.parent && !cardGroup.userData.card) cardGroup = cardGroup.parent;
-      if (cardGroup.userData.card && !cardGroup.userData.selected) {
-        hoveredCard = cardGroup;
-        gsap.to(cardGroup.position, { y: 0.25, duration: 0.2 });
-        gsap.to(cardGroup.userData.edgeMat, { opacity: 0.5, duration: 0.2 });
-        document.body.style.cursor = 'pointer';
-        return;
-      }
-    }
-    document.body.style.cursor = 'default';
-  }
-
-  // ===== Background Stars =====
-  function createStars() {
-    const count = 500;
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 40;
-      positions[i * 3 + 1] = Math.random() * 15 + 3;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 40 - 10;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.04,
-      transparent: true,
-      opacity: 0.6,
-      blending: THREE.AdditiveBlending,
-    });
-    const stars = new THREE.Points(geo, mat);
-    scene.add(stars);
-    return stars;
-  }
-  const stars = createStars();
-
-  // ===== API Call =====
+  // ===== API 호출 =====
   async function requestReading() {
-    document.getElementById('tarotLoading').classList.add('show');
-
-    const cardsData = selectedCards.map(c => ({
-      id: c.userData.card.id,
-      reversed: c.userData.reversed,
-    }));
-
+    const cardsData = selectedCards.map(c => ({ id: c.id, reversed: c.reversed }));
     const question = document.getElementById('tarotQuestion').value.trim();
 
     try {
       const resp = await fetch(API_BASE + '/api/tarot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cards: cardsData,
-          question,
-          lang: lang(),
-        }),
+        body: JSON.stringify({ cards: cardsData, question, lang: lang() }),
       });
-
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
-
       document.getElementById('tarotLoading').classList.remove('show');
       showResult(data);
     } catch (err) {
@@ -965,13 +589,9 @@
     }
   }
 
-  // ===== Show Result =====
+  // ===== 결과 표시 =====
   function showResult(data) {
     phase = 'result';
-
-    // 3D 캔버스 숨기기 — HTML로 카드를 크고 선명하게 표시
-    canvas.style.display = 'none';
-
     const wrap = document.getElementById('tarotResult');
     const posLabels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
 
@@ -980,15 +600,16 @@
     // 카드 3장 이미지 (크고 선명하게)
     html += '<div class="tarot-cards-display">';
     data.cards.forEach((card, i) => {
-      const imgUrl = getCardImageUrl(card.id);
       html += `<div class="tarot-card-column">
         <div class="tarot-card-position">${posLabels[i]}</div>
         <div class="tarot-card-img-wrap${card.reversed ? ' reversed' : ''}">
-          <img src="${imgUrl}" alt="${card.nameKo}" class="tarot-card-img" loading="eager">
+          <img src="${getCardImageUrl(card.id)}" alt="${card.nameKo}" class="tarot-card-img">
         </div>
         <div class="tarot-card-label">
           <span class="tarot-card-name">${lang() === 'en' ? card.name : card.nameKo}</span>
-          ${card.reversed ? `<span class="tarot-card-reversed">${_L('역방향', 'Reversed')}</span>` : `<span style="color:#4CAF50;font-size:0.75rem">${_L('정방향', 'Upright')}</span>`}
+          ${card.reversed
+            ? `<span class="tarot-card-reversed">${_L('역방향', 'Reversed')}</span>`
+            : `<span style="color:#4CAF50;font-size:0.75rem">${_L('정방향', 'Upright')}</span>`}
         </div>
       </div>`;
     });
@@ -996,7 +617,6 @@
 
     // 각 카드 해석
     data.cards.forEach((card, i) => {
-      const imgUrl = getCardImageUrl(card.id);
       html += `<div class="tarot-result-card">
         <h3>${posLabels[i]} — ${lang() === 'en' ? card.name : card.nameKo}</h3>
         <p>${card.interpretation}</p>
@@ -1046,50 +666,6 @@
     </div>`;
     wrap.classList.add('show');
   }
-
-  // ===== Render Loop =====
-  function animate(time) {
-    requestAnimationFrame(animate);
-    checkHover();
-    floatSelectedCards(time);
-    // 배경 별 회전
-    if (stars) stars.rotation.y += 0.0001;
-    // 라이트 움직임
-    pointLight.position.x = Math.sin(time * 0.0005) * 3;
-    pointLight2.position.z = Math.cos(time * 0.0007) * 3;
-    renderer.render(scene, camera);
-  }
-
-  // ===== Resize =====
-  function onResize() {
-    const cfg = getCameraConfig();
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.fov = cfg.fov;
-    camera.updateProjectionMatrix();
-    if (phase === 'selecting') {
-      camera.position.set(0, cfg.y, cfg.z);
-      camera.lookAt(0, 0, 0);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      layoutCards();
-    } else if (phase === 'result') {
-      renderer.setSize(window.innerWidth, 300);
-      camera.aspect = window.innerWidth / 300;
-      camera.updateProjectionMatrix();
-    } else {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-  }
-
-  // ===== Init =====
-  MAJOR_ARCANA.forEach((card, i) => createCard(card, i));
-  layoutCards();
-  dealCards();
-
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('click', onPointerClick);
-  window.addEventListener('resize', onResize);
-
-  requestAnimationFrame(animate);
 
   // 언어 전환 시 placeholder 업데이트
   const origChangeLang = window.changeLang;

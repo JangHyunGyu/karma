@@ -92,9 +92,9 @@ console.log('\n🎴 [3] tarot.html 검증');
 
 const tarotHtml = fs.readFileSync(path.join(__dirname, 'tarot.html'), 'utf8');
 
-// Three.js & GSAP CDN
-if (/three\.min\.js/.test(tarotHtml)) pass('Three.js CDN 포함');
-else fail('Three.js CDN 없음');
+// GSAP CDN (Three.js 제거됨)
+if (!/three\.min\.js/.test(tarotHtml)) pass('Three.js 제거 확인 (2D 전환)');
+else fail('Three.js가 아직 남아있음');
 if (/gsap\.min\.js/.test(tarotHtml)) pass('GSAP CDN 포함');
 else fail('GSAP CDN 없음');
 
@@ -108,9 +108,9 @@ else fail('hreflang ko 링크 없음');
 if (/hreflang="en".*tarot-en\.html/.test(tarotHtml)) pass('hreflang en 링크');
 else fail('hreflang en 링크 없음');
 
-// canvas 요소
-if (/id="tarot-canvas"/.test(tarotHtml)) pass('tarot-canvas 요소 존재');
-else fail('tarot-canvas 요소 없음');
+// 카드 그리드
+if (/tarotGrid/.test(tarotHtml)) pass('카드 그리드 요소 존재');
+else fail('카드 그리드 없음');
 
 // API 호출
 if (/\/api\/tarot/.test(tarotHtml)) pass('API 엔드포인트 /api/tarot 호출');
@@ -121,39 +121,29 @@ const frontCardIds = tarotHtml.match(/id:\s*(\d+),\s*name:/g);
 if (frontCardIds && frontCardIds.length === 22) pass('프론트엔드 카드 데이터 22장');
 else fail(`프론트엔드 카드 데이터: ${frontCardIds ? frontCardIds.length : 0}장`);
 
-// Three.js 씬 구성요소
-if (/new THREE\.Scene/.test(tarotHtml)) pass('THREE.Scene 생성');
-else fail('THREE.Scene 없음');
-if (/new THREE\.PerspectiveCamera/.test(tarotHtml)) pass('PerspectiveCamera 생성');
-else fail('PerspectiveCamera 없음');
-if (/new THREE\.WebGLRenderer/.test(tarotHtml)) pass('WebGLRenderer 생성');
-else fail('WebGLRenderer 없음');
-if (/new THREE\.PointLight/.test(tarotHtml)) pass('조명(PointLight) 설정');
-else fail('조명 없음');
+// CSS 카드 플립 애니메이션
+if (/cardFlip/.test(tarotHtml)) pass('CSS 카드 플립 애니메이션');
+else fail('카드 플립 없음');
 
-// 카드 애니메이션
-if (/gsap\.to/.test(tarotHtml)) pass('GSAP 애니메이션 사용');
+// GSAP 딜링 애니메이션
+if (/gsap\.to/.test(tarotHtml)) pass('GSAP 딜링 애니메이션 사용');
 else fail('GSAP 애니메이션 없음');
 
 // 파티클 이펙트
-if (/createRevealParticles/.test(tarotHtml)) pass('파티클 이펙트 함수 존재');
+if (/createRevealParticles/.test(tarotHtml)) pass('파티클 이펙트 존재');
 else fail('파티클 이펙트 없음');
 
 // 배경 별
-if (/createStars/.test(tarotHtml)) pass('배경 별 이펙트 존재');
-else fail('배경 별 이펙트 없음');
+if (/createStars|stars-bg/.test(tarotHtml)) pass('배경 별 이펙트 존재');
+else fail('배경 별 없음');
 
-// 카드 뒷면 텍스처
-if (/createBackTexture/.test(tarotHtml)) pass('카드 뒷면 텍스처 생성 함수 존재');
-else fail('카드 뒷면 텍스처 없음');
+// 카드 뒷면 디자인
+if (/card-back/.test(tarotHtml)) pass('카드 뒷면 디자인 존재');
+else fail('카드 뒷면 없음');
 
 // 역방향/정방향 처리
 if (/reversed/.test(tarotHtml)) pass('역방향(reversed) 처리 로직');
 else fail('역방향 처리 없음');
-
-// Raycaster (클릭 감지)
-if (/new THREE\.Raycaster/.test(tarotHtml)) pass('Raycaster 클릭 감지');
-else fail('Raycaster 없음');
 
 // 결과 표시
 if (/showResult/.test(tarotHtml)) pass('showResult 함수 존재');
@@ -161,9 +151,13 @@ else fail('showResult 없음');
 if (/showError/.test(tarotHtml)) pass('showError 함수 존재');
 else fail('showError 없음');
 
-// 리사이즈 핸들러
-if (/onResize/.test(tarotHtml)) pass('리사이즈 핸들러 존재');
-else fail('리사이즈 핸들러 없음');
+// 카드 이미지 결과 표시
+if (/tarot-cards-display/.test(tarotHtml)) pass('결과에 카드 이미지 표시');
+else fail('결과 카드 이미지 없음');
+
+// 카드 떠다니는 효과
+if (/cardFloat/.test(tarotHtml)) pass('카드 플로팅 애니메이션');
+else fail('카드 플로팅 없음');
 
 // components.js 로드
 if (/components\.js/.test(tarotHtml)) pass('components.js 로드');
@@ -178,6 +172,10 @@ if (/og:title/.test(tarotHtml)) pass('og:title 메타태그');
 else fail('og:title 없음');
 if (/og:description/.test(tarotHtml)) pass('og:description 메타태그');
 else fail('og:description 없음');
+
+// 반응형 그리드
+if (/grid-template-columns.*repeat/.test(tarotHtml)) pass('반응형 카드 그리드');
+else fail('반응형 그리드 없음');
 
 // ============================================================
 // 4. tarot-en.html 검증
@@ -302,17 +300,17 @@ else warn('질문 입력 길이 제한 없음');
 // ============================================================
 console.log('\n📱 [9] 모바일 대응');
 
-if (/window\.innerWidth\s*<\s*768/.test(tarotHtml)) pass('모바일 레이아웃 분기 존재');
-else warn('모바일 레이아웃 분기 확인 필요');
+if (/@media.*max-width.*480/.test(tarotHtml)) pass('모바일 미디어쿼리 존재');
+else warn('모바일 미디어쿼리 확인 필요');
 
-if (/touch-action:\s*none/.test(tarotHtml)) pass('터치 액션 설정');
-else warn('터치 액션 미설정');
+if (/@media.*min-width.*600/.test(tarotHtml)) pass('태블릿 미디어쿼리 존재');
+else warn('태블릿 미디어쿼리 확인 필요');
 
-if (/devicePixelRatio/.test(tarotHtml)) pass('devicePixelRatio 대응');
-else warn('devicePixelRatio 미대응');
+if (/aspect-ratio/.test(tarotHtml)) pass('카드 비율(aspect-ratio) 설정');
+else warn('카드 비율 미설정');
 
-if (/resize/.test(tarotHtml)) pass('resize 이벤트 핸들러 존재');
-else warn('resize 미대응');
+if (/clamp\(/.test(tarotHtml)) pass('반응형 폰트 크기(clamp) 사용');
+else warn('반응형 폰트 미사용');
 
 // ============================================================
 // 결과 요약
