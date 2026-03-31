@@ -594,8 +594,9 @@ option { background: #1a1a2e; color: #e0e0e0; }
   box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 20px rgba(201,160,68,0.1);
 }
 .menu-card:active { transform: translateY(-1px); }
-.menu-icon { font-size: 2.6rem; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(201,160,68,0.3)); display: flex; justify-content: center; }
-.menu-icon svg { width: 48px; height: 48px; }
+.menu-icon { margin-bottom: 12px; display: flex; justify-content: center; }
+.menu-icon svg { width: 56px; height: 56px; filter: drop-shadow(0 2px 12px rgba(201,160,68,0.25)); transition: transform 0.3s, filter 0.3s; }
+.menu-card:hover .menu-icon svg { transform: scale(1.1); filter: drop-shadow(0 4px 16px rgba(201,160,68,0.5)); }
 .menu-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
 .menu-desc { font-size: 0.75rem; color: #888; line-height: 1.4; }
 .menu-badge {
@@ -644,7 +645,8 @@ option { background: #1a1a2e; color: #e0e0e0; }
   .btn { padding: 13px; font-size: 0.95rem; }
   .menu-grid { gap: 10px; }
   .menu-card { padding: 24px 12px 20px; border-radius: 10px; }
-  .menu-icon { font-size: 2.2rem; margin-bottom: 10px; }
+  .menu-icon { margin-bottom: 10px; }
+  .menu-icon svg { width: 48px; height: 48px; }
   .menu-title { font-size: 1rem; }
   .menu-desc { font-size: 0.7rem; }
   .menu-badge { font-size: 0.55rem; top: 8px; right: 8px; }
@@ -676,7 +678,7 @@ option { background: #1a1a2e; color: #e0e0e0; }
   .menu-grid { gap: 18px; }
   .menu-card { padding: 36px 20px 28px; }
   .menu-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 30px rgba(201,160,68,0.12); }
-  .menu-icon { font-size: 3rem; }
+  .menu-icon svg { width: 64px; height: 64px; }
   .menu-title { font-size: 1.2rem; }
   .entry-card { padding: 24px; }
   .entry-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
