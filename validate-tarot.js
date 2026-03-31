@@ -233,16 +233,22 @@ if (koMenuOrder) {
 // ============================================================
 console.log('\n🖼️  [6] 카드 이미지 URL 검증');
 
-const imgUrlMatches = tarotHtml.match(/CARD_IMAGES\s*=\s*\[([\s\S]*?)\];/);
-if (imgUrlMatches) {
-  const entries = imgUrlMatches[1].match(/https?:\/\/[^'"\s,]+/g);
-  if (entries && entries.length === 22) pass('22장 이미지 URL 정의됨');
-  else fail(`이미지 URL 수: ${entries ? entries.length : 0}개`);
+// 이미지 URL 함수 존재 확인
+if (/getCardImageUrl/.test(tarotHtml)) pass('getCardImageUrl 함수 존재');
+else fail('getCardImageUrl 함수 없음');
 
-  if (/sacred-texts\.com/.test(tarotHtml) || /upload\.wikimedia\.org/.test(tarotHtml)) pass('퍼블릭 도메인 이미지 소스 사용');
-  else fail('이미지 소스 URL 형식 오류');
+// 로컬 이미지 경로 사용 확인
+if (/\/images\/tarot\//.test(tarotHtml)) pass('로컬 이미지 경로 사용 (/images/tarot/)');
+else fail('로컬 이미지 경로 없음');
+
+// 이미지 파일 22장 존재 확인
+const tarotImgDir = path.join(__dirname, 'images', 'tarot');
+if (fs.existsSync(tarotImgDir)) {
+  const imgFiles = fs.readdirSync(tarotImgDir).filter(f => f.endsWith('.webp'));
+  if (imgFiles.length === 22) pass(`이미지 파일 22장 존재 (WebP)`);
+  else fail(`이미지 파일 수: ${imgFiles.length}개 (22개 필요)`);
 } else {
-  fail('CARD_IMAGES 배열을 찾을 수 없음');
+  fail('images/tarot/ 디렉토리 없음');
 }
 
 // ============================================================

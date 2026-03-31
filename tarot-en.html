@@ -261,34 +261,9 @@
     { id: 21, name: 'The World', nameKo: '세계' },
   ];
 
-  // Rider-Waite 카드 이미지 (퍼블릭 도메인)
-  const CARD_IMAGES = [
-    'https://www.sacred-texts.com/tarot/pkt/img/ar00.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar01.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar02.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar03.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar04.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar05.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar06.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar07.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar08.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar09.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar10.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar11.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar12.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar13.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar14.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar15.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar16.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar17.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar18.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar19.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar20.jpg',
-    'https://www.sacred-texts.com/tarot/pkt/img/ar21.jpg',
-  ];
-
+  // Rider-Waite 카드 이미지 (퍼블릭 도메인 — 로컬 호스팅, WebP)
   function getCardImageUrl(id) {
-    return CARD_IMAGES[id] || '';
+    return '/images/tarot/ar' + String(id).padStart(2, '0') + '.webp';
   }
 
   // ===== Three.js Scene Setup =====
