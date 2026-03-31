@@ -301,9 +301,18 @@
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x0a0a1e, 0.08);
 
-  const isMobileInit = window.innerWidth < 768;
-  const camera = new THREE.PerspectiveCamera(isMobileInit ? 55 : 45, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0, isMobileInit ? 10 : 8, isMobileInit ? 14 : 12);
+  // 해상도별 카메라 설정
+  function getCameraConfig() {
+    const w = window.innerWidth;
+    if (w <= 400) return { fov: 62, y: 12, z: 16 };       // 소형 모바일 (SE, 구형)
+    if (w <= 480) return { fov: 58, y: 11, z: 15 };       // 일반 모바일
+    if (w <= 768) return { fov: 52, y: 10, z: 14 };       // 대형 모바일 / 소형 태블릿
+    if (w <= 1024) return { fov: 48, y: 9, z: 13 };       // 태블릿
+    return { fov: 45, y: 8, z: 12 };                       // 데스크톱
+  }
+  const camCfg = getCameraConfig();
+  const camera = new THREE.PerspectiveCamera(camCfg.fov, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, camCfg.y, camCfg.z);
   camera.lookAt(0, 0, 0);
 
   // Lighting
@@ -525,14 +534,33 @@
     return group;
   }
 
-  // ===== Card Layout =====
+  // ===== Card Layout — 해상도별 최적화 =====
   function layoutCards() {
     const total = MAJOR_ARCANA.length;
-    const isMobile = window.innerWidth < 768;
-    const cols = isMobile ? 5 : 11;
+    const w = window.innerWidth;
+    let cols, spacingX, spacingZ;
+    if (w <= 400) {        // 소형 모바일
+      cols = 4;
+      spacingX = CARD_W * 1.6;
+      spacingZ = CARD_H * 0.9;
+    } else if (w <= 480) { // 일반 모바일
+      cols = 5;
+      spacingX = CARD_W * 1.5;
+      spacingZ = CARD_H * 0.85;
+    } else if (w <= 768) { // 대형 모바일 / 소형 태블릿
+      cols = 6;
+      spacingX = CARD_W * 1.45;
+      spacingZ = CARD_H * 0.8;
+    } else if (w <= 1024) { // 태블릿
+      cols = 8;
+      spacingX = CARD_W * 1.4;
+      spacingZ = CARD_H * 0.75;
+    } else {               // 데스크톱
+      cols = 11;
+      spacingX = CARD_W * 1.4;
+      spacingZ = CARD_H * 0.75;
+    }
     const rows = Math.ceil(total / cols);
-    const spacingX = isMobile ? CARD_W * 1.5 : CARD_W * 1.4;
-    const spacingZ = isMobile ? CARD_H * 0.85 : CARD_H * 0.75;
 
     cardMeshes.forEach((mesh, i) => {
       const col = i % cols;
@@ -994,11 +1022,21 @@
 
   // ===== Resize =====
   function onResize() {
+    const cfg = getCameraConfig();
     camera.aspect = window.innerWidth / window.innerHeight;
+    camera.fov = cfg.fov;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
     if (phase === 'selecting') {
+      camera.position.set(0, cfg.y, cfg.z);
+      camera.lookAt(0, 0, 0);
+      renderer.setSize(window.innerWidth, window.innerHeight);
       layoutCards();
+    } else if (phase === 'result') {
+      renderer.setSize(window.innerWidth, 300);
+      camera.aspect = window.innerWidth / 300;
+      camera.updateProjectionMatrix();
+    } else {
+      renderer.setSize(window.innerWidth, window.innerHeight);
     }
   }
 
