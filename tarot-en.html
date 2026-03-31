@@ -274,35 +274,38 @@
   renderer.setClearColor(0x0a0a1e, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0a1e, 0.08);
+  scene.fog = new THREE.FogExp2(0x0a0a1e, 0.02);
 
-  // 해상도별 카메라 설정
+  // 해상도별 카메라 설정 (큰 카드에 맞게)
   function getCameraConfig() {
     const w = window.innerWidth;
-    if (w <= 400) return { fov: 62, y: 12, z: 16 };       // 소형 모바일 (SE, 구형)
-    if (w <= 480) return { fov: 58, y: 11, z: 15 };       // 일반 모바일
-    if (w <= 768) return { fov: 52, y: 10, z: 14 };       // 대형 모바일 / 소형 태블릿
-    if (w <= 1024) return { fov: 48, y: 9, z: 13 };       // 태블릿
-    return { fov: 45, y: 8, z: 12 };                       // 데스크톱
+    if (w <= 400) return { fov: 68, y: 14, z: 18 };       // 소형 모바일
+    if (w <= 480) return { fov: 64, y: 13, z: 17 };       // 일반 모바일
+    if (w <= 768) return { fov: 58, y: 12, z: 16 };       // 대형 모바일 / 소형 태블릿
+    if (w <= 1024) return { fov: 52, y: 11, z: 15 };      // 태블릿
+    return { fov: 48, y: 10, z: 14 };                      // 데스크톱
   }
   const camCfg = getCameraConfig();
   const camera = new THREE.PerspectiveCamera(camCfg.fov, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, camCfg.y, camCfg.z);
   camera.lookAt(0, 0, 0);
 
-  // Lighting
-  const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+  // Lighting — 밝고 따뜻한 조명
+  const ambientLight = new THREE.AmbientLight(0x8888aa, 1.2);
   scene.add(ambientLight);
-  const pointLight = new THREE.PointLight(0xc9a044, 1.5, 30);
-  pointLight.position.set(0, 8, 5);
+  const pointLight = new THREE.PointLight(0xffd080, 2.0, 40);
+  pointLight.position.set(0, 10, 6);
   scene.add(pointLight);
-  const pointLight2 = new THREE.PointLight(0x4466ff, 0.8, 20);
-  pointLight2.position.set(-5, 5, -3);
+  const pointLight2 = new THREE.PointLight(0x6688ff, 0.6, 25);
+  pointLight2.position.set(-6, 6, -3);
   scene.add(pointLight2);
+  const pointLight3 = new THREE.PointLight(0xffc060, 1.0, 30);
+  pointLight3.position.set(5, 5, 4);
+  scene.add(pointLight3);
 
   // ===== Card Creation =====
-  const CARD_W = 0.7;
-  const CARD_H = 1.2;
+  const CARD_W = 1.0;
+  const CARD_H = 1.7;
   const cardMeshes = [];
   const selectedCards = [];
   let phase = 'selecting'; // selecting, reading, result
@@ -473,12 +476,14 @@
     // 카드 지오메트리
     const geo = new THREE.PlaneGeometry(CARD_W, CARD_H);
 
-    // 뒷면 (보이는 면)
+    // 뒷면 (보이는 면) — 밝게
     const backMat = new THREE.MeshStandardMaterial({
       map: backTexture,
       side: THREE.FrontSide,
-      roughness: 0.4,
-      metalness: 0.3,
+      roughness: 0.6,
+      metalness: 0.1,
+      emissive: 0x1a0a2e,
+      emissiveIntensity: 0.3,
     });
     const backMesh = new THREE.Mesh(geo, backMat);
     group.add(backMesh);
@@ -663,9 +668,9 @@
 
     // 선택된 3장을 앞으로 이동
     const positions = [
-      { x: -2, y: 1, z: 3 },
-      { x: 0, y: 1, z: 3 },
-      { x: 2, y: 1, z: 3 },
+      { x: -2.5, y: 1.5, z: 4 },
+      { x: 0, y: 1.5, z: 4 },
+      { x: 2.5, y: 1.5, z: 4 },
     ];
 
     const labels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
@@ -804,7 +809,7 @@
   function floatSelectedCards(time) {
     if (phase === 'reading' || phase === 'result') {
       selectedCards.forEach((card, i) => {
-        card.position.y = 1 + Math.sin(time * 0.001 + i * 1.5) * 0.05;
+        card.position.y = 1.5 + Math.sin(time * 0.001 + i * 1.5) * 0.06;
       });
     }
   }
@@ -912,9 +917,9 @@
 
     // 선택된 카드 위치를 좁게 재조정
     const newPositions = [
-      { x: -1.5, y: 1.2, z: 3 },
-      { x: 0, y: 1.2, z: 3 },
-      { x: 1.5, y: 1.2, z: 3 },
+      { x: -2, y: 1.5, z: 4 },
+      { x: 0, y: 1.5, z: 4 },
+      { x: 2, y: 1.5, z: 4 },
     ];
     selectedCards.forEach((card, i) => {
       gsap.to(card.position, { x: newPositions[i].x, y: newPositions[i].y, z: newPositions[i].z, duration: 0.5 });
