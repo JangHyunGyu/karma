@@ -191,6 +191,69 @@
   text-align: center;
   margin-top: 20px;
 }
+/* 결과 카드 이미지 3장 가로 배치 */
+.tarot-cards-display {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 16px 8px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.tarot-card-column {
+  flex: 1;
+  max-width: 200px;
+  text-align: center;
+}
+.tarot-card-position {
+  color: #c9a044;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.tarot-card-img-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(201,160,68,0.4);
+  box-shadow: 0 4px 20px rgba(201,160,68,0.15), 0 0 40px rgba(10,10,30,0.8);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.tarot-card-img-wrap:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 30px rgba(201,160,68,0.3);
+}
+.tarot-card-img-wrap.reversed {
+  transform: rotate(180deg);
+}
+.tarot-card-img-wrap.reversed:hover {
+  transform: rotate(180deg) scale(1.03);
+}
+.tarot-card-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.tarot-card-label {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+/* 모바일 카드 이미지 */
+@media (max-width: 480px) {
+  .tarot-cards-display {
+    gap: 8px;
+    padding: 16px 8px 4px;
+  }
+  .tarot-card-position {
+    font-size: 0.75rem;
+  }
+  .tarot-card-name {
+    font-size: 0.72rem;
+  }
+}
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
@@ -906,39 +969,36 @@
   function showResult(data) {
     phase = 'result';
 
-    // 3D 캔버스를 상단 고정 높이로 줄이고, 카드를 위로 이동
-    canvas.style.position = 'relative';
-    canvas.style.height = '300px';
-    renderer.setSize(window.innerWidth, 300);
-    camera.aspect = window.innerWidth / 300;
-    camera.updateProjectionMatrix();
-    camera.position.set(0, 6, 8);
-    camera.lookAt(0, 1, 3);
-
-    // 선택된 카드 위치를 좁게 재조정
-    const newPositions = [
-      { x: -2, y: 1.5, z: 4 },
-      { x: 0, y: 1.5, z: 4 },
-      { x: 2, y: 1.5, z: 4 },
-    ];
-    selectedCards.forEach((card, i) => {
-      gsap.to(card.position, { x: newPositions[i].x, y: newPositions[i].y, z: newPositions[i].z, duration: 0.5 });
-    });
+    // 3D 캔버스 숨기기 — HTML로 카드를 크고 선명하게 표시
+    canvas.style.display = 'none';
 
     const wrap = document.getElementById('tarotResult');
     const posLabels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
-    const posIcons = ['⏮️', '⏺️', '⏭️'];
 
     let html = '';
 
+    // 카드 3장 이미지 (크고 선명하게)
+    html += '<div class="tarot-cards-display">';
+    data.cards.forEach((card, i) => {
+      const imgUrl = getCardImageUrl(card.id);
+      html += `<div class="tarot-card-column">
+        <div class="tarot-card-position">${posLabels[i]}</div>
+        <div class="tarot-card-img-wrap${card.reversed ? ' reversed' : ''}">
+          <img src="${imgUrl}" alt="${card.nameKo}" class="tarot-card-img" loading="eager">
+        </div>
+        <div class="tarot-card-label">
+          <span class="tarot-card-name">${lang() === 'en' ? card.name : card.nameKo}</span>
+          ${card.reversed ? `<span class="tarot-card-reversed">${_L('역방향', 'Reversed')}</span>` : `<span style="color:#4CAF50;font-size:0.75rem">${_L('정방향', 'Upright')}</span>`}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+
     // 각 카드 해석
     data.cards.forEach((card, i) => {
+      const imgUrl = getCardImageUrl(card.id);
       html += `<div class="tarot-result-card">
-        <h3>${posIcons[i]} ${posLabels[i]}</h3>
-        <div style="margin-bottom:10px">
-          <span class="tarot-card-name">${lang() === 'en' ? card.name : card.nameKo} (${lang() === 'en' ? card.nameKo : card.name})</span>
-          ${card.reversed ? `<span class="tarot-card-reversed">${_L('역방향', 'Reversed')}</span>` : `<span style="color:#4CAF50;font-size:0.75rem;margin-left:6px">${_L('정방향', 'Upright')}</span>`}
-        </div>
+        <h3>${posLabels[i]} — ${lang() === 'en' ? card.name : card.nameKo}</h3>
         <p>${card.interpretation}</p>
       </div>`;
     });
@@ -972,7 +1032,7 @@
 
     wrap.innerHTML = html;
     wrap.classList.add('show');
-    wrap.scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function showError(msg) {
