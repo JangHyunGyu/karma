@@ -11,12 +11,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Karma - AI Tarot Reading</title>
-<meta name="description" content="Free AI tarot card reading - See your past, present, and future with 3 cards. Premium tarot reading with Rider-Waite cards and AI interpretation.">
-<meta name="keywords" content="tarot, tarot cards, free tarot, AI tarot, tarot reading, fortune telling, card reading, free tarot reading, daily tarot">
+<meta name="description" content="Free AI tarot card reading - See your past, present, and future with 3 cards.">
+<meta name="keywords" content="tarot, tarot cards, free tarot, AI tarot, tarot reading, fortune telling">
 <link rel="canonical" href="https://karma.archerlab.dev/tarot-en.html">
-<link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot.html">
+<link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot.html">
 <link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot-en.html">
-<meta property="og:title" content="Free AI Tarot Card Reading - Karma">
+<meta property="og:title" content="Free AI tarot card reading - See your past, present, and future with 3 cards.">
 <meta property="og:description" content="See your past, present, and future with 3 tarot cards. Premium AI-powered tarot reading.">
 <meta property="og:image" content="https://karma.archerlab.dev/images/og-karma.png">
 <meta property="og:url" content="https://karma.archerlab.dev/tarot-en.html">
@@ -204,7 +204,7 @@
 
 <div class="tarot-ui">
   <div class="tarot-header">
-    <h1 data-ko="🃏 타로 리딩" data-en="🃏 Tarot Reading">🃏 AI Tarot Reading</h1>
+    <h1 data-ko="🃏 타로 리딩" data-en="🃏 Tarot Reading">🃏 Tarot Reading</h1>
     <p class="subtitle" data-ko="카드 3장을 선택하세요" data-en="Select 3 cards">Select 3 cards</p>
   </div>
 
@@ -261,35 +261,34 @@
     { id: 21, name: 'The World', nameKo: '세계' },
   ];
 
-  // Rider-Waite 카드 이미지 (퍼블릭 도메인 — Wikimedia Commons)
-  const CARD_IMAGE_BASE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
-  const CARD_IMAGES = {
-    0: '1/10/RWS_Tarot_00_Fool.jpg/300px-RWS_Tarot_00_Fool.jpg',
-    1: 'd/de/RWS_Tarot_01_Magician.jpg/300px-RWS_Tarot_01_Magician.jpg',
-    2: '8/88/RWS_Tarot_02_High_Priestess.jpg/300px-RWS_Tarot_02_High_Priestess.jpg',
-    3: 'd/d2/RWS_Tarot_03_Empress.jpg/300px-RWS_Tarot_03_Empress.jpg',
-    4: 'c/c3/RWS_Tarot_04_Emperor.jpg/300px-RWS_Tarot_04_Emperor.jpg',
-    5: '8/8d/RWS_Tarot_05_Hierophant.jpg/300px-RWS_Tarot_05_Hierophant.jpg',
-    6: '3/3a/TheLovers.jpg/300px-TheLovers.jpg',
-    7: '9/9b/RWS_Tarot_07_Chariot.jpg/300px-RWS_Tarot_07_Chariot.jpg',
-    8: 'f/f5/RWS_Tarot_08_Strength.jpg/300px-RWS_Tarot_08_Strength.jpg',
-    9: '4/4d/RWS_Tarot_09_Hermit.jpg/300px-RWS_Tarot_09_Hermit.jpg',
-    10: '3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg/300px-RWS_Tarot_10_Wheel_of_Fortune.jpg',
-    11: 'e/e0/RWS_Tarot_11_Justice.jpg/300px-RWS_Tarot_11_Justice.jpg',
-    12: '2/2b/RWS_Tarot_12_Hanged_Man.jpg/300px-RWS_Tarot_12_Hanged_Man.jpg',
-    13: 'd/d7/RWS_Tarot_13_Death.jpg/300px-RWS_Tarot_13_Death.jpg',
-    14: 'f/f8/RWS_Tarot_14_Temperance.jpg/300px-RWS_Tarot_14_Temperance.jpg',
-    15: '5/55/RWS_Tarot_15_Devil.jpg/300px-RWS_Tarot_15_Devil.jpg',
-    16: '5/53/RWS_Tarot_16_Tower.jpg/300px-RWS_Tarot_16_Tower.jpg',
-    17: 'd/db/RWS_Tarot_17_Star.jpg/300px-RWS_Tarot_17_Star.jpg',
-    18: '7/7f/RWS_Tarot_18_Moon.jpg/300px-RWS_Tarot_18_Moon.jpg',
-    19: '1/17/RWS_Tarot_19_Sun.jpg/300px-RWS_Tarot_19_Sun.jpg',
-    20: 'd/dd/RWS_Tarot_20_Judgement.jpg/300px-RWS_Tarot_20_Judgement.jpg',
-    21: 'f/ff/RWS_Tarot_21_World.jpg/300px-RWS_Tarot_21_World.jpg',
-  };
+  // Rider-Waite 카드 이미지 (퍼블릭 도메인)
+  const CARD_IMAGES = [
+    'https://www.sacred-texts.com/tarot/pkt/img/ar00.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar01.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar02.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar03.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar04.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar05.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar06.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar07.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar08.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar09.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar10.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar11.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar12.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar13.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar14.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar15.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar16.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar17.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar18.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar19.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar20.jpg',
+    'https://www.sacred-texts.com/tarot/pkt/img/ar21.jpg',
+  ];
 
   function getCardImageUrl(id) {
-    return CARD_IMAGE_BASE + (CARD_IMAGES[id] || '');
+    return CARD_IMAGES[id] || '';
   }
 
   // ===== Three.js Scene Setup =====
@@ -302,8 +301,9 @@
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x0a0a1e, 0.08);
 
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0, 8, 12);
+  const isMobileInit = window.innerWidth < 768;
+  const camera = new THREE.PerspectiveCamera(isMobileInit ? 55 : 45, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, isMobileInit ? 10 : 8, isMobileInit ? 14 : 12);
   camera.lookAt(0, 0, 0);
 
   // Lighting
@@ -323,57 +323,156 @@
   const selectedCards = [];
   let phase = 'selecting'; // selecting, reading, result
 
-  // 카드 뒷면 텍스처 (프로시저럴)
+  // 카드 뒷면 텍스처 (프로시저럴 — 고퀄리티)
   function createBackTexture() {
     const c = document.createElement('canvas');
-    c.width = 256; c.height = 420;
+    c.width = 512; c.height = 840;
     const ctx = c.getContext('2d');
-    // 배경
-    ctx.fillStyle = '#1a0a2e';
-    ctx.fillRect(0, 0, 256, 420);
-    // 테두리
+    const W = 512, H = 840;
+
+    // 배경 — 진한 보라+파랑 (배경과 확실히 구분)
+    const bgGrad = ctx.createRadialGradient(W/2, H/2, 30, W/2, H/2, W * 0.6);
+    bgGrad.addColorStop(0, '#3d2266');
+    bgGrad.addColorStop(0.4, '#2d1855');
+    bgGrad.addColorStop(1, '#1e1040');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 외곽 밝은 골드 테두리 (두껍게)
+    ctx.strokeStyle = '#e0c060';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(10, 10, W-20, H-20);
     ctx.strokeStyle = '#c9a044';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(8, 8, 240, 404);
-    ctx.strokeRect(16, 16, 224, 388);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(26, 26, W-52, H-52);
+
+    // 4 모서리 장식
+    const cornerSize = 40;
+    [[28, 28], [W-28, 28], [28, H-28], [W-28, H-28]].forEach(([cx, cy]) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath();
+      ctx.arc(0, 0, cornerSize, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(201,160,68,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      for (let a = 0; a < 4; a++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const angle = a * Math.PI / 2;
+        ctx.lineTo(Math.cos(angle) * cornerSize * 0.8, Math.sin(angle) * cornerSize * 0.8);
+        ctx.strokeStyle = 'rgba(240,212,138,0.3)';
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
     // 중앙 문양
     ctx.save();
-    ctx.translate(128, 210);
-    for (let i = 0; i < 8; i++) {
-      ctx.rotate(Math.PI / 4);
+    ctx.translate(W/2, H/2);
+
+    // 외곽 원환
+    for (let r = 120; r >= 40; r -= 40) {
       ctx.beginPath();
-      ctx.moveTo(0, -60);
-      ctx.lineTo(20, 0);
-      ctx.lineTo(0, 60);
-      ctx.lineTo(-20, 0);
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(201,160,68,0.5)';
-      ctx.lineWidth = 1.5;
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.strokeStyle = r === 120 ? '#c9a044' : 'rgba(201,160,68,0.3)';
+      ctx.lineWidth = r === 120 ? 3 : 1;
       ctx.stroke();
     }
-    // 중앙 원
-    ctx.beginPath();
-    ctx.arc(0, 0, 30, 0, Math.PI * 2);
-    ctx.strokeStyle = '#c9a044';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // 별
+
+    // 8방향 다이아몬드
+    for (let i = 0; i < 8; i++) {
+      ctx.save();
+      ctx.rotate(i * Math.PI / 4);
+      ctx.beginPath();
+      ctx.moveTo(0, -110);
+      ctx.lineTo(18, -60);
+      ctx.lineTo(0, -45);
+      ctx.lineTo(-18, -60);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(201,160,68,0.12)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(201,160,68,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 바깥 선
+      ctx.beginPath();
+      ctx.moveTo(0, -120);
+      ctx.lineTo(0, -130);
+      ctx.strokeStyle = 'rgba(201,160,68,0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 중앙 오망성 (펜타그램)
     ctx.beginPath();
     for (let i = 0; i < 5; i++) {
       const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
       const method = i === 0 ? 'moveTo' : 'lineTo';
-      ctx[method](Math.cos(angle) * 22, Math.sin(angle) * 22);
+      ctx[method](Math.cos(angle) * 38, Math.sin(angle) * 38);
     }
     ctx.closePath();
     ctx.strokeStyle = '#f0d48a';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.restore();
-    // KARMA 텍스트
+    ctx.fillStyle = 'rgba(240,212,138,0.08)';
+    ctx.fill();
+
+    // 중앙 원 + 글로우
+    const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
+    glowGrad.addColorStop(0, 'rgba(201,160,68,0.3)');
+    glowGrad.addColorStop(1, 'rgba(201,160,68,0)');
+    ctx.beginPath();
+    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.fillStyle = glowGrad;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
     ctx.fillStyle = '#c9a044';
-    ctx.font = 'bold 18px serif';
+    ctx.fill();
+
+    ctx.restore();
+
+    // 상단 / 하단 장식 패턴
+    [80, H - 80].forEach(yPos => {
+      ctx.save();
+      ctx.translate(W/2, yPos);
+      ctx.beginPath();
+      ctx.moveTo(-80, 0);
+      ctx.lineTo(-40, -12);
+      ctx.lineTo(0, -16);
+      ctx.lineTo(40, -12);
+      ctx.lineTo(80, 0);
+      ctx.lineTo(40, 12);
+      ctx.lineTo(0, 16);
+      ctx.lineTo(-40, 12);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(201,160,68,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(201,160,68,0.06)';
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // KARMA 텍스트 (하단)
+    ctx.fillStyle = '#c9a044';
+    ctx.font = 'bold 28px serif';
     ctx.textAlign = 'center';
-    ctx.fillText('KARMA', 128, 390);
+    ctx.letterSpacing = '6px';
+    ctx.fillText('K A R M A', W/2, H - 40);
+
+    // 미세한 노이즈 텍스처
+    const imgData = ctx.getImageData(0, 0, W, H);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 8;
+      imgData.data[i] += noise;
+      imgData.data[i+1] += noise;
+      imgData.data[i+2] += noise;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
     return new THREE.CanvasTexture(c);
   }
 
@@ -430,10 +529,10 @@
   function layoutCards() {
     const total = MAJOR_ARCANA.length;
     const isMobile = window.innerWidth < 768;
-    const cols = isMobile ? 6 : 11;
+    const cols = isMobile ? 5 : 11;
     const rows = Math.ceil(total / cols);
-    const spacingX = isMobile ? CARD_W * 1.2 : CARD_W * 1.3;
-    const spacingZ = isMobile ? CARD_H * 0.55 : CARD_H * 0.6;
+    const spacingX = isMobile ? CARD_W * 1.5 : CARD_W * 1.4;
+    const spacingZ = isMobile ? CARD_H * 0.85 : CARD_H * 0.75;
 
     cardMeshes.forEach((mesh, i) => {
       const col = i % cols;
@@ -798,6 +897,26 @@
   // ===== Show Result =====
   function showResult(data) {
     phase = 'result';
+
+    // 3D 캔버스를 상단 고정 높이로 줄이고, 카드를 위로 이동
+    canvas.style.position = 'relative';
+    canvas.style.height = '300px';
+    renderer.setSize(window.innerWidth, 300);
+    camera.aspect = window.innerWidth / 300;
+    camera.updateProjectionMatrix();
+    camera.position.set(0, 6, 8);
+    camera.lookAt(0, 1, 3);
+
+    // 선택된 카드 위치를 좁게 재조정
+    const newPositions = [
+      { x: -1.5, y: 1.2, z: 3 },
+      { x: 0, y: 1.2, z: 3 },
+      { x: 1.5, y: 1.2, z: 3 },
+    ];
+    selectedCards.forEach((card, i) => {
+      gsap.to(card.position, { x: newPositions[i].x, y: newPositions[i].y, z: newPositions[i].z, duration: 0.5 });
+    });
+
     const wrap = document.getElementById('tarotResult');
     const posLabels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
     const posIcons = ['⏮️', '⏺️', '⏭️'];

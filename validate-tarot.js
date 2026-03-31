@@ -233,16 +233,16 @@ if (koMenuOrder) {
 // ============================================================
 console.log('\n🖼️  [6] 카드 이미지 URL 검증');
 
-const imgUrlMatches = tarotHtml.match(/CARD_IMAGES\s*=\s*\{([\s\S]*?)\}/);
+const imgUrlMatches = tarotHtml.match(/CARD_IMAGES\s*=\s*\[([\s\S]*?)\];/);
 if (imgUrlMatches) {
-  const entries = imgUrlMatches[1].match(/\d+:\s*'/g);
+  const entries = imgUrlMatches[1].match(/https?:\/\/[^'"\s,]+/g);
   if (entries && entries.length === 22) pass('22장 이미지 URL 정의됨');
   else fail(`이미지 URL 수: ${entries ? entries.length : 0}개`);
 
-  if (/upload\.wikimedia\.org/.test(tarotHtml)) pass('Wikimedia Commons 이미지 소스 사용');
+  if (/sacred-texts\.com/.test(tarotHtml) || /upload\.wikimedia\.org/.test(tarotHtml)) pass('퍼블릭 도메인 이미지 소스 사용');
   else fail('이미지 소스 URL 형식 오류');
 } else {
-  fail('CARD_IMAGES 객체를 찾을 수 없음');
+  fail('CARD_IMAGES 배열을 찾을 수 없음');
 }
 
 // ============================================================
