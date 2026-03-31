@@ -148,6 +148,9 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Karma - 손금 분석","url":"https://karma.archerlab.dev/palm.html","description":"무료 AI 손금 보기 - 손바닥 사진으로 보는 손금 분석","applicationCategory":"LifestyleApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"inLanguage":"ko"}
+</script>
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
@@ -317,7 +320,7 @@ function handleFile(file) {
     imageData = jpegDataUrl.split(',')[1];
     imageMime = 'image/jpeg';
     uploadArea.classList.add('has-image');
-    uploadArea.innerHTML = `<img src="${jpegDataUrl}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
+    uploadArea.innerHTML = `<img src="${jpegDataUrl}" alt="업로드된 손금 분석용 사진"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
     document.getElementById('fileInput').addEventListener('change', e2 => { if (e2.target.files[0]) handleFile(e2.target.files[0]); });
     checkReady();
     URL.revokeObjectURL(url);

@@ -149,6 +149,9 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Karma - Face Reading","url":"https://karma.archerlab.dev/face-en.html","description":"Free AI face reading - Upload a selfie for physiognomy analysis","applicationCategory":"LifestyleApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":"en"}
+</script>
 </head>
 <body class="bg-saju">
 <div class="header-bg"></div>
@@ -275,7 +278,7 @@ function handleFile(file) {
     imageData = jpegDataUrl.split(',')[1];
     imageMime = 'image/jpeg';
     uploadArea.classList.add('has-image');
-    uploadArea.innerHTML = `<img src="${jpegDataUrl}" alt="uploaded"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
+    uploadArea.innerHTML = `<img src="${jpegDataUrl}" alt="Uploaded photo for face reading"><input type="file" id="fileInput" accept="image/*" style="display:none">`;
     document.getElementById('fileInput').addEventListener('change', e2 => { if (e2.target.files[0]) handleFile(e2.target.files[0]); });
     checkReady();
     URL.revokeObjectURL(url);
