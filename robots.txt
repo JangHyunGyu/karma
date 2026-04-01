@@ -1,5 +1,15 @@
 User-agent: *
 Allow: /
+Disallow: /login.html
+Disallow: /login-en.html
+Disallow: /register.html
+Disallow: /register-en.html
+Disallow: /discover.html
+Disallow: /discover-en.html
+Disallow: /match.html
+Disallow: /match-en.html
+Disallow: /matches.html
+Disallow: /matches-en.html
 
 User-agent: Mediapartners-Google
 Allow: /
