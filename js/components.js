@@ -127,8 +127,10 @@ function saveInputs() {
   if (d) data.day = d.value;
   const g = document.getElementById('gender');
   const t = document.getElementById('birthTime');
+  const loc = document.getElementById('birthLocation');
   if (g) data.gender = g.value;
   if (t) data.birthTime = t.value;
+  if (loc) data.birthLocation = loc.value;
   data.calendarType = _calendarType;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
@@ -141,6 +143,7 @@ function restoreInputs() {
     if (data.day) setComboValue('birthDay', data.day);
     if (data.gender) setComboValue('gender', data.gender);
     if (data.birthTime) setComboValue('birthTime', data.birthTime);
+    if (data.birthLocation) setComboValue('birthLocation', data.birthLocation);
     if (data.calendarType === 'lunar') {
       const lunarBtn = document.querySelector('.cal-btn[data-cal="lunar"]');
       if (lunarBtn) setCalendarType(lunarBtn, 'lunar');
@@ -529,9 +532,83 @@ window.addEventListener('beforeunload', () => {
   _lineBreakObserver.disconnect();
 });
 
+// ===== 출생 지역 (타임존 기반) =====
+const LOCATION_OPTIONS = [
+  { value: 'utc+12',   utc: '+12',   ko: '뉴질랜드, 피지',                                         en: 'New Zealand, Fiji' },
+  { value: 'utc+11',   utc: '+11',   ko: '솔로몬제도, 뉴칼레도니아',                                en: 'Solomon Islands, New Caledonia' },
+  { value: 'utc+10',   utc: '+10',   ko: '호주 동부 (시드니), 괌, 파푸아뉴기니',                    en: 'Australia East (Sydney), Guam, Papua New Guinea' },
+  { value: 'utc+9.5',  utc: '+9:30', ko: '호주 중부 (애들레이드)',                                  en: 'Australia Central (Adelaide)' },
+  { value: 'utc+9',    utc: '+9',    ko: '한국, 일본, 동티모르, 팔라우',                            en: 'Korea, Japan, East Timor, Palau' },
+  { value: 'utc+8',    utc: '+8',    ko: '중국, 대만, 홍콩, 싱가포르, 필리핀, 말레이시아, 몽골',    en: 'China, Taiwan, Hong Kong, Singapore, Philippines, Malaysia, Mongolia' },
+  { value: 'utc+7',    utc: '+7',    ko: '베트남, 태국, 캄보디아, 라오스, 인도네시아 서부 (자카르타)', en: 'Vietnam, Thailand, Cambodia, Laos, Indonesia West (Jakarta)' },
+  { value: 'utc+6.5',  utc: '+6:30', ko: '미얀마 (양곤)',                                          en: 'Myanmar (Yangon)' },
+  { value: 'utc+6',    utc: '+6',    ko: '방글라데시, 카자흐스탄 (알마티), 부탄',                   en: 'Bangladesh, Kazakhstan (Almaty), Bhutan' },
+  { value: 'utc+5.75', utc: '+5:45', ko: '네팔 (카트만두)',                                        en: 'Nepal (Kathmandu)' },
+  { value: 'utc+5.5',  utc: '+5:30', ko: '인도, 스리랑카',                                        en: 'India, Sri Lanka' },
+  { value: 'utc+5',    utc: '+5',    ko: '파키스탄, 우즈베키스탄, 타지키스탄, 투르크메니스탄',       en: 'Pakistan, Uzbekistan, Tajikistan, Turkmenistan' },
+  { value: 'utc+4',    utc: '+4',    ko: 'UAE (두바이), 오만, 조지아, 아르메니아, 아제르바이잔',     en: 'UAE (Dubai), Oman, Georgia, Armenia, Azerbaijan' },
+  { value: 'utc+3.5',  utc: '+3:30', ko: '이란 (테헤란)',                                          en: 'Iran (Tehran)' },
+  { value: 'utc+3',    utc: '+3',    ko: '러시아 (모스크바), 튀르키예, 사우디, 케냐, 이라크',        en: 'Russia (Moscow), Türkiye, Saudi Arabia, Kenya, Iraq' },
+  { value: 'utc+2',    utc: '+2',    ko: '이집트, 남아공, 이스라엘, 그리스, 핀란드, 우크라이나',     en: 'Egypt, South Africa, Israel, Greece, Finland, Ukraine' },
+  { value: 'utc+1',    utc: '+1',    ko: '독일, 프랑스, 이탈리아, 스페인, 네덜란드, 스웨덴, 폴란드, 나이지리아', en: 'Germany, France, Italy, Spain, Netherlands, Sweden, Poland, Nigeria' },
+  { value: 'utc+0',    utc: '+0',    ko: '영국, 포르투갈, 아이슬란드, 가나, 모로코',                en: 'UK, Portugal, Iceland, Ghana, Morocco' },
+  { value: 'utc-3',    utc: '-3',    ko: '브라질 동부 (상파울루), 아르헨티나, 칠레',                en: 'Brazil East (São Paulo), Argentina, Chile' },
+  { value: 'utc-4',    utc: '-4',    ko: '캐나다 대서양, 베네수엘라, 볼리비아, 파라과이',           en: 'Canada Atlantic, Venezuela, Bolivia, Paraguay' },
+  { value: 'utc-5',    utc: '-5',    ko: '미국·캐나다 동부 (뉴욕, 토론토), 콜롬비아, 페루, 쿠바',   en: 'US·Canada East (New York, Toronto), Colombia, Peru, Cuba' },
+  { value: 'utc-6',    utc: '-6',    ko: '미국·캐나다 중부 (시카고), 멕시코시티',                   en: 'US·Canada Central (Chicago), Mexico City' },
+  { value: 'utc-7',    utc: '-7',    ko: '미국·캐나다 산악 (덴버, 캘거리)',                         en: 'US·Canada Mountain (Denver, Calgary)' },
+  { value: 'utc-8',    utc: '-8',    ko: '미국·캐나다 서부 (LA, 밴쿠버)',                           en: 'US·Canada West (LA, Vancouver)' },
+  { value: 'utc-9',    utc: '-9',    ko: '미국 알래스카',                                          en: 'US Alaska' },
+  { value: 'utc-10',   utc: '-10',   ko: '미국 하와이, 쿡제도',                                    en: 'US Hawaii, Cook Islands' },
+];
+
+function createLocationSelect(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const lang = document.documentElement.lang || 'ko';
+  const label = document.createElement('label');
+  label.style.fontSize = '0.85rem';
+  label.dataset.ko = '태어난 지역';
+  label.dataset.en = 'Birth Location';
+  label.textContent = lang === 'en' ? 'Birth Location' : '태어난 지역';
+
+  const select = document.createElement('select');
+  select.id = 'birthLocation';
+  select.addEventListener('change', () => saveInputs());
+
+  // 브라우저 타임존 → UTC 오프셋 감지 → 가장 가까운 항목 자동 선택
+  const browserOffsetMin = -(new Date().getTimezoneOffset()); // 분 단위 (KST = +540)
+  const browserOffsetHr = browserOffsetMin / 60;
+  let defaultValue = 'utc+9';
+  let bestDiff = Infinity;
+  LOCATION_OPTIONS.forEach(loc => {
+    const parts = loc.utc.replace('+', '').split(':');
+    const locOffset = parseFloat(parts[0]) + (parts[1] ? parseInt(parts[1]) / 60 : 0);
+    const diff = Math.abs(locOffset - browserOffsetHr);
+    if (diff < bestDiff) { bestDiff = diff; defaultValue = loc.value; }
+  });
+
+  LOCATION_OPTIONS.forEach(loc => {
+    const opt = document.createElement('option');
+    opt.value = loc.value;
+    const koText = `${loc.ko} (UTC${loc.utc})`;
+    const enText = `${loc.en} (UTC${loc.utc})`;
+    opt.dataset.ko = koText;
+    opt.dataset.en = enText;
+    opt.textContent = lang === 'en' ? enText : koText;
+    if (loc.value === defaultValue) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  container.appendChild(label);
+  container.appendChild(select);
+  createCombo(select);
+}
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();
+  if (document.getElementById('locationWrap')) createLocationSelect('locationWrap');
   restoreInputs();
   // 야자시 초기 상태 설정
   if (document.getElementById('yajasiWrap')) updateYajasiState('birthTime', 'yajasiWrap');

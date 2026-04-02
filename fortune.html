@@ -84,6 +84,7 @@
         <select id="fortuneYear"></select>
       </div>
     </div>
+    <div id="locationWrap" style="margin:10px 0 6px"></div>
     <div id="yajasiWrap" style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;opacity:0.3">
       <label style="cursor:pointer;display:flex;align-items:center;gap:0;user-select:none" onclick="event.preventDefault();const t=document.getElementById('yajasiToggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));">
         <span id="yajasiSwitch" style="display:inline-block;width:36px;height:20px;background:rgba(255,255,255,0.12);border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0">
@@ -188,6 +189,7 @@ async function doFortune() {
         year: parseInt(document.getElementById('fortuneYear').value),
         lang: 'ko',
         yajasi: document.getElementById('yajasiToggle')?.checked || false,
+        birth_location: document.getElementById('birthLocation')?.value || 'kr',
       }),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }

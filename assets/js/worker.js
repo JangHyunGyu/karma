@@ -745,6 +745,62 @@ function isDST(year, month, day) {
   return false;
 }
 
+// ===== 출생 지역별 타임존(UTC오프셋) 데이터 =====
+// 키: 프론트에서 전송하는 value (utc+9 등), 값: UTC 오프셋(시간)
+const BIRTH_LOCATIONS = {
+  'utc+12':   { utcOffset: 12 },
+  'utc+11':   { utcOffset: 11 },
+  'utc+10':   { utcOffset: 10 },
+  'utc+9.5':  { utcOffset: 9.5 },
+  'utc+9':    { utcOffset: 9 },
+  'utc+8':    { utcOffset: 8 },
+  'utc+7':    { utcOffset: 7 },
+  'utc+6.5':  { utcOffset: 6.5 },
+  'utc+6':    { utcOffset: 6 },
+  'utc+5.75': { utcOffset: 5.75 },
+  'utc+5.5':  { utcOffset: 5.5 },
+  'utc+5':    { utcOffset: 5 },
+  'utc+4':    { utcOffset: 4 },
+  'utc+3.5':  { utcOffset: 3.5 },
+  'utc+3':    { utcOffset: 3 },
+  'utc+2':    { utcOffset: 2 },
+  'utc+1':    { utcOffset: 1 },
+  'utc+0':    { utcOffset: 0 },
+  'utc-3':    { utcOffset: -3 },
+  'utc-4':    { utcOffset: -4 },
+  'utc-5':    { utcOffset: -5 },
+  'utc-6':    { utcOffset: -6 },
+  'utc-7':    { utcOffset: -7 },
+  'utc-8':    { utcOffset: -8 },
+  'utc-9':    { utcOffset: -9 },
+  'utc-10':   { utcOffset: -10 },
+};
+
+// 출생지 시간 → KST 변환 (절기 판단용)
+// 반환: { kstHour, kstMinute, kstYear, kstMonth, kstDay }
+function convertToKST(hour, minute, year, month, day, locationKey) {
+  if (!locationKey || locationKey === 'utc+9' || locationKey === 'kr') {
+    return { kstHour: hour, kstMinute: minute, kstYear: year, kstMonth: month, kstDay: day };
+  }
+  const loc = BIRTH_LOCATIONS[locationKey];
+  if (!loc) return { kstHour: hour, kstMinute: minute, kstYear: year, kstMonth: month, kstDay: day };
+
+  const offsetDiffMin = (9 - loc.utcOffset) * 60; // local → KST 분 차이
+  let total = hour * 60 + minute + offsetDiffMin;
+  let dayAdj = 0;
+  while (total >= 1440) { total -= 1440; dayAdj++; }
+  while (total < 0)     { total += 1440; dayAdj--; }
+
+  const d = new Date(year, month - 1, day + dayAdj);
+  return {
+    kstHour: Math.floor(total / 60),
+    kstMinute: total % 60,
+    kstYear: d.getFullYear(),
+    kstMonth: d.getMonth() + 1,
+    kstDay: d.getDate(),
+  };
+}
+
 // 태양시 보정: 표준시(KST, UTC+9, 동경135°) → 서울 태양시(~동경127°)
 function hourPillar(dayGan, hour) {
   const shiIndex = Math.floor(((hour + 1) % 24) / 2);
@@ -851,7 +907,7 @@ function calculateDaeun(birthDate, gender, monthGanIndex, monthJiIndex, birthHou
   return daeunList;
 }
 
-function calculateSaju(birthDate, birthTime, gender, yajasi) {
+function calculateSaju(birthDate, birthTime, gender, yajasi, location) {
   const [year, month, day] = (birthDate || '').split('-').map(Number);
   if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) {
     throw new Error('유효하지 않은 생년월일 형식입니다');
@@ -861,9 +917,10 @@ function calculateSaju(birthDate, birthTime, gender, yajasi) {
   const rawMinute = hasTime ? parseInt(birthTime.split(':')[1] || '0', 10) : 0;
 
   // UI가 태양시 기준(+30분 보정된) 시간대를 표시하므로 추가 -30분 보정 불필요
-  // 서머타임(1948~1988) 기간만 -60분 보정 적용
+  // 서머타임(1948~1988) 기간만 -60분 보정 적용 (한국 출생만)
   let solarHour = rawHour;
-  if (rawHour !== null && isDST(year, month, day)) {
+  const isKorea = !location || location === 'utc+9' || location === 'kr';
+  if (isKorea && rawHour !== null && isDST(year, month, day)) {
     let m = (rawMinute || 0) - 60;
     let h = rawHour;
     while (m < 0) { m += 60; h--; }
@@ -871,10 +928,17 @@ function calculateSaju(birthDate, birthTime, gender, yajasi) {
     solarHour = h;
   }
 
-  // 입춘-adjusted year for year pillar (절기 시간 단위 정밀 판단)
-  const sajuYear = getSajuYear(year, month, day, rawHour || 0, rawMinute);
-  // 절기-based month for month pillar (절기 시간 단위 정밀 판단)
-  const sajuMonth = getSajuMonth(year, month, day, rawHour || 0, rawMinute);
+  // 해외 출생: 현지 시간 → KST 변환 (절기 경계 판단용)
+  // 시주/일주는 현지 시간 기준 (사용자가 현지 시진을 선택)
+  const isIntl = !isKorea && location && BIRTH_LOCATIONS[location];
+  const kst = (isIntl && rawHour !== null)
+    ? convertToKST(rawHour, rawMinute, year, month, day, location)
+    : { kstHour: rawHour || 0, kstMinute: rawMinute, kstYear: year, kstMonth: month, kstDay: day };
+
+  // 입춘-adjusted year for year pillar (절기 시간 단위 정밀 판단) — KST 기준
+  const sajuYear = getSajuYear(kst.kstYear, kst.kstMonth, kst.kstDay, kst.kstHour, kst.kstMinute);
+  // 절기-based month for month pillar (절기 시간 단위 정밀 판단) — KST 기준
+  const sajuMonth = getSajuMonth(kst.kstYear, kst.kstMonth, kst.kstDay, kst.kstHour, kst.kstMinute);
 
   const yGan = yearCheongan(sajuYear);
   const yJi = yearJiji(sajuYear);
@@ -1887,10 +1951,10 @@ async function handleDeleteProfile(request, env) {
 // --- Saju Routes (from routes/saju.js) ---
 
 async function handleSajuAnalysis(request, env) {
-  const { birth_date, birth_time, gender, lang, yajasi } = await request.json();
+  const { birth_date, birth_time, gender, lang, yajasi, birth_location } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi);
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
   const apiKeys = getGeminiKeys(env);
   const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang), 'saju', env) : null;
@@ -1925,10 +1989,10 @@ async function handleCompatQuick(request, env) {
 }
 
 async function handleFortune(request, env) {
-  const { birth_date, birth_time, gender, year: reqYear, lang } = await request.json();
+  const { birth_date, birth_time, gender, year: reqYear, lang, birth_location } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '');
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', false, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
   const apiKeys = getGeminiKeys(env);
@@ -1940,10 +2004,10 @@ async function handleFortune(request, env) {
 }
 
 async function handleDaily(request, env) {
-  const { birth_date, birth_time, gender, lang, yajasi, target_date } = await request.json();
+  const { birth_date, birth_time, gender, lang, yajasi, target_date, birth_location } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false);
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false, birth_location || '');
   let todayStr;
   if (target_date && /^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
     todayStr = target_date;
