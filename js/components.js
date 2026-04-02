@@ -609,8 +609,8 @@ function createLocationSelect(containerId) {
   tip.textContent = lang === 'en' ? "What's this?" : '이게 뭐예요?';
   const tipBox = document.createElement('div');
   tipBox.style.cssText = 'display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:8px;line-height:1.6';
-  tipBox.dataset.ko = '사주는 태어난 순간의 천체 위치를 기준으로 합니다. 같은 시각이라도 나라마다 시간대(타임존)가 다르기 때문에, 해외 출생자는 태어난 지역을 선택해야 정확한 사주를 볼 수 있습니다. 목록에 내 나라가 없으면 같은 UTC 시간대의 다른 지역을 선택하세요.';
-  tipBox.dataset.en = 'Saju is based on the celestial positions at the moment of birth. Since time zones differ by country, selecting your birth location ensures accurate calculation. If your country is not listed, choose another region with the same UTC offset.';
+  tipBox.dataset.ko = '사주는 태어난 순간의 천체 위치를 기준으로 합니다. 같은 시각이라도 나라마다 시간대(타임존)가 다르기 때문에, 해외 출생자는 태어난 지역을 선택해야 정확한 사주를 볼 수 있습니다. 내가 태어난 나라나 지역이 없으면 같은 UTC 시간대의 다른 지역을 선택하세요.';
+  tipBox.dataset.en = 'Saju is based on the celestial positions at the moment of birth. Since time zones differ by country, selecting your birth location ensures accurate calculation. If your birth country or region is not listed, choose another region with the same UTC offset.';
   tipBox.textContent = lang === 'en' ? tipBox.dataset.en : tipBox.dataset.ko;
   tip.addEventListener('click', () => { tipBox.style.display = tipBox.style.display === 'none' ? 'block' : 'none'; });
   labelWrap.appendChild(label);
