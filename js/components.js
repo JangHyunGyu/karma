@@ -600,7 +600,23 @@ function createLocationSelect(containerId) {
     select.appendChild(opt);
   });
 
-  container.appendChild(label);
+  const labelWrap = document.createElement('div');
+  labelWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:4px';
+  const tip = document.createElement('span');
+  tip.style.cssText = 'font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px';
+  tip.dataset.ko = '이게 뭐예요?';
+  tip.dataset.en = "What's this?";
+  tip.textContent = lang === 'en' ? "What's this?" : '이게 뭐예요?';
+  const tipBox = document.createElement('div');
+  tipBox.style.cssText = 'display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:8px;line-height:1.6';
+  tipBox.dataset.ko = '사주는 태어난 순간의 천체 위치를 기준으로 합니다. 같은 시각이라도 나라마다 시간대(타임존)가 다르기 때문에, 해외 출생자는 태어난 지역을 선택해야 정확한 사주를 볼 수 있습니다. 한국 출생이면 그대로 두시면 됩니다.';
+  tipBox.dataset.en = 'Saju is based on the celestial positions at the moment of birth. Since time zones differ by country, selecting your birth location ensures accurate calculation. If born in Korea, leave the default.';
+  tipBox.textContent = lang === 'en' ? tipBox.dataset.en : tipBox.dataset.ko;
+  tip.addEventListener('click', () => { tipBox.style.display = tipBox.style.display === 'none' ? 'block' : 'none'; });
+  labelWrap.appendChild(label);
+  labelWrap.appendChild(tip);
+  container.appendChild(labelWrap);
+  container.appendChild(tipBox);
   container.appendChild(select);
   createCombo(select);
 }
