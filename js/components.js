@@ -562,7 +562,7 @@ const LOCATION_OPTIONS = [
   { value: 'utc-10',   utc: '-10',   ko: '미국 하와이, 쿡제도',                                    en: 'US Hawaii, Cook Islands' },
 ];
 
-function createLocationSelect(containerId) {
+function createLocationSelect(containerId, selectId, onChangeFn) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const lang = document.documentElement.lang || 'ko';
@@ -573,8 +573,8 @@ function createLocationSelect(containerId) {
   label.textContent = lang === 'en' ? 'Birth Location' : '태어난 지역';
 
   const select = document.createElement('select');
-  select.id = 'birthLocation';
-  select.addEventListener('change', () => saveInputs());
+  select.id = selectId || 'birthLocation';
+  select.addEventListener('change', () => { if (onChangeFn) onChangeFn(); else if (typeof saveInputs === 'function') saveInputs(); });
 
   // 브라우저 타임존 → UTC 오프셋 감지 → 가장 가까운 항목 자동 선택
   const browserOffsetMin = -(new Date().getTimezoneOffset()); // 분 단위 (KST = +540)
@@ -625,6 +625,8 @@ function createLocationSelect(containerId) {
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();
   if (document.getElementById('locationWrap')) createLocationSelect('locationWrap');
+  if (document.getElementById('locationWrapA')) createLocationSelect('locationWrapA', 'birthLocationA', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
+  if (document.getElementById('locationWrapB')) createLocationSelect('locationWrapB', 'birthLocationB', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
   restoreInputs();
   // 야자시 초기 상태 설정
   if (document.getElementById('yajasiWrap')) updateYajasiState('birthTime', 'yajasiWrap');

@@ -86,6 +86,7 @@
         <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfoA').style.display=document.getElementById('yajasiInfoA').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
       </div>
       <div id="yajasiInfoA" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-top:8px;line-height:1.6" data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.</div>
+      <div id="locationWrapA" style="margin:10px 0 6px"></div>
     </div>
     <div class="card">
       <h2 data-ko="상대" data-en="Partner">상대</h2>
@@ -121,6 +122,7 @@
         <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfoB').style.display=document.getElementById('yajasiInfoB').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
       </div>
       <div id="yajasiInfoB" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-top:8px;line-height:1.6" data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.</div>
+      <div id="locationWrapB" style="margin:10px 0 6px"></div>
     </div>
   </div>
 
@@ -310,7 +312,7 @@ function getDateFor(prefix) {
 const COMPAT_KEY = 'karma_compat_input';
 function saveCompatInputs() {
   const data = {};
-  ['aYear','aMonth','aDay','genderA','timeA','bYear','bMonth','bDay','genderB','timeB'].forEach(id => {
+  ['aYear','aMonth','aDay','genderA','timeA','birthLocationA','bYear','bMonth','bDay','genderB','timeB','birthLocationB'].forEach(id => {
     const el = document.getElementById(id);
     if (el) data[id] = el.value;
   });
@@ -349,8 +351,8 @@ async function doCompat() {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false },
-        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false },
+        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
+        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
         lang: 'ko',
       }),
     });

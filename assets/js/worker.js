@@ -1969,8 +1969,8 @@ async function handleCompatQuick(request, env) {
     return json({ error: '두 사람의 생년월일은 필수입니다' }, 400);
   }
 
-  const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '');
-  const sajuB = calculateSaju(personB.birth_date, personB.birth_time || '', personB.gender || '');
+  const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '', !!personA.yajasi, personA.birth_location || '');
+  const sajuB = calculateSaju(personB.birth_date, personB.birth_time || '', personB.gender || '', !!personB.yajasi, personB.birth_location || '');
   const score = ohangCompatibility(sajuA, sajuB);
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
