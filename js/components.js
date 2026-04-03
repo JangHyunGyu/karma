@@ -625,8 +625,11 @@ function createLocationSelect(containerId, selectId, onChangeFn) {
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();
   if (document.getElementById('locationWrap')) createLocationSelect('locationWrap');
-  if (document.getElementById('locationWrapA')) createLocationSelect('locationWrapA', 'birthLocationA', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
-  if (document.getElementById('locationWrapB')) createLocationSelect('locationWrapB', 'birthLocationB', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
+  if (document.getElementById('locationWrapA')) {
+    createLocationSelect('locationWrapA', 'birthLocationA', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
+    createLocationSelect('locationWrapB', 'birthLocationB', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
+    if (typeof restoreCompatInputs === 'function') restoreCompatInputs();
+  }
   restoreInputs();
   // 야자시 초기 상태 설정
   if (document.getElementById('yajasiWrap')) updateYajasiState('birthTime', 'yajasiWrap');
