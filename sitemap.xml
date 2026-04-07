@@ -3,145 +3,161 @@
   <!-- Homepage -->
   <url>
     <loc>https://karma.archerlab.dev/</loc>
-    <lastmod>2026-03-31</lastmod>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/index-en.html</loc>
-    <lastmod>2026-03-31</lastmod>
+    <loc>https://karma.archerlab.dev/index-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/index-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/" />
   </url>
 
-  <!-- Saju (Four Pillars) -->
+  <!-- Saju (Four Pillars / 사주팔자) -->
   <url>
-    <loc>https://karma.archerlab.dev/saju.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/saju</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/saju" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/saju-en.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/saju-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/saju-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/saju" />
   </url>
 
-  <!-- Daily Fortune -->
+  <!-- Daily Fortune (오늘의 운세) -->
   <url>
-    <loc>https://karma.archerlab.dev/daily.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/daily</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/daily" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/daily-en.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/daily-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/daily-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/daily" />
   </url>
 
-  <!-- Fortune -->
+  <!-- Yearly Fortune (올해의 운세) -->
   <url>
-    <loc>https://karma.archerlab.dev/fortune.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/fortune</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/fortune" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/fortune-en.html</loc>
-    <lastmod>2026-03-30</lastmod>
+    <loc>https://karma.archerlab.dev/fortune-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en.html" />
-  </url>
-
-  <!-- Compatibility -->
-  <url>
-    <loc>https://karma.archerlab.dev/compat.html</loc>
-    <lastmod>2026-03-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en.html" />
-  </url>
-  <url>
-    <loc>https://karma.archerlab.dev/compat-en.html</loc>
-    <lastmod>2026-03-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/fortune-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/fortune" />
   </url>
 
-  <!-- Tarot Reading -->
+  <!-- Compatibility (궁합) -->
   <url>
-    <loc>https://karma.archerlab.dev/tarot.html</loc>
-    <lastmod>2026-03-31</lastmod>
+    <loc>https://karma.archerlab.dev/compat</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/compat" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/tarot-en.html</loc>
-    <lastmod>2026-03-31</lastmod>
+    <loc>https://karma.archerlab.dev/compat-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/compat-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/compat" />
   </url>
 
-  <!-- Face Reading -->
+  <!-- Tarot Reading (타로) -->
   <url>
-    <loc>https://karma.archerlab.dev/face.html</loc>
-    <lastmod>2026-04-02</lastmod>
+    <loc>https://karma.archerlab.dev/tarot</loc>
+    <lastmod>2026-04-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/tarot" />
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/tarot-en</loc>
+    <lastmod>2026-04-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/tarot-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/tarot" />
+  </url>
+
+  <!-- Face Reading (관상) -->
+  <url>
+    <loc>https://karma.archerlab.dev/face</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/face" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/face-en.html</loc>
-    <lastmod>2026-04-02</lastmod>
+    <loc>https://karma.archerlab.dev/face-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/face-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/face" />
   </url>
 
-  <!-- Palm Reading -->
+  <!-- Palm Reading (손금) -->
   <url>
-    <loc>https://karma.archerlab.dev/palm.html</loc>
-    <lastmod>2026-04-02</lastmod>
+    <loc>https://karma.archerlab.dev/palm</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/palm" />
   </url>
   <url>
-    <loc>https://karma.archerlab.dev/palm-en.html</loc>
-    <lastmod>2026-04-02</lastmod>
+    <loc>https://karma.archerlab.dev/palm-en</loc>
+    <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm.html" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en.html" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/palm-en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/palm" />
   </url>
 
 </urlset>
