@@ -1051,12 +1051,12 @@ function ohangCompatibility(saju1, saju2) {
 // AI — Gemini API (from ai.js)
 // ============================================================
 
-// 무료키 우선 → 유료는 백업 (무료키 전부 실패 시에만 유료 사용)
+// 유료키 우선 → 무료키는 폴백 (응답 속도 우선, 캐싱/가드 적용 후)
 function getGeminiKeys(env) {
   return [
+    env.GEMINI_API_KEY,
     env.GOLF_GEMINI_API_KEY_FREE,
     env.LATIN_GEMINI_API_KEY_FREE,
-    env.GEMINI_API_KEY,
   ].filter(Boolean);
 }
 
