@@ -32,7 +32,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
 /* ===== 타로 페이지 전용 스타일 ===== */
-.tarot-page { max-width: 700px; margin: 0 auto; padding: 24px 16px; padding-top: 56px; }
+.tarot-page { max-width: 700px; margin: 0 auto; padding: 24px 16px; padding-top: 56px; overflow-x: hidden; }
 .tarot-page h1 { font-size: 1.8rem; margin-bottom: 4px; }
 
 /* 질문 입력 */
@@ -66,23 +66,22 @@
 /* ===== 카드 그리드 (선택 화면) ===== */
 .tarot-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
   perspective: 1200px;
   padding-top: 12px;
 }
-@media (min-width: 500px) { .tarot-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; } }
-@media (min-width: 700px) {
+@media (min-width: 600px) {
   .tarot-page { max-width: 800px; }
-  .tarot-grid { grid-template-columns: repeat(7, 1fr); gap: 12px; }
+  .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 10px; }
 }
-@media (min-width: 1000px) {
+@media (min-width: 900px) {
   .tarot-page { max-width: 1000px; }
-  .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 14px; }
+  .tarot-grid { grid-template-columns: repeat(11, 1fr); gap: 12px; }
 }
-@media (min-width: 1400px) {
-  .tarot-page { max-width: 1200px; }
-  .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 16px; }
+@media (min-width: 1200px) {
+  .tarot-page { max-width: 1100px; }
+  .tarot-grid { gap: 14px; }
 }
 
 /* ===== 카드 (2D + CSS 3D 플립) ===== */
@@ -102,14 +101,9 @@
   z-index: 10;
 }
 .tarot-card.selected {
-  transform: translateY(-12px) scale(1.12);
-  box-shadow:
-    0 0 25px rgba(201,160,68,0.7),
-    0 0 50px rgba(201,160,68,0.3),
-    0 0 80px rgba(150,100,200,0.2),
-    0 15px 35px rgba(0,0,0,0.4);
+  transform: translateY(-12px) scale(1.1);
+  box-shadow: 0 0 20px rgba(201,160,68,0.6), 0 0 40px rgba(201,160,68,0.2), 0 12px 25px rgba(0,0,0,0.3);
   z-index: 20;
-  filter: brightness(1.15);
 }
 .tarot-card.selected .card-back {
   border-color: #f0d870;
@@ -117,8 +111,8 @@
 .tarot-card.selected::after {
   content: '✓';
   position: absolute;
-  top: -10px; right: -10px;
-  width: 26px; height: 26px;
+  top: -6px; right: -6px;
+  width: 22px; height: 22px;
   background: linear-gradient(135deg, #f0d870, #c9a044);
   border-radius: 50%;
   display: flex;
@@ -170,104 +164,79 @@
   position: relative;
   overflow: hidden;
 }
-/* 내부 골드 이중 프레임 */
+/* 내부 골드 프레임 */
 .card-back::before {
   content: '';
   position: absolute;
-  inset: 4%;
+  inset: 5% 7%;
   border: 1px solid rgba(201,160,68,0.3);
   border-radius: 4px;
-  box-shadow: inset 0 0 15px rgba(201,160,68,0.05);
   pointer-events: none;
 }
-/* 시머 + 오로라 효과 */
+/* 시머 효과 (유일한 반복 애니메이션) */
 .card-back::after {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(105deg, transparent 25%, rgba(201,160,68,0.06) 40%, rgba(255,215,100,0.18) 50%, rgba(201,160,68,0.06) 60%, transparent 75%),
-    radial-gradient(ellipse at 50% 50%, rgba(100,60,180,0.08) 0%, transparent 70%);
-  background-size: 300% 100%, 100% 100%;
+  background: linear-gradient(105deg, transparent 30%, rgba(201,160,68,0.06) 45%, rgba(255,215,100,0.15) 50%, rgba(201,160,68,0.06) 55%, transparent 70%);
+  background-size: 300% 100%;
   animation: cardShimmer 5s ease-in-out infinite;
   pointer-events: none;
 }
 @keyframes cardShimmer {
-  0% { background-position: 250% 0, center; }
-  100% { background-position: -250% 0, center; }
+  0% { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
 }
-/* 중앙 패턴 컨테이너 */
+/* 세로형 타원 (카드 비율에 맞춤) */
+.card-back-circle {
+  position: absolute;
+  width: 70%;
+  height: 55%;
+  border: 1px solid rgba(201,160,68,0.15);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.card-back-circle::after {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border: 1px solid rgba(201,160,68,0.1);
+  border-radius: 50%;
+}
+/* 중앙 다이아몬드 (정적, 세로 비율) */
 .card-back-pattern {
-  width: 55%;
-  aspect-ratio: 1;
+  width: 45%;
+  height: 35%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 1;
 }
-/* 외부 다이아몬드 (느린 회전) */
 .card-back-pattern::before {
   content: '';
   position: absolute;
-  width: 90%;
-  aspect-ratio: 1;
+  width: 80%;
+  height: 80%;
   border: 1.5px solid rgba(201,160,68,0.45);
   transform: rotate(45deg);
-  animation: rotateSlow 20s linear infinite;
-  box-shadow: 0 0 12px rgba(201,160,68,0.1);
 }
-/* 내부 다이아몬드 (역회전) */
 .card-back-pattern::after {
   content: '';
   position: absolute;
-  width: 55%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(201,160,68,0.3);
+  width: 50%;
+  height: 50%;
+  border: 1px solid rgba(201,160,68,0.25);
   transform: rotate(45deg);
-  animation: rotateSlowReverse 15s linear infinite;
 }
-@keyframes rotateSlow { to { transform: rotate(405deg); } }
-@keyframes rotateSlowReverse { to { transform: rotate(-315deg); } }
-/* 중앙 심볼 */
+/* 중앙 심볼 (정적 글로우, 애니메이션 없음) */
 .card-back-symbol {
   color: #c9a044;
-  font-size: clamp(16px, 4vw, 34px);
+  font-size: clamp(14px, 3.5vw, 30px);
   z-index: 2;
-  text-shadow: 0 0 15px rgba(201,160,68,0.6), 0 0 40px rgba(201,160,68,0.2);
-  animation: symbolPulse 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(201,160,68,0.4));
-}
-@keyframes symbolPulse {
-  0%,100% { text-shadow: 0 0 10px rgba(201,160,68,0.4), 0 0 25px rgba(201,160,68,0.1); transform: scale(1); }
-  50% { text-shadow: 0 0 20px rgba(201,160,68,0.8), 0 0 50px rgba(201,160,68,0.3), 0 0 80px rgba(150,100,200,0.15); transform: scale(1.08); }
-}
-/* 외부 원형 (천천히 회전) */
-.card-back-circle {
-  position: absolute;
-  width: 80%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(201,160,68,0.12);
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: rotateSlow 30s linear infinite;
-}
-.card-back-circle::before {
-  content: '';
-  position: absolute;
-  inset: -12%;
-  border: 1px dashed rgba(201,160,68,0.08);
-  border-radius: 50%;
-  animation: rotateSlowReverse 25s linear infinite;
-}
-.card-back-circle::after {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border: 1px solid rgba(201,160,68,0.08);
-  border-radius: 50%;
+  text-shadow: 0 0 12px rgba(201,160,68,0.5), 0 0 30px rgba(201,160,68,0.15);
 }
 /* KARMA 텍스트 */
 .card-back-text {
@@ -280,40 +249,20 @@
   margin-top: 8px;
   font-weight: 700;
   z-index: 1;
-  filter: drop-shadow(0 0 4px rgba(201,160,68,0.3));
 }
 /* 코너 장식 */
 .card-back-corner {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: rgba(201,160,68,0.45);
+  width: 12px;
+  height: 12px;
+  border-color: rgba(201,160,68,0.4);
   border-style: solid;
   z-index: 1;
 }
-.card-back-corner:nth-child(1) { top: 7%; left: 7%; border-width: 1px 0 0 1px; }
-.card-back-corner:nth-child(2) { top: 7%; right: 7%; border-width: 1px 1px 0 0; }
-.card-back-corner:nth-child(3) { bottom: 7%; left: 7%; border-width: 0 0 1px 1px; }
-.card-back-corner:nth-child(4) { bottom: 7%; right: 7%; border-width: 0 1px 1px 0; }
-/* 미세 파티클 (배경 별) */
-.card-back-stars {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-}
-.card-back-stars span {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: rgba(201,160,68,0.5);
-  border-radius: 50%;
-  animation: starTwinkle 2s ease-in-out infinite;
-}
-@keyframes starTwinkle {
-  0%,100% { opacity: 0.1; }
-  50% { opacity: 0.8; }
-}
+.card-back-corner:nth-child(1) { top: 7%; left: 9%; border-width: 1px 0 0 1px; }
+.card-back-corner:nth-child(2) { top: 7%; right: 9%; border-width: 1px 1px 0 0; }
+.card-back-corner:nth-child(3) { bottom: 7%; left: 9%; border-width: 0 0 1px 1px; }
+.card-back-corner:nth-child(4) { bottom: 7%; right: 9%; border-width: 0 1px 1px 0; }
 .card-front {
   border: 2px solid rgba(201,160,68,0.4);
 }
@@ -483,14 +432,8 @@
   animation: selectedGlow 2s ease-in-out infinite;
 }
 @keyframes selectedGlow {
-  0%,100% {
-    box-shadow: 0 0 20px rgba(201,160,68,0.5), 0 0 40px rgba(201,160,68,0.2), 0 0 60px rgba(150,100,200,0.1), 0 12px 25px rgba(0,0,0,0.3);
-    filter: brightness(1.1);
-  }
-  50% {
-    box-shadow: 0 0 35px rgba(201,160,68,0.8), 0 0 70px rgba(201,160,68,0.4), 0 0 100px rgba(150,100,200,0.2), 0 15px 35px rgba(0,0,0,0.4);
-    filter: brightness(1.25);
-  }
+  0%,100% { box-shadow: 0 0 15px rgba(201,160,68,0.5), 0 0 35px rgba(201,160,68,0.2), 0 10px 20px rgba(0,0,0,0.3); }
+  50% { box-shadow: 0 0 25px rgba(201,160,68,0.7), 0 0 50px rgba(201,160,68,0.3), 0 12px 25px rgba(0,0,0,0.4); }
 }
 </style>
 <script src="/js/browser-check.js"></script>
@@ -643,15 +586,8 @@
     const el = document.createElement('div');
     el.className = 'tarot-card';
     el.dataset.id = card.id;
-    const starsHtml = Array.from({length: 6}, () => {
-      const x = Math.random() * 100, y = Math.random() * 100;
-      const delay = (Math.random() * 3).toFixed(1);
-      const dur = (1.5 + Math.random() * 2).toFixed(1);
-      return `<span style="left:${x}%;top:${y}%;animation-delay:${delay}s;animation-duration:${dur}s"></span>`;
-    }).join('');
     el.innerHTML = `
       <div class="card-face card-back">
-        <div class="card-back-stars">${starsHtml}</div>
         <div class="card-back-corner"></div>
         <div class="card-back-corner"></div>
         <div class="card-back-corner"></div>
