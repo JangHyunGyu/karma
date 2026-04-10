@@ -87,18 +87,13 @@
 /* ===== 카드 (2D + CSS 3D 플립) ===== */
 .tarot-card {
   position: relative;
+  aspect-ratio: 5 / 8.5;
   cursor: pointer;
   transform-style: preserve-3d;
   transition: transform 0.3s, box-shadow 0.3s;
   border-radius: 8px;
   opacity: 0;
   transform: translateY(40px) scale(0.8);
-}
-/* 세로 비율 강제 (5:8.5 = padding-bottom 170%) */
-.tarot-card::before {
-  content: '';
-  display: block;
-  padding-bottom: 170%;
 }
 .tarot-card:hover {
   transform: translateY(-6px) scale(1.06);
@@ -164,8 +159,9 @@
   border: 2px solid #c9a044;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   flex-direction: column;
+  padding: 12% 0;
   position: relative;
   overflow: hidden;
 }
@@ -236,7 +232,14 @@
   border: 1px solid rgba(201,160,68,0.25);
   transform: rotate(45deg);
 }
-/* 중앙 심볼 (정적 글로우, 애니메이션 없음) */
+/* 상단/하단 장식 */
+.card-back-ornament {
+  color: rgba(201,160,68,0.5);
+  font-size: clamp(8px, 2vw, 14px);
+  z-index: 1;
+  line-height: 1;
+}
+/* 중앙 심볼 */
 .card-back-symbol {
   color: #c9a044;
   font-size: clamp(14px, 3.5vw, 30px);
@@ -598,10 +601,12 @@
         <div class="card-back-corner"></div>
         <div class="card-back-corner"></div>
         <div class="card-back-circle"></div>
+        <span class="card-back-ornament">✧</span>
         <div class="card-back-pattern">
           <span class="card-back-symbol">✦</span>
         </div>
         <div class="card-back-text">KARMA</div>
+        <span class="card-back-ornament">✧</span>
       </div>
     `;
     el.addEventListener('click', () => toggleCard(el, card));
