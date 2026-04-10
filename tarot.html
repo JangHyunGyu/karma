@@ -144,41 +144,161 @@
   overflow: hidden;
 }
 .card-back {
-  background: linear-gradient(145deg, #3d2266, #1e1040);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(80,40,140,0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 70%, rgba(40,20,100,0.3) 0%, transparent 50%),
+    linear-gradient(170deg, #1e0a3c 0%, #0c0618 35%, #050210 60%, #0c0618 85%, #1a0830 100%);
   border: 2px solid #c9a044;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
+/* 내부 골드 이중 프레임 */
+.card-back::before {
+  content: '';
+  position: absolute;
+  inset: 4%;
+  border: 1px solid rgba(201,160,68,0.3);
+  border-radius: 4px;
+  box-shadow: inset 0 0 15px rgba(201,160,68,0.05);
+  pointer-events: none;
+}
+/* 시머 + 오로라 효과 */
+.card-back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, transparent 25%, rgba(201,160,68,0.06) 40%, rgba(255,215,100,0.18) 50%, rgba(201,160,68,0.06) 60%, transparent 75%),
+    radial-gradient(ellipse at 50% 50%, rgba(100,60,180,0.08) 0%, transparent 70%);
+  background-size: 300% 100%, 100% 100%;
+  animation: cardShimmer 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes cardShimmer {
+  0% { background-position: 250% 0, center; }
+  100% { background-position: -250% 0, center; }
+}
+/* 중앙 패턴 컨테이너 */
 .card-back-pattern {
-  width: 60%;
-  height: 60%;
-  border: 1.5px solid rgba(201,160,68,0.4);
-  border-radius: 50%;
+  width: 55%;
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  z-index: 1;
 }
+/* 외부 다이아몬드 (느린 회전) */
 .card-back-pattern::before {
-  content: '✦';
-  color: #c9a044;
-  font-size: clamp(16px, 4vw, 36px);
+  content: '';
+  position: absolute;
+  width: 90%;
+  aspect-ratio: 1;
+  border: 1.5px solid rgba(201,160,68,0.45);
+  transform: rotate(45deg);
+  animation: rotateSlow 20s linear infinite;
+  box-shadow: 0 0 12px rgba(201,160,68,0.1);
 }
+/* 내부 다이아몬드 (역회전) */
 .card-back-pattern::after {
   content: '';
   position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(201,160,68,0.25);
+  width: 55%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(201,160,68,0.3);
+  transform: rotate(45deg);
+  animation: rotateSlowReverse 15s linear infinite;
+}
+@keyframes rotateSlow { to { transform: rotate(405deg); } }
+@keyframes rotateSlowReverse { to { transform: rotate(-315deg); } }
+/* 중앙 심볼 */
+.card-back-symbol {
+  color: #c9a044;
+  font-size: clamp(16px, 4vw, 34px);
+  z-index: 2;
+  text-shadow: 0 0 15px rgba(201,160,68,0.6), 0 0 40px rgba(201,160,68,0.2);
+  animation: symbolPulse 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(201,160,68,0.4));
+}
+@keyframes symbolPulse {
+  0%,100% { text-shadow: 0 0 10px rgba(201,160,68,0.4), 0 0 25px rgba(201,160,68,0.1); transform: scale(1); }
+  50% { text-shadow: 0 0 20px rgba(201,160,68,0.8), 0 0 50px rgba(201,160,68,0.3), 0 0 80px rgba(150,100,200,0.15); transform: scale(1.08); }
+}
+/* 외부 원형 (천천히 회전) */
+.card-back-circle {
+  position: absolute;
+  width: 80%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(201,160,68,0.12);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: rotateSlow 30s linear infinite;
+}
+.card-back-circle::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  border: 1px dashed rgba(201,160,68,0.08);
+  border-radius: 50%;
+  animation: rotateSlowReverse 25s linear infinite;
+}
+.card-back-circle::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border: 1px solid rgba(201,160,68,0.08);
   border-radius: 50%;
 }
+/* KARMA 텍스트 */
 .card-back-text {
-  color: rgba(201,160,68,0.6);
-  font-size: clamp(7px, 1.6vw, 14px);
-  letter-spacing: clamp(1px, 0.3vw, 3px);
-  margin-top: 6px;
-  font-weight: 600;
+  background: linear-gradient(180deg, #f0d870, #c9a044, #8a6820);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: clamp(7px, 1.5vw, 13px);
+  letter-spacing: clamp(1.5px, 0.4vw, 4px);
+  margin-top: 8px;
+  font-weight: 700;
+  z-index: 1;
+  filter: drop-shadow(0 0 4px rgba(201,160,68,0.3));
+}
+/* 코너 장식 */
+.card-back-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(201,160,68,0.45);
+  border-style: solid;
+  z-index: 1;
+}
+.card-back-corner:nth-child(1) { top: 7%; left: 7%; border-width: 1px 0 0 1px; }
+.card-back-corner:nth-child(2) { top: 7%; right: 7%; border-width: 1px 1px 0 0; }
+.card-back-corner:nth-child(3) { bottom: 7%; left: 7%; border-width: 0 0 1px 1px; }
+.card-back-corner:nth-child(4) { bottom: 7%; right: 7%; border-width: 0 1px 1px 0; }
+/* 미세 파티클 (배경 별) */
+.card-back-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.card-back-stars span {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(201,160,68,0.5);
+  border-radius: 50%;
+  animation: starTwinkle 2s ease-in-out infinite;
+}
+@keyframes starTwinkle {
+  0%,100% { opacity: 0.1; }
+  50% { opacity: 0.8; }
 }
 .card-front {
   border: 2px solid rgba(201,160,68,0.4);
@@ -503,9 +623,23 @@
     const el = document.createElement('div');
     el.className = 'tarot-card';
     el.dataset.id = card.id;
+    const starsHtml = Array.from({length: 6}, () => {
+      const x = Math.random() * 100, y = Math.random() * 100;
+      const delay = (Math.random() * 3).toFixed(1);
+      const dur = (1.5 + Math.random() * 2).toFixed(1);
+      return `<span style="left:${x}%;top:${y}%;animation-delay:${delay}s;animation-duration:${dur}s"></span>`;
+    }).join('');
     el.innerHTML = `
       <div class="card-face card-back">
-        <div class="card-back-pattern"></div>
+        <div class="card-back-stars">${starsHtml}</div>
+        <div class="card-back-corner"></div>
+        <div class="card-back-corner"></div>
+        <div class="card-back-corner"></div>
+        <div class="card-back-corner"></div>
+        <div class="card-back-circle"></div>
+        <div class="card-back-pattern">
+          <span class="card-back-symbol">✦</span>
+        </div>
         <div class="card-back-text">KARMA</div>
       </div>
     `;
