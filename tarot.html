@@ -32,11 +32,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
 /* ===== 타로 페이지 전용 스타일 ===== */
-.tarot-page { max-width: 700px; margin: 0 auto; padding: 24px 16px; padding-top: 56px; overflow-x: hidden; }
+.tarot-page {
+  max-width: 700px; margin: 0 auto;
+  padding: 12px 16px; padding-top: 48px;
+  height: 100dvh; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
 .tarot-page h1 { font-size: 1.8rem; margin-bottom: 4px; }
 
 /* 질문 입력 */
-.tarot-question-wrap { margin-bottom: 20px; }
+.tarot-question-wrap { margin-bottom: 10px; }
 .tarot-question {
   width: 100%;
   padding: 14px 18px;
@@ -61,7 +67,7 @@
   animation: pulse 2s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
-.tarot-selected-info { text-align: center; color: #9a8e7e; font-size: 0.82rem; margin-bottom: 16px; }
+.tarot-selected-info { text-align: center; color: #9a8e7e; font-size: 0.82rem; margin-bottom: 6px; }
 
 /* ===== 카드 그리드 (선택 화면) ===== */
 .tarot-grid {
@@ -69,7 +75,10 @@
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   perspective: 1200px;
-  padding-top: 12px;
+  padding-top: 8px;
+  flex: 1;
+  min-height: 0;
+  align-content: center;
 }
 @media (min-width: 600px) {
   .tarot-page { max-width: 800px; }
@@ -737,6 +746,10 @@
   // ===== 결과 표시 =====
   function showResult(data) {
     phase = 'result';
+    // 결과 화면에서는 스크롤 허용
+    const page = document.querySelector('.tarot-page');
+    page.style.height = 'auto';
+    page.style.overflow = 'visible';
     const wrap = document.getElementById('tarotResult');
     const posLabels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
 
