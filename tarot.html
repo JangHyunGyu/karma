@@ -66,13 +66,24 @@
 /* ===== 카드 그리드 (선택 화면) ===== */
 .tarot-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   perspective: 1200px;
-  overflow: hidden;
+  padding-top: 12px;
 }
-@media (min-width: 600px) { .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 12px; } }
-@media (min-width: 900px) { .tarot-grid { grid-template-columns: repeat(11, 1fr); gap: 14px; } }
+@media (min-width: 500px) { .tarot-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; } }
+@media (min-width: 700px) {
+  .tarot-page { max-width: 800px; }
+  .tarot-grid { grid-template-columns: repeat(7, 1fr); gap: 12px; }
+}
+@media (min-width: 1000px) {
+  .tarot-page { max-width: 1000px; }
+  .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 14px; }
+}
+@media (min-width: 1400px) {
+  .tarot-page { max-width: 1200px; }
+  .tarot-grid { grid-template-columns: repeat(8, 1fr); gap: 16px; }
+}
 
 /* ===== 카드 (2D + CSS 3D 플립) ===== */
 .tarot-card {
@@ -153,7 +164,7 @@
 .card-back-pattern::before {
   content: '✦';
   color: #c9a044;
-  font-size: clamp(16px, 4vw, 28px);
+  font-size: clamp(16px, 4vw, 36px);
 }
 .card-back-pattern::after {
   content: '';
@@ -164,9 +175,9 @@
 }
 .card-back-text {
   color: rgba(201,160,68,0.6);
-  font-size: clamp(7px, 1.6vw, 10px);
-  letter-spacing: 2px;
-  margin-top: 8px;
+  font-size: clamp(7px, 1.6vw, 14px);
+  letter-spacing: clamp(1px, 0.3vw, 3px);
+  margin-top: 6px;
   font-weight: 600;
 }
 .card-front {
