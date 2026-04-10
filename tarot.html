@@ -87,13 +87,18 @@
 /* ===== 카드 (2D + CSS 3D 플립) ===== */
 .tarot-card {
   position: relative;
-  aspect-ratio: 5 / 8.5;
   cursor: pointer;
   transform-style: preserve-3d;
   transition: transform 0.3s, box-shadow 0.3s;
   border-radius: 8px;
   opacity: 0;
   transform: translateY(40px) scale(0.8);
+}
+/* 세로 비율 강제 (5:8.5 = padding-bottom 170%) */
+.tarot-card::before {
+  content: '';
+  display: block;
+  padding-bottom: 170%;
 }
 .tarot-card:hover {
   transform: translateY(-6px) scale(1.06);
