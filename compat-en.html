@@ -39,6 +39,21 @@
   .date-selects .combo { margin-bottom: 0; }
   body.bg-compat, body.bg-compat .container { overflow: visible; }
   html:has(body.bg-compat) { overflow: visible; }
+  .cat-grid { display: flex; flex-direction: column; gap: 16px; margin: 16px 0; }
+  .cat-item { cursor: pointer; }
+  .cat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .cat-icon { font-size: 1.2rem; width: 28px; text-align: center; flex-shrink: 0; }
+  .cat-label { font-size: 0.85rem; color: #ccc; flex: 1; }
+  .cat-score { font-size: 0.95rem; font-weight: 700; min-width: 36px; text-align: right; }
+  .cat-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; width: 0; }
+  .cat-desc { font-size: 0.8rem; color: #999; line-height: 1.5; padding: 8px 0 0 38px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 0; }
+  .cat-desc.open { max-height: 200px; opacity: 1; }
+  .cat-score-s { color: #ffd93d; }
+  .cat-score-a { color: #81c784; }
+  .cat-score-b { color: #64b5f6; }
+  .cat-score-c { color: #ffb74d; }
+  .cat-score-d { color: #ef5350; }
 </style>
 <script type="application/ld+json">
 {
@@ -189,17 +204,20 @@
 
     <div id="aiSection" style="display:none">
       <div class="card">
-        <h2>Compatibility Analysis</h2>
-        <p id="aiSummary" style="font-size:1rem;font-weight:600;margin-bottom:12px"></p>
+        <h2>Compatibility Categories</h2>
+        <p id="aiSummary" style="font-size:1rem;font-weight:600;margin-bottom:4px"></p>
+        <div id="catGrid" class="cat-grid"></div>
+      </div>
+      <div class="card">
+        <h2>Detailed Analysis</h2>
         <div style="margin-bottom:8px">
-          <span style="font-size:0.8rem;color:#81c784">Strengths</span>
+          <span style="font-size:0.8rem;color:#81c784">💚 Strengths</span>
           <div class="tags" id="aiStrengths"></div>
         </div>
         <div style="margin-bottom:8px">
-          <span style="font-size:0.8rem;color:#ffb74d">Cautions</span>
+          <span style="font-size:0.8rem;color:#ffb74d">⚠️ Cautions</span>
           <div class="tags" id="aiCautions"></div>
         </div>
-        <div class="saju-box" id="aiReading"></div>
         <div class="advice-box" id="aiAdvice" style="margin-top:8px"></div>
       </div>
     </div>
@@ -414,9 +432,35 @@ function renderResult(d) {
   if (d.ai) {
     document.getElementById('aiSection').style.display = 'block';
     document.getElementById('aiSummary').textContent = d.ai.summary || '';
+
+    // Category score bars
+    const catDefs = [
+      { key: 'personality', icon: '💕', label: 'Personality' },
+      { key: 'intimacy', icon: '🔥', label: 'Intimacy' },
+      { key: 'finance', icon: '💰', label: 'Finance' },
+      { key: 'timing', icon: '🌙', label: 'Timing' },
+    ];
+    const cats = d.ai.categories || {};
+    const grid = document.getElementById('catGrid');
+    grid.innerHTML = catDefs.map(c => {
+      const cat = cats[c.key] || {};
+      const sc = cat.score ?? 0;
+      const g = sc >= 90 ? 's' : sc >= 75 ? 'a' : sc >= 60 ? 'b' : sc >= 40 ? 'c' : 'd';
+      const colors = { s: 'linear-gradient(90deg,#ffd93d,#ffb74d)', a: 'linear-gradient(90deg,#81c784,#4caf50)', b: 'linear-gradient(90deg,#64b5f6,#42a5f5)', c: 'linear-gradient(90deg,#ffb74d,#ff9800)', d: 'linear-gradient(90deg,#ef5350,#e53935)' };
+      return `<div class="cat-item" onclick="this.querySelector('.cat-desc').classList.toggle('open')">
+        <div class="cat-header">
+          <span class="cat-icon">${c.icon}</span>
+          <span class="cat-label">${c.label}</span>
+          <span class="cat-score cat-score-${g}">${sc}</span>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" data-score="${sc}" style="background:${colors[g]}"></div></div>
+        <div class="cat-desc">${esc(cat.desc || '')}</div>
+      </div>`;
+    }).join('');
+    setTimeout(() => grid.querySelectorAll('.cat-bar-fill').forEach(el => { el.style.width = el.dataset.score + '%'; }), 50);
+
     document.getElementById('aiStrengths').innerHTML = (d.ai.strengths||[]).map(s => '<span class="tag tag-good">'+esc(s)+'</span>').join('');
     document.getElementById('aiCautions').innerHTML = (d.ai.cautions||[]).map(s => '<span class="tag tag-warn">'+esc(s)+'</span>').join('');
-    document.getElementById('aiReading').textContent = '🔮 ' + (d.ai.saju_reading || '');
     document.getElementById('aiAdvice').textContent = '💡 ' + (d.ai.advice || '');
   }
 
