@@ -1083,7 +1083,7 @@ async function callGemini(apiKeys, prompt, _caller, _env) {
   const promptPreview = prompt.slice(0, 100);
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+    generationConfig: { maxOutputTokens: 4096, temperature: 0.7, thinkingConfig: { thinkingLevel: "high" } },
   });
   const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
@@ -1365,7 +1365,7 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
         { inline_data: { mime_type: mimeType, data: imageBase64 } },
       ],
     }],
-    generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.7, thinkingConfig: { thinkingLevel: "high" } },
   });
   const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
