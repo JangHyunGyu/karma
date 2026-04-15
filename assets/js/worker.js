@@ -15,6 +15,7 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 // Gemini Context Caching
 // ============================================================
 let _cacheTableReady = false;
+let _perfStatsTableReady = false;
 
 async function createGeminiCache(apiKey, staticContent, model, ttl = '3600s') {
   try {
@@ -96,6 +97,52 @@ async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
     return cacheName;
   }
   return null;
+}
+
+// 요청당 perf_stats 1행 기록 (fire-and-forget). harem/chatbot-api와 동일 스키마 공유.
+async function logPerfStats(env, ctx, row) {
+  if (!env?.DB) return;
+  const doWrite = async () => {
+    if (!_perfStatsTableReady) {
+      try {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS perf_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL DEFAULT (datetime('now')),
+            app TEXT,
+            cache_key TEXT,
+            cache_hit INTEGER,
+            prompt_tokens INTEGER,
+            cached_tokens INTEGER,
+            output_tokens INTEGER,
+            thought_tokens INTEGER,
+            sys_chars INTEGER,
+            hist_chars INTEGER,
+            used_key_idx INTEGER,
+            elapsed_ms INTEGER
+          )
+        `).run();
+        await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_perf_stats_ts_app ON perf_stats(ts, app)').run();
+        _perfStatsTableReady = true;
+      } catch (e) {
+        console.error('[PerfStats] Table create failed:', e.message);
+        return;
+      }
+    }
+    try {
+      await env.DB.prepare(
+        'INSERT INTO perf_stats (app, cache_key, cache_hit, prompt_tokens, cached_tokens, output_tokens, thought_tokens, sys_chars, hist_chars, used_key_idx, elapsed_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(
+        row.app, row.cache_key, row.cache_hit,
+        row.prompt_tokens, row.cached_tokens, row.output_tokens, row.thought_tokens,
+        row.sys_chars, row.hist_chars, row.used_key_idx, row.elapsed_ms
+      ).run();
+    } catch (e) {
+      console.warn('[PerfStats] insert error:', e.message);
+    }
+  };
+  if (ctx?.waitUntil) ctx.waitUntil(doWrite());
+  else doWrite().catch(() => {});
 }
 
 const CORS_HEADERS = {
@@ -1166,13 +1213,16 @@ async function logApiError(env, message, detail, extra) {
   }
 }
 
-async function callGemini(apiKeys, prompt, _caller, _env) {
+async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
   const endpoint = _caller || 'unknown';
+  const _perfStart = Date.now();
   // prompt가 { system, user } 객체이면 분리, 아니면 기존 방식
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = isStructured ? prompt.user : prompt;
   const promptPreview = promptText.slice(0, 100);
   const cacheKey = isStructured ? `karma:${_caller}:${(prompt.lang || 'ko')}` : null;
+  const _sysSize = isStructured ? (prompt.system || '').length : 0;
+  const _contentsSize = promptText.length;
 
   // 캐싱 시도
   let cachedContentName = null;
@@ -1229,7 +1279,22 @@ async function callGemini(apiKeys, prompt, _caller, _env) {
         return null;
       }
       try {
-        return JSON.parse(jsonMatch[0]);
+        const _parsed = JSON.parse(jsonMatch[0]);
+        const _um = data.usageMetadata || {};
+        logPerfStats(_env, _ctx, {
+          app: `karma:${endpoint}`,
+          cache_key: cacheKey,
+          cache_hit: cachedContentName ? 1 : 0,
+          prompt_tokens: _um.promptTokenCount || 0,
+          cached_tokens: _um.cachedContentTokenCount || 0,
+          output_tokens: _um.candidatesTokenCount || 0,
+          thought_tokens: _um.thoughtsTokenCount || 0,
+          sys_chars: _sysSize,
+          hist_chars: _contentsSize,
+          used_key_idx: i,
+          elapsed_ms: Date.now() - _perfStart,
+        });
+        return _parsed;
       } catch (e2) {
         await logApiError(_env, `[${endpoint}] Gemini JSON 파싱 실패`, `${e2.message}\n응답: ${jsonMatch[0].slice(0, 300)}`, { endpoint, promptPreview });
         return null;
@@ -1959,48 +2024,60 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
 이미 계산된 점수를 바탕으로, 그 점수의 근거를 사주 원리로 설명하세요. 점수를 새로 매기지 마세요.
 반드시 합/충/보완 데이터를 근거로 해석하세요.
 
+## 해석 원칙 (CRITICAL)
+- **두루뭉술한 일반론 금지**. 반드시 주어진 데이터(일간, 일지, 오행 분포, 합/충, 대운)를 직접 인용하며 해석
+- **구체적인 상황·사례로 설명**: "A의 갑목이 B의 기토와 갑기합을 이루어 자연스러운 끌림이 생기지만, 인신충이 있어…" 같은 식으로 **사주 용어 + 실제 관계 맥락**을 연결
+- **양쪽 관점 모두**: A→B, B→A 쌍방향 분석 (한쪽만 해석하지 말 것)
+- 표면적 칭찬이나 위로가 아닌 **실제 삶에 도움되는 통찰** 제공
+
 ## 오행 상생/상극 원리
 ${OHANG_RELATIONS}
 
 ## 카테고리별 해석 지침
 
-### 1. 종합 궁합 (성격/관계)
-- 합/충 데이터를 반드시 반영하여 해석
-- 두 일간의 오행 관계가 실제 관계에 미치는 영향
-- 오행 과다/부족을 서로 보완하는지 여부
+### 1. 성격/관계 궁합 (personality)
+- 두 일간 오행의 상생/상극 관계 → **구체적 성격 충돌·조화 예시** 제시 (대화 방식, 의사결정 스타일, 감정 표현법)
+- 합/충 데이터 → 일상에서 어떻게 드러나는지 (예: 지지합 → 조용한 안정감, 충 → 짜릿하지만 소모적)
+- 오행 과다/부족 보완 → 서로 채워주는지, 상대의 결핍이 내게 부담인지
+- 갈등 패턴도 솔직하게 언급 (무엇이 반복될 수 있는지)
 
-### 2. 속궁합 (에너지 교감/신체적 궁합)
+### 2. 속궁합 (intimacy) — 에너지 교감/신체적 궁합
 사주명리학 원리에 기반한 두 사람의 에너지 교감과 신체적 조화를 해석하세요.
 - 수(水)는 감성/본능, 화(火)는 열정/표현
 - 일지(日支) 관계: 일지는 배우자궁으로 가장 은밀한 관계를 나타냄
 - 지지 합/충이 일지에 해당하면 특히 중요 (합=자연스러운 조화, 충=강렬한 끌림 또는 마찰)
+- **수/화 비율 불균형** → 한쪽의 뜨거움이 다른 쪽에 부담되는지, 감정 표현 속도 차이
 - 노골적 표현 없이 "에너지 교감", "감각적 조화", "본능적 끌림" 등의 표현 사용
+- 지속 가능성까지 언급 (초반 끌림 vs 장기적 안정감)
 
-### 3. 재물궁합 (경제적 궁합)
+### 3. 재물궁합 (finance)
 두 사람이 함께할 때의 경제적 시너지를 해석하세요.
 - 재성(財星) 관계: 일간이 극(剋)하는 오행이 재성
 - 토(土)는 안정/저축, 금(金)은 실행/결실
-- 두 사람의 소비/저축 성향 차이와 보완 가능성
-- 함께 재물을 키울 수 있는지, 돈 문제로 갈등할 가능성
+- **소비/저축 성향 차이**를 구체 시나리오로 (누가 계획적, 누가 충동적, 돈 관리 주도권)
+- 함께 재물을 키울 수 있는 분야 (사업·투자·부동산 등 각자 강점 영역)
+- 돈 문제로 갈등할 구체적 포인트 + 피하는 방법
 
-### 4. 대운 시기 궁합
+### 4. 대운 시기 궁합 (timing)
 현재~향후 10년간 두 사람의 대운 흐름이 어떻게 맞물리는지 해석하세요.
-- 두 사람의 대운이 서로 상생하는 시기 vs 충돌하는 시기
-- 특히 주의해야 할 연도와 함께 좋은 시기를 구체적으로 언급
+- 두 사람의 대운을 **시기별로 매핑**: 상생 구간 vs 충돌 구간
+- **구체적인 연령대/년도**를 적시 (예: "A의 30대 중반 ~ B의 30대 후반 시기에 수 오행이 동시 왕성 → 함께 크게 성장")
+- 경제·관계·건강 각 측면에서 언제 주의해야 하는지
+- 결혼/동거/이직/창업 같은 큰 결정에 좋은 타이밍
 
-## 응답 형식
+## 응답 형식 (JSON 엄수)
 반드시 아래 JSON 형식으로만 응답하세요. categories의 각 score는 0~100 정수:
 {
   "summary": "(두 사람의 궁합을 한 문장으로 요약, 50자 이내)",
   "categories": {
-    "personality": { "score": 0, "desc": "(성격/관계 궁합 핵심을 2~3문장)" },
-    "intimacy": { "score": 0, "desc": "(에너지 교감/속궁합 해석 2~3문장, 품위 있게)" },
-    "finance": { "score": 0, "desc": "(재물/경제 궁합 해석 2~3문장)" },
-    "timing": { "score": 0, "desc": "(대운 시기 궁합, 좋은 시기/주의 시기 포함 2~3문장)" }
+    "personality": { "score": 0, "desc": "(성격/관계 궁합 4~6문장. 일간 오행 관계 + 합/충 데이터 인용 + 구체적 대화/갈등 예시)" },
+    "intimacy": { "score": 0, "desc": "(에너지 교감/속궁합 4~6문장. 일지 관계 + 수·화 비율 + 지속성. 품위 있게)" },
+    "finance": { "score": 0, "desc": "(재물/경제 궁합 4~6문장. 재성 데이터 + 소비 성향 + 구체 갈등 포인트 + 보완 방법)" },
+    "timing": { "score": 0, "desc": "(대운 시기 궁합 4~6문장. 구체적 연령/년도 + 상생 구간 vs 충돌 구간 + 큰 결정 타이밍)" }
   },
-  "strengths": ["이 커플의 강점 3가지 (각각 구체적으로 1문장)"],
-  "cautions": ["주의할 점 3가지 (각각 구체적으로 1문장)"],
-  "advice": "(이 커플에게 주는 구체적인 관계 발전 조언 2~3문장)"
+  "strengths": ["이 커플의 강점 3가지 (각각 2문장: 원리 1문장 + 실생활 예시 1문장)"],
+  "cautions": ["주의할 점 3가지 (각각 2문장: 원리 1문장 + 피하는 구체 방법 1문장)"],
+  "advice": "(이 커플에게 주는 관계 발전 조언 5~7문장. 지금 당장 할 것 → 중기 과제 → 장기 비전 순서로. 추상적 격언이 아닌 실천 가능한 행동 지침)"
 }` + langInstruction(lang);
 
   const user = `## Person A ${genderTextA ? `(${genderTextA})` : ''}
@@ -2532,7 +2609,7 @@ function matchPath(pattern, path) {
 // ============================================================
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
