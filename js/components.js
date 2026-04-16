@@ -621,6 +621,49 @@ function createLocationSelect(containerId, selectId, onChangeFn) {
   createCombo(select);
 }
 
+// ===== 공유용 폼 입력 augment / restore =====
+// 공유 저장 시 양력/음력 + 원본 연월일을 포함시키기 위한 헬퍼
+function augmentShareInput(base) {
+  return {
+    ...base,
+    calendar_type: (typeof _calendarType !== 'undefined') ? _calendarType : 'solar',
+    _y: document.getElementById('birthYear')?.value,
+    _m: document.getElementById('birthMonth')?.value,
+    _d: document.getElementById('birthDay')?.value,
+  };
+}
+
+// 공유 링크 열람 시 공유자 폼 값으로 복원 (콤보 UI 반영 포함)
+function restoreShareInput(input) {
+  if (!input) return;
+  try {
+    const cal = input.calendar_type;
+    if (cal === 'lunar') {
+      const lunarBtn = document.querySelector('.cal-btn[data-cal="lunar"]');
+      if (lunarBtn && typeof setCalendarType === 'function') setCalendarType(lunarBtn, 'lunar');
+    }
+    const y = input._y || (input.birth_date ? String(parseInt(input.birth_date.split('-')[0], 10)) : null);
+    if (y && typeof setComboValue === 'function') setComboValue('birthYear', y);
+    if (typeof updateMonths === 'function') updateMonths();
+    const m = input._m || (input.birth_date ? String(parseInt(input.birth_date.split('-')[1], 10)) : null);
+    if (m && typeof setComboValue === 'function') setComboValue('birthMonth', m);
+    if (typeof updateDays === 'function') updateDays();
+    const d = input._d || (input.birth_date ? String(parseInt(input.birth_date.split('-')[2], 10)) : null);
+    if (d && typeof setComboValue === 'function') setComboValue('birthDay', d);
+    if (input.birth_time && typeof setComboValue === 'function') setComboValue('birthTime', input.birth_time);
+    if (input.gender && typeof setComboValue === 'function') setComboValue('gender', input.gender);
+    const yt = document.getElementById('yajasiToggle');
+    if (yt) {
+      yt.checked = !!input.yajasi;
+      yt.dispatchEvent(new Event('change'));
+    }
+    if (input.birth_location) {
+      const bl = document.getElementById('birthLocation');
+      if (bl) bl.value = input.birth_location;
+    }
+  } catch (_) {}
+}
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();

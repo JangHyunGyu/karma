@@ -246,7 +246,7 @@
 
 
 <script src="/js/lunar.js?v=1"></script>
-<script src="/js/components.js?v=4"></script>
+<script src="/js/components.js?v=5"></script>
 <script src="/js/share.js?v=3"></script>
 <script>
 createDateSelects('dateSelects');
@@ -307,7 +307,7 @@ async function doAnalyze() {
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
-    window._sajuInput = sajuInput;
+    window._sajuInput = augmentShareInput(sajuInput);
     window._sajuResult = data;
     renderResult(data);
   } catch(e) {
@@ -483,32 +483,7 @@ function openDaeunModal(index, event) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-function _restoreSajuInput(input) {
-  if (!input) return;
-  try {
-    if (input.birth_date) {
-      const [y, m, d] = input.birth_date.split('-');
-      const by = document.getElementById('birthYear');
-      const bm = document.getElementById('birthMonth');
-      const bd = document.getElementById('birthDay');
-      if (by) by.value = String(parseInt(y, 10));
-      if (bm) bm.value = String(parseInt(m, 10));
-      if (bd) bd.value = String(parseInt(d, 10));
-    }
-    if (input.birth_time) {
-      const bt = document.getElementById('birthTime');
-      if (bt) bt.value = input.birth_time;
-    }
-    if (input.gender) {
-      const g = document.getElementById('gender');
-      if (g) g.value = input.gender;
-    }
-    const yt = document.getElementById('yajasiToggle');
-    if (yt) yt.checked = !!input.yajasi;
-    const bl = document.getElementById('birthLocation');
-    if (bl && input.birth_location) bl.value = input.birth_location;
-  } catch (_) {}
-}
+function _restoreSajuInput(input) { restoreShareInput(input); }
 
 KarmaShare.init({
   type: 'saju',

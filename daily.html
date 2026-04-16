@@ -194,7 +194,7 @@
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
-<script src="/js/components.js?v=4"></script>
+<script src="/js/components.js?v=5"></script>
 <script src="/js/share.js?v=3"></script>
 <script>
 createDateSelects('dateSelects');
@@ -248,7 +248,7 @@ async function doDaily() {
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error || !data.daily) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
-    window._dailyInput = dailyInput;
+    window._dailyInput = augmentShareInput(dailyInput);
     window._dailyResult = data;
     renderDaily(data);
   } catch(e) {
@@ -298,18 +298,8 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 function _restoreDailyInput(input) {
   if (!input) return;
+  restoreShareInput(input);
   try {
-    if (input.birth_date) {
-      const [y, m, d] = input.birth_date.split('-');
-      const by = document.getElementById('birthYear');
-      const bm = document.getElementById('birthMonth');
-      const bd = document.getElementById('birthDay');
-      if (by) by.value = String(parseInt(y, 10));
-      if (bm) bm.value = String(parseInt(m, 10));
-      if (bd) bd.value = String(parseInt(d, 10));
-    }
-    if (input.birth_time) { const el = document.getElementById('birthTime'); if (el) el.value = input.birth_time; }
-    if (input.gender) { const el = document.getElementById('gender'); if (el) el.value = input.gender; }
     if (input.target_date) {
       const el = document.getElementById('targetDate');
       if (el) {
@@ -318,8 +308,6 @@ function _restoreDailyInput(input) {
         el.value = input.target_date;
       }
     }
-    const yt = document.getElementById('yajasiToggle'); if (yt) yt.checked = !!input.yajasi;
-    const bl = document.getElementById('birthLocation'); if (bl && input.birth_location) bl.value = input.birth_location;
   } catch (_) {}
 }
 
