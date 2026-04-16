@@ -624,13 +624,14 @@ function createLocationSelect(containerId, selectId, onChangeFn) {
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
   initAllCombos();
+  const isSharedLink = new URLSearchParams(window.location.search).has('id');
   if (document.getElementById('locationWrap')) createLocationSelect('locationWrap');
   if (document.getElementById('locationWrapA')) {
     createLocationSelect('locationWrapA', 'birthLocationA', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
     createLocationSelect('locationWrapB', 'birthLocationB', typeof saveCompatInputs === 'function' ? saveCompatInputs : null);
-    if (typeof restoreCompatInputs === 'function') restoreCompatInputs();
+    if (!isSharedLink && typeof restoreCompatInputs === 'function') restoreCompatInputs();
   }
-  restoreInputs();
+  if (!isSharedLink) restoreInputs();
   // 야자시 초기 상태 설정
   if (document.getElementById('yajasiWrap')) updateYajasiState('birthTime', 'yajasiWrap');
   if (document.getElementById('yajasiWrapA')) updateYajasiState('timeA', 'yajasiWrapA');

@@ -232,7 +232,7 @@
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
-<script src="/js/components.js?v=3"></script>
+<script src="/js/components.js?v=4"></script>
 <script src="/js/share.js?v=3"></script>
 <script>
 // Compat date selects (separate for A/B)
@@ -371,11 +371,12 @@ function restoreCompatInputs() {
   } catch { return false; }
 }
 
-const saved = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
+const _isSharedLink = new URLSearchParams(window.location.search).has('id');
+const saved = _isSharedLink ? {} : JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
 const _now = new Date();
 createDateSelectsFor('dateSelectsA', 'a', +saved.aYear || _now.getFullYear(), +saved.aMonth || (_now.getMonth()+1), +saved.aDay || _now.getDate());
 createDateSelectsFor('dateSelectsB', 'b', +saved.bYear || _now.getFullYear(), +saved.bMonth || (_now.getMonth()+1), +saved.bDay || _now.getDate());
-restoreCompatInputs();
+if (!_isSharedLink) restoreCompatInputs();
 
 // Auto-save on change (combo click event delegation)
 document.addEventListener('click', (e) => {
