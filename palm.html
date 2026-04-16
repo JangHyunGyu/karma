@@ -269,10 +269,9 @@
 
     <div class="card" id="shareCard" style="display:none;text-align:center">
       <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
-      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)" data-en="Share links valid for 1 year (photo is not shared)">공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)</p>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="사진은 공유되지 않습니다" data-en="Photo is not shared">사진은 공유되지 않습니다</p>
     </div>
 
-    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px" data-ko="다시 분석하기" data-en="Analyze Again">다시 분석하기</button>
   </div>
 </div>
 
@@ -479,20 +478,6 @@ function _restorePalmInput(input) {
 
 function getGrade(s) {
   if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
-}
-
-function resetForm() {
-  imageData = null; imageMime = null;
-  const lang = getLang();
-  const uploadText = lang === 'en' ? 'Upload Palm Photo' : '손바닥 사진 업로드';
-  const hintLine1 = lang === 'en' ? 'Take a photo with palm lines clearly visible' : '손금이 잘 보이게 손을 펴서 촬영하세요';
-  const hintLine2 = lang === 'en' ? 'Tap to select a photo' : '탭하여 사진을 선택하세요';
-  uploadArea.classList.remove('has-image');
-  uploadArea.innerHTML = `<div class="upload-visual">🤚</div><div class="upload-text" data-ko="손바닥 사진 업로드" data-en="Upload Palm Photo">${uploadText}</div><div class="upload-hint" data-ko="탭하여 사진을 선택하세요" data-en="Tap to select a photo">${hintLine1}<br>${hintLine2}</div><input type="file" id="fileInput" accept="image/*">`;
-  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-  analyzeBtn.disabled = true;
-  document.getElementById('result').style.display = 'none';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 <script>

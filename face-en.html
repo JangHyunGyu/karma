@@ -262,10 +262,9 @@
 
     <div class="card" id="shareCard" style="display:none;text-align:center">
       <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
-      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links valid for 1 year (photo is not shared)</p>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Photo is not shared</p>
     </div>
 
-    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">Analyze Again</button>
   </div>
 </div>
 
@@ -430,16 +429,6 @@ function _restoreFaceInput(input) {
 
 function getGrade(s) {
   if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
-}
-
-function resetForm() {
-  imageData = null; imageMime = null;
-  uploadArea.classList.remove('has-image');
-  uploadArea.innerHTML = '<div class="upload-visual">🧑</div><div class="upload-text">Upload Face Photo</div><div class="upload-hint">Tap to select a photo</div><input type="file" id="fileInput" accept="image/*">';
-  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-  analyzeBtn.disabled = true;
-  document.getElementById('result').style.display = 'none';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 KarmaShare.init({
