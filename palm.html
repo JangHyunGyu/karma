@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="AI 손금 보기 - 사진으로 무료 손금 테스트">
 <meta name="twitter:description" content="손바닥 사진 올리면 AI가 생명선, 감정선, 운명선, 결혼선 즉시 분석! 무료.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
 .upload-area {
   border: 2px dashed rgba(201,160,68,0.25);
@@ -151,6 +151,7 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -266,6 +267,11 @@
       <p id="advice" style="font-size:0.88rem;color:#bbb;line-height:1.7"></p>
     </div>
 
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)" data-en="Share links valid for 1 year (photo is not shared)">공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)</p>
+    </div>
+
     <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px" data-ko="다시 분석하기" data-en="Analyze Again">다시 분석하기</button>
   </div>
 </div>
@@ -363,19 +369,27 @@ analyzeBtn.addEventListener('click', async () => {
   document.getElementById('error').style.display = 'none';
 
   try {
+    const palmInput = {
+      hand: document.getElementById('hand').value,
+      dominant: document.getElementById('dominant').value,
+      gender: document.getElementById('gender').value,
+      lang: localStorage.getItem('karma_lang') || 'ko',
+    };
     const resp = await fetch(`${API}/api/palm-reading`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image: imageData, mimeType: imageMime,
-        hand: document.getElementById('hand').value,
-        gender: document.getElementById('gender').value,
-        lang: localStorage.getItem('karma_lang') || 'ko',
+        hand: palmInput.hand,
+        gender: palmInput.gender,
+        lang: palmInput.lang,
       }),
     });
     if (!resp.ok) throw new Error(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
+    window._palmInput = palmInput;
+    window._palmResult = data;
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
@@ -431,8 +445,36 @@ function renderResult(d) {
   `).join('');
 
   document.getElementById('advice').textContent = d.advice || '';
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').style.display = '';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  const isEn = (document.documentElement.lang === 'en');
+  KarmaShare.shareKakao(
+    isEn ? 'My Karma Palm Reading' : '내 AI 손금 분석 결과',
+    isEn ? 'AI-powered palm reading — check it out' : 'AI가 분석한 내 손금 결과를 확인해보세요'
+  );
+}
+
+function _restorePalmInput(input) {
+  if (!input) return;
+  try {
+    if (input.dominant) {
+      const d = document.getElementById('dominant');
+      if (d) d.value = input.dominant;
+      updateHandLabels();
+    }
+    if (input.hand) {
+      const h = document.getElementById('hand');
+      if (h) h.value = input.hand;
+    }
+    if (input.gender) {
+      const g = document.getElementById('gender');
+      if (g) g.value = input.gender;
+    }
+  } catch (_) {}
 }
 
 function getGrade(s) {
@@ -458,6 +500,19 @@ function resetForm() {
   const saved = localStorage.getItem('karma_lang');
   if (saved && saved !== 'ko') { changeLang(saved); return; }
 })();
+
+KarmaShare.init({
+  type: 'palm',
+  lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+  pageBase: '/palm',
+  getPayload: () => ({ input: window._palmInput || null, result: window._palmResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._palmInput = input;
+    window._palmResult = result;
+    _restorePalmInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

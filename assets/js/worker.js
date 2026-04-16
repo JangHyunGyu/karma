@@ -2587,6 +2587,51 @@ async function handleR2Delete(request, env) {
 }
 
 // ============================================================
+// Share Result (KV)
+// ============================================================
+
+const SHARE_TTL_SECONDS = 60 * 60 * 24 * 365; // 1년
+const SHARE_ALLOWED_TYPES = new Set(['saju', 'fortune', 'daily', 'tarot', 'face', 'palm', 'compat']);
+const SHARE_MAX_BYTES = 100 * 1024; // 100 KB per share
+
+async function handleShareSave(request, env) {
+  if (!env.KARMA_SHARE) return json({ error: 'KV not configured' }, 500);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  const { type, lang, input, result } = body || {};
+  if (!type || !SHARE_ALLOWED_TYPES.has(type)) return json({ error: 'Invalid type' }, 400);
+  if (!result) return json({ error: 'Missing result' }, 400);
+
+  const payload = JSON.stringify({
+    type,
+    lang: lang === 'en' ? 'en' : 'ko',
+    input: input || null,
+    result,
+    createdAt: new Date().toISOString(),
+  });
+  if (payload.length > SHARE_MAX_BYTES) return json({ error: 'Payload too large' }, 413);
+
+  const id = crypto.randomUUID();
+  await env.KARMA_SHARE.put(id, payload, { expirationTtl: SHARE_TTL_SECONDS });
+  return json({ id });
+}
+
+async function handleShareGet(id, env) {
+  if (!env.KARMA_SHARE) return json({ error: 'KV not configured' }, 500);
+  if (!id) return json({ error: 'Missing id' }, 400);
+  const data = await env.KARMA_SHARE.get(id);
+  if (!data) return json({ error: 'Not found or expired' }, 404);
+  return new Response(data, {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  });
+}
+
+// ============================================================
 // Path Parameter Helpers
 // ============================================================
 
@@ -2743,6 +2788,17 @@ export default {
       }
       if (path === '/api/error-log' && method === 'GET') {
         return handleGetErrorLog(env);
+      }
+
+      // ---- Share Routes ----
+      if (path === '/api/share/save' && method === 'POST') {
+        return handleShareSave(request, env);
+      }
+      {
+        const params = matchPath('/api/share/:id', path);
+        if (params && method === 'GET') {
+          return handleShareGet(params.id, env);
+        }
       }
 
       // ---- R2 Routes ----

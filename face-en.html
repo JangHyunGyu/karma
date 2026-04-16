@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="AI Face Reading Online Free - Selfie Physiognomy Test">
 <meta name="twitter:description" content="Upload a selfie for instant AI face reading! Wealth fortune, love fortune & celebrity lookalike. 100% free.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
 .upload-area {
   border: 2px dashed rgba(201,160,68,0.25);
@@ -152,6 +152,7 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -259,6 +260,11 @@
       <div class="celeb-box" id="celeb" style="display:none"></div>
     </div>
 
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links valid for 1 year (photo is not shared)</p>
+    </div>
+
     <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px">Analyze Again</button>
   </div>
 </div>
@@ -321,19 +327,24 @@ analyzeBtn.addEventListener('click', async () => {
   document.getElementById('error').style.display = 'none';
 
   try {
+    const faceInput = {
+      gender: document.getElementById('gender').value,
+      age: document.getElementById('age').value,
+      lang: 'en',
+    };
     const resp = await fetch(`${API}/api/face-reading`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image: imageData, mimeType: imageMime,
-        gender: document.getElementById('gender').value,
-        age: document.getElementById('age').value,
-        lang: 'en',
+        ...faceInput,
       }),
     });
     if (!resp.ok) throw new Error('A server error occurred. Please try again later.');
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
+    window._faceInput = faceInput;
+    window._faceResult = data;
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
@@ -391,8 +402,30 @@ function renderResult(d) {
     celeb.style.display = 'none';
   }
 
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').style.display = '';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  KarmaShare.shareKakao(
+    'My Karma Face Reading',
+    'AI-powered face reading — check it out'
+  );
+}
+
+function _restoreFaceInput(input) {
+  if (!input) return;
+  try {
+    if (input.gender) {
+      const g = document.getElementById('gender');
+      if (g) g.value = input.gender;
+    }
+    if (input.age) {
+      const a = document.getElementById('age');
+      if (a) a.value = input.age;
+    }
+  } catch (_) {}
 }
 
 function getGrade(s) {
@@ -408,6 +441,19 @@ function resetForm() {
   document.getElementById('result').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+KarmaShare.init({
+  type: 'face',
+  lang: 'en',
+  pageBase: '/face-en',
+  getPayload: () => ({ input: window._faceInput || null, result: window._faceResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._faceInput = input;
+    window._faceResult = result;
+    _restoreFaceInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="무료 AI 사주 궁합 - 카르마">
 <meta name="twitter:description" content="생년월일로 보는 무료 사주 궁합. 오행 상생상극, 연애 궁합 AI 분석.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <script src="/js/browser-check.js"></script>
 <style>
   .compat-cols { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -224,12 +224,19 @@
       </div>
     </div>
 
+    <!-- 카카오톡 공유 -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다" data-en="Share links are valid for 1 year">공유 링크는 1년간 유지됩니다</p>
+    </div>
+
   </div>
 
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 // 궁합용 날짜 셀렉트 (A/B 별도)
 const _compatCalType = { a: 'solar', b: 'solar' };
@@ -392,18 +399,21 @@ async function doCompat() {
   result.style.display = 'none';
 
   try {
+    const compatInput = {
+      personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
+      personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
+      lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+    };
     const resp = await fetch(API_BASE + '/api/compat-quick', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
-        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
-        lang: 'ko',
-      }),
+      body: JSON.stringify(compatInput),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
+    window._compatInput = compatInput;
+    window._compatResult = data;
     renderResult(data);
   } catch(e) {
     alert(_L('오류: ','Error: ') + e.message);
@@ -471,7 +481,51 @@ function renderResult(d) {
     document.getElementById('aiAdvice').textContent = '💡 ' + (d.ai.advice || '');
   }
 
-  result.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('shareCard').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  const isEn = (document.documentElement.lang === 'en');
+  KarmaShare.shareKakao(
+    isEn ? 'Our Karma Compatibility' : '우리 둘의 사주 궁합 결과',
+    isEn ? 'AI-powered compatibility — check it out' : 'AI가 분석한 우리 궁합 결과를 확인해보세요'
+  );
+}
+
+function _restoreCompatInput(input) {
+  if (!input) return;
+  try {
+    const a = input.personA || {};
+    const b = input.personB || {};
+    if (a.birth_date) {
+      const [y, m, d] = a.birth_date.split('-');
+      setComboValue('aYear', String(parseInt(y, 10)));
+      updateMonthsFor('a');
+      setComboValue('aMonth', String(parseInt(m, 10)));
+      updateDaysFor('a');
+      setComboValue('aDay', String(parseInt(d, 10)));
+    }
+    if (a.birth_time) setComboValue('timeA', a.birth_time);
+    if (a.gender) setComboValue('genderA', a.gender);
+    if (a.birth_location) setComboValue('birthLocationA', a.birth_location);
+    const ya = document.getElementById('yajasiA');
+    if (ya) { ya.checked = !!a.yajasi; ya.dispatchEvent(new Event('change')); }
+
+    if (b.birth_date) {
+      const [y, m, d] = b.birth_date.split('-');
+      setComboValue('bYear', String(parseInt(y, 10)));
+      updateMonthsFor('b');
+      setComboValue('bMonth', String(parseInt(m, 10)));
+      updateDaysFor('b');
+      setComboValue('bDay', String(parseInt(d, 10)));
+    }
+    if (b.birth_time) setComboValue('timeB', b.birth_time);
+    if (b.gender) setComboValue('genderB', b.gender);
+    if (b.birth_location) setComboValue('birthLocationB', b.birth_location);
+    const yb = document.getElementById('yajasiB');
+    if (yb) { yb.checked = !!b.yajasi; yb.dispatchEvent(new Event('change')); }
+  } catch (_) {}
 }
 
 function renderPillars(pillars) {
@@ -488,6 +542,19 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
   const saved = localStorage.getItem('karma_lang');
   if (saved && saved !== 'ko') { changeLang(saved); return; }
 })();
+
+KarmaShare.init({
+  type: 'compat',
+  lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+  pageBase: '/compat',
+  getPayload: () => ({ input: window._compatInput || null, result: window._compatResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._compatInput = input;
+    window._compatResult = result;
+    _restoreCompatInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

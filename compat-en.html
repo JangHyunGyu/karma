@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="Free AI Love Compatibility Test - Karma">
 <meta name="twitter:description" content="Free Saju-based love compatibility analysis with AI. Five elements harmony and relationship advice.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <script src="/js/browser-check.js"></script>
 <style>
   .compat-cols { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -222,12 +222,19 @@
       </div>
     </div>
 
+    <!-- Kakao share -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links are valid for 1 year</p>
+    </div>
+
   </div>
 
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 // Compat date selects (separate for A/B)
 const _compatCalType = { a: 'solar', b: 'solar' };
@@ -385,18 +392,21 @@ async function doCompat() {
   result.style.display = 'none';
 
   try {
+    const compatInput = {
+      personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
+      personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
+      lang: 'en',
+    };
     const resp = await fetch(API_BASE + '/api/compat-quick', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
-        personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
-        lang: 'en',
-      }),
+      body: JSON.stringify(compatInput),
     });
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
+    window._compatInput = compatInput;
+    window._compatResult = data;
     renderResult(data);
   } catch(e) {
     alert('Error: ' + e.message);
@@ -464,7 +474,50 @@ function renderResult(d) {
     document.getElementById('aiAdvice').textContent = '💡 ' + (d.ai.advice || '');
   }
 
-  result.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('shareCard').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  KarmaShare.shareKakao(
+    'Our Karma Compatibility',
+    'AI-powered compatibility — check it out'
+  );
+}
+
+function _restoreCompatInput(input) {
+  if (!input) return;
+  try {
+    const a = input.personA || {};
+    const b = input.personB || {};
+    if (a.birth_date) {
+      const [y, m, d] = a.birth_date.split('-');
+      setComboValue('aYear', String(parseInt(y, 10)));
+      updateMonthsFor('a');
+      setComboValue('aMonth', String(parseInt(m, 10)));
+      updateDaysFor('a');
+      setComboValue('aDay', String(parseInt(d, 10)));
+    }
+    if (a.birth_time) setComboValue('timeA', a.birth_time);
+    if (a.gender) setComboValue('genderA', a.gender);
+    if (a.birth_location) setComboValue('birthLocationA', a.birth_location);
+    const ya = document.getElementById('yajasiA');
+    if (ya) { ya.checked = !!a.yajasi; ya.dispatchEvent(new Event('change')); }
+
+    if (b.birth_date) {
+      const [y, m, d] = b.birth_date.split('-');
+      setComboValue('bYear', String(parseInt(y, 10)));
+      updateMonthsFor('b');
+      setComboValue('bMonth', String(parseInt(m, 10)));
+      updateDaysFor('b');
+      setComboValue('bDay', String(parseInt(d, 10)));
+    }
+    if (b.birth_time) setComboValue('timeB', b.birth_time);
+    if (b.gender) setComboValue('genderB', b.gender);
+    if (b.birth_location) setComboValue('birthLocationB', b.birth_location);
+    const yb = document.getElementById('yajasiB');
+    if (yb) { yb.checked = !!b.yajasi; yb.dispatchEvent(new Event('change')); }
+  } catch (_) {}
 }
 
 // API now returns English: pillar.name=Year/Month/Day/Hour, pillar.ganEn/jiEn
@@ -478,6 +531,19 @@ function renderPillars(pillars) {
 
 function ohangEmoji(oh) { return {'Wood':'🌿','Fire':'🔥','Earth':'🏔','Metal':'⚔','Water':'🌊'}[oh] || ''; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+KarmaShare.init({
+  type: 'compat',
+  lang: 'en',
+  pageBase: '/compat-en',
+  getPayload: () => ({ input: window._compatInput || null, result: window._compatResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._compatInput = input;
+    window._compatResult = result;
+    _restoreCompatInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

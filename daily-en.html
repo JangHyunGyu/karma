@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="Free Daily AI Fortune - Karma">
 <meta name="twitter:description" content="AI-powered daily fortune based on Korean Saju. Love, money & health predictions.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
   .fortune-grid { display: grid; gap: 14px; }
   .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
@@ -184,12 +184,19 @@
       <h2>💡 Today's Advice</h2>
       <p id="dailyAdvice" style="line-height:1.7"></p>
     </div>
+
+    <!-- KakaoTalk Share -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links are valid for 1 year</p>
+    </div>
   </div>
 
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 createDateSelects('dateSelects');
 
@@ -221,22 +228,25 @@ async function doDaily() {
   result.style.display = 'none';
 
   try {
+    const dailyInput = {
+      birth_date: getBirthDate(),
+      birth_time: document.getElementById('birthTime').value,
+      gender: document.getElementById('gender').value,
+      target_date: document.getElementById('targetDate').value,
+      lang: 'en',
+      yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+    };
     const resp = await fetch(API_BASE + '/api/daily', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        birth_date: getBirthDate(),
-        birth_time: document.getElementById('birthTime').value,
-        gender: document.getElementById('gender').value,
-        target_date: document.getElementById('targetDate').value,
-        lang: 'en',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
-        birth_location: document.getElementById('birthLocation')?.value || 'kr',
-      }),
+      body: JSON.stringify(dailyInput),
     });
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
     const data = await resp.json();
     if (data.error || !data.daily) { alert(data.error || 'Fortune analysis failed'); return; }
+    window._dailyInput = dailyInput;
+    window._dailyResult = data;
     renderDaily(data);
   } catch(e) {
     alert('Error: ' + e.message);
@@ -268,10 +278,59 @@ function renderDaily(d) {
   }
 
   document.getElementById('result').style.display = 'grid';
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
 }
 
+function handleShareKakao() {
+  const date = (window._dailyInput && window._dailyInput.target_date) || '';
+  KarmaShare.shareKakao(
+    date ? `My Fortune for ${date}` : 'My Daily Fortune',
+    'Daily AI fortune — check it out'
+  );
+}
+
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function _restoreDailyInput(input) {
+  if (!input) return;
+  try {
+    if (input.birth_date) {
+      const [y, m, d] = input.birth_date.split('-');
+      const by = document.getElementById('birthYear');
+      const bm = document.getElementById('birthMonth');
+      const bd = document.getElementById('birthDay');
+      if (by) by.value = String(parseInt(y, 10));
+      if (bm) bm.value = String(parseInt(m, 10));
+      if (bd) bd.value = String(parseInt(d, 10));
+    }
+    if (input.birth_time) { const el = document.getElementById('birthTime'); if (el) el.value = input.birth_time; }
+    if (input.gender) { const el = document.getElementById('gender'); if (el) el.value = input.gender; }
+    if (input.target_date) {
+      const el = document.getElementById('targetDate');
+      if (el) {
+        const hasOpt = Array.from(el.options).some(o => o.value === input.target_date);
+        if (!hasOpt) { const opt = document.createElement('option'); opt.value = input.target_date; opt.textContent = input.target_date; el.appendChild(opt); }
+        el.value = input.target_date;
+      }
+    }
+    const yt = document.getElementById('yajasiToggle'); if (yt) yt.checked = !!input.yajasi;
+    const bl = document.getElementById('birthLocation'); if (bl && input.birth_location) bl.value = input.birth_location;
+  } catch (_) {}
+}
+
+KarmaShare.init({
+  type: 'daily',
+  lang: 'en',
+  pageBase: '/daily-en',
+  getPayload: () => ({ input: window._dailyInput || null, result: window._dailyResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._dailyInput = input;
+    window._dailyResult = result;
+    _restoreDailyInput(input);
+    renderDaily(result);
+  },
+});
 </script>
 </body>
 </html>

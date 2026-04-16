@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="AI 관상 보기 - 셀카로 무료 관상 테스트">
 <meta name="twitter:description" content="사진 올리면 AI가 얼굴 분석! 재물운, 연애운, 닮은 연예인까지 무료로 확인.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
 .upload-area {
   border: 2px dashed rgba(201,160,68,0.25);
@@ -152,6 +152,7 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -259,6 +260,11 @@
       <div class="celeb-box" id="celeb" style="display:none"></div>
     </div>
 
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)" data-en="Share links valid for 1 year (photo is not shared)">공유 링크는 1년간 유지됩니다 (사진은 공유되지 않습니다)</p>
+    </div>
+
     <button class="btn btn-secondary" onclick="resetForm()" style="margin-top:10px" data-ko="다시 분석하기" data-en="Analyze Again">다시 분석하기</button>
   </div>
 </div>
@@ -321,19 +327,24 @@ analyzeBtn.addEventListener('click', async () => {
   document.getElementById('error').style.display = 'none';
 
   try {
+    const faceInput = {
+      gender: document.getElementById('gender').value,
+      age: document.getElementById('age').value,
+      lang: localStorage.getItem('karma_lang') || 'ko',
+    };
     const resp = await fetch(`${API}/api/face-reading`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image: imageData, mimeType: imageMime,
-        gender: document.getElementById('gender').value,
-        age: document.getElementById('age').value,
-        lang: localStorage.getItem('karma_lang') || 'ko',
+        ...faceInput,
       }),
     });
     if (!resp.ok) throw new Error(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
+    window._faceInput = faceInput;
+    window._faceResult = data;
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
@@ -391,8 +402,31 @@ function renderResult(d) {
     celeb.style.display = 'none';
   }
 
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').style.display = '';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  const isEn = (document.documentElement.lang === 'en');
+  KarmaShare.shareKakao(
+    isEn ? 'My Karma Face Reading' : '내 AI 관상 분석 결과',
+    isEn ? 'AI-powered face reading — check it out' : 'AI가 분석한 내 관상 결과를 확인해보세요'
+  );
+}
+
+function _restoreFaceInput(input) {
+  if (!input) return;
+  try {
+    if (input.gender) {
+      const g = document.getElementById('gender');
+      if (g) g.value = input.gender;
+    }
+    if (input.age) {
+      const a = document.getElementById('age');
+      if (a) a.value = input.age;
+    }
+  } catch (_) {}
 }
 
 function getGrade(s) {
@@ -417,6 +451,19 @@ function resetForm() {
   const saved = localStorage.getItem('karma_lang');
   if (saved && saved !== 'ko') { changeLang(saved); return; }
 })();
+
+KarmaShare.init({
+  type: 'face',
+  lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+  pageBase: '/face',
+  getPayload: () => ({ input: window._faceInput || null, result: window._faceResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._faceInput = input;
+    window._faceResult = result;
+    _restoreFaceInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

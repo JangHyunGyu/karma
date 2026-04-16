@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="무료 AI 사주팔자 분석 - 카르마">
 <meta name="twitter:description" content="생년월일로 보는 무료 사주풀이. 오행, 대운, 성격, 연애운, 직업운 AI 분석.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
   /* 사주 페이지 — 모바일 퍼스트 (기본 무조건 1열) */
   .container.saju-page {
@@ -235,6 +235,12 @@
         <p id="aiAdvice" style="line-height:1.7"></p>
       </div>
     </div>
+
+    <!-- 카카오톡 공유 -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다" data-en="Share links are valid for 1 year">공유 링크는 1년간 유지됩니다</p>
+    </div>
   </div>
 
 </div>
@@ -242,6 +248,7 @@
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 createDateSelects('dateSelects');
 
@@ -283,21 +290,24 @@ async function doAnalyze() {
   result.style.display = 'none';
 
   try {
+    const sajuInput = {
+      birth_date: getBirthDate(),
+      birth_time: document.getElementById('birthTime').value,
+      gender: document.getElementById('gender').value,
+      lang: 'ko',
+      yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+    };
     const resp = await fetch(API_BASE + '/api/saju', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        birth_date: getBirthDate(),
-        birth_time: document.getElementById('birthTime').value,
-        gender: document.getElementById('gender').value,
-        lang: 'ko',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
-        birth_location: document.getElementById('birthLocation')?.value || 'kr',
-      }),
+      body: JSON.stringify(sajuInput),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
+    window._sajuInput = sajuInput;
+    window._sajuResult = data;
     renderResult(data);
   } catch(e) {
     alert(_L('오류: ','Error: ') + e.message);
@@ -401,7 +411,16 @@ function renderResult(d) {
     document.getElementById('aiAdvice').textContent = d.ai.advice || '';
   }
 
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  const isEn = (document.documentElement.lang === 'en');
+  KarmaShare.shareKakao(
+    isEn ? 'My Karma Saju Analysis' : '내 사주팔자 AI 분석 결과',
+    isEn ? 'AI-powered Saju reading — check it out' : '생년월일로 본 AI 사주풀이 결과를 확인해보세요'
+  );
 }
 
 let _openDaeunIndex = -1;
@@ -456,6 +475,46 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
   const saved = localStorage.getItem('karma_lang');
   if (saved && saved !== 'ko') { changeLang(saved); return; }
 })();
+
+function _restoreSajuInput(input) {
+  if (!input) return;
+  try {
+    if (input.birth_date) {
+      const [y, m, d] = input.birth_date.split('-');
+      const by = document.getElementById('birthYear');
+      const bm = document.getElementById('birthMonth');
+      const bd = document.getElementById('birthDay');
+      if (by) by.value = String(parseInt(y, 10));
+      if (bm) bm.value = String(parseInt(m, 10));
+      if (bd) bd.value = String(parseInt(d, 10));
+    }
+    if (input.birth_time) {
+      const bt = document.getElementById('birthTime');
+      if (bt) bt.value = input.birth_time;
+    }
+    if (input.gender) {
+      const g = document.getElementById('gender');
+      if (g) g.value = input.gender;
+    }
+    const yt = document.getElementById('yajasiToggle');
+    if (yt) yt.checked = !!input.yajasi;
+    const bl = document.getElementById('birthLocation');
+    if (bl && input.birth_location) bl.value = input.birth_location;
+  } catch (_) {}
+}
+
+KarmaShare.init({
+  type: 'saju',
+  lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+  pageBase: '/saju',
+  getPayload: () => ({ input: window._sajuInput || null, result: window._sajuResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._sajuInput = input;
+    window._sajuResult = result;
+    _restoreSajuInput(input);
+    renderResult(result);
+  },
+});
 </script>
 </body>
 </html>

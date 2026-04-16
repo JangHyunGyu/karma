@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="오늘의 무료 AI 운세 - 카르마">
 <meta name="twitter:description" content="사주 기반 오늘의 운세. 총운, 연애운, 금전운, 건강운 AI 분석.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
   .fortune-grid { display: grid; gap: 14px; }
   .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
@@ -184,12 +184,19 @@
       <h2 data-ko="💡 오늘의 조언" data-en="💡 Today's Advice">💡 오늘의 조언</h2>
       <p id="dailyAdvice" style="line-height:1.7"></p>
     </div>
+
+    <!-- 카카오톡 공유 -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()" data-ko="💬 카카오톡으로 결과 공유" data-en="💬 Share result on KakaoTalk">💬 카카오톡으로 결과 공유</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px" data-ko="공유 링크는 1년간 유지됩니다" data-en="Share links are valid for 1 year">공유 링크는 1년간 유지됩니다</p>
+    </div>
   </div>
 
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 createDateSelects('dateSelects');
 
@@ -225,22 +232,25 @@ async function doDaily() {
   result.style.display = 'none';
 
   try {
+    const dailyInput = {
+      birth_date: getBirthDate(),
+      birth_time: document.getElementById('birthTime').value,
+      gender: document.getElementById('gender').value,
+      target_date: document.getElementById('targetDate').value,
+      lang: 'ko',
+      yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+    };
     const resp = await fetch(API_BASE + '/api/daily', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        birth_date: getBirthDate(),
-        birth_time: document.getElementById('birthTime').value,
-        gender: document.getElementById('gender').value,
-        target_date: document.getElementById('targetDate').value,
-        lang: 'ko',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
-        birth_location: document.getElementById('birthLocation')?.value || 'kr',
-      }),
+      body: JSON.stringify(dailyInput),
     });
     if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
     const data = await resp.json();
     if (data.error || !data.daily) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
+    window._dailyInput = dailyInput;
+    window._dailyResult = data;
     renderDaily(data);
   } catch(e) {
     alert(_L('오류: ','Error: ') + e.message);
@@ -272,10 +282,60 @@ function renderDaily(d) {
   }
 
   document.getElementById('result').style.display = 'grid';
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
 }
 
+function handleShareKakao() {
+  const isEn = (document.documentElement.lang === 'en');
+  const date = (window._dailyInput && window._dailyInput.target_date) || '';
+  KarmaShare.shareKakao(
+    isEn ? (date ? `My Fortune for ${date}` : 'My Daily Fortune') : (date ? `${date} 내 운세` : '내 오늘의 운세'),
+    isEn ? 'Daily AI fortune — check it out' : '사주 기반 AI 오늘의 운세 결과를 확인해보세요'
+  );
+}
+
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function _restoreDailyInput(input) {
+  if (!input) return;
+  try {
+    if (input.birth_date) {
+      const [y, m, d] = input.birth_date.split('-');
+      const by = document.getElementById('birthYear');
+      const bm = document.getElementById('birthMonth');
+      const bd = document.getElementById('birthDay');
+      if (by) by.value = String(parseInt(y, 10));
+      if (bm) bm.value = String(parseInt(m, 10));
+      if (bd) bd.value = String(parseInt(d, 10));
+    }
+    if (input.birth_time) { const el = document.getElementById('birthTime'); if (el) el.value = input.birth_time; }
+    if (input.gender) { const el = document.getElementById('gender'); if (el) el.value = input.gender; }
+    if (input.target_date) {
+      const el = document.getElementById('targetDate');
+      if (el) {
+        const hasOpt = Array.from(el.options).some(o => o.value === input.target_date);
+        if (!hasOpt) { const opt = document.createElement('option'); opt.value = input.target_date; opt.textContent = input.target_date; el.appendChild(opt); }
+        el.value = input.target_date;
+      }
+    }
+    const yt = document.getElementById('yajasiToggle'); if (yt) yt.checked = !!input.yajasi;
+    const bl = document.getElementById('birthLocation'); if (bl && input.birth_location) bl.value = input.birth_location;
+  } catch (_) {}
+}
+
+KarmaShare.init({
+  type: 'daily',
+  lang: (document.documentElement.lang === 'en' ? 'en' : 'ko'),
+  pageBase: '/daily',
+  getPayload: () => ({ input: window._dailyInput || null, result: window._dailyResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._dailyInput = input;
+    window._dailyResult = result;
+    _restoreDailyInput(input);
+    renderDaily(result);
+  },
+});
 </script>
 <script>
 (function() {

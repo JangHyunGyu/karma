@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="Free AI Saju (Four Pillars) Reading - Karma">
 <meta name="twitter:description" content="Free Four Pillars of Destiny analysis. AI-powered Korean astrology with five elements and fortune cycles.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
   /* Saju page — mobile first (always 1 column by default) */
   .container.saju-page {
@@ -235,6 +235,12 @@
         <p id="aiAdvice" style="line-height:1.7"></p>
       </div>
     </div>
+
+    <!-- KakaoTalk Share -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links are valid for 1 year</p>
+    </div>
   </div>
 
 </div>
@@ -242,6 +248,7 @@
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 createDateSelects('dateSelects');
 
@@ -285,21 +292,24 @@ async function doAnalyze() {
   result.style.display = 'none';
 
   try {
+    const sajuInput = {
+      birth_date: getBirthDate(),
+      birth_time: document.getElementById('birthTime').value,
+      gender: document.getElementById('gender').value,
+      lang: 'en',
+      yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+    };
     const resp = await fetch(API_BASE + '/api/saju', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        birth_date: getBirthDate(),
-        birth_time: document.getElementById('birthTime').value,
-        gender: document.getElementById('gender').value,
-        lang: 'en',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
-        birth_location: document.getElementById('birthLocation')?.value || 'kr',
-      }),
+      body: JSON.stringify(sajuInput),
     });
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
+    window._sajuInput = sajuInput;
+    window._sajuResult = data;
     renderResult(data);
   } catch(e) {
     alert('Error: ' + e.message);
@@ -415,7 +425,15 @@ function renderResult(d) {
     document.getElementById('aiAdvice').textContent = d.ai.advice || '';
   }
 
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleShareKakao() {
+  KarmaShare.shareKakao(
+    'My Karma Saju Analysis',
+    'AI-powered Saju reading — check it out'
+  );
 }
 
 let _openDaeunIndex = -1;
@@ -465,6 +483,46 @@ function openDaeunModal(index, event) {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function _restoreSajuInput(input) {
+  if (!input) return;
+  try {
+    if (input.birth_date) {
+      const [y, m, d] = input.birth_date.split('-');
+      const by = document.getElementById('birthYear');
+      const bm = document.getElementById('birthMonth');
+      const bd = document.getElementById('birthDay');
+      if (by) by.value = String(parseInt(y, 10));
+      if (bm) bm.value = String(parseInt(m, 10));
+      if (bd) bd.value = String(parseInt(d, 10));
+    }
+    if (input.birth_time) {
+      const bt = document.getElementById('birthTime');
+      if (bt) bt.value = input.birth_time;
+    }
+    if (input.gender) {
+      const g = document.getElementById('gender');
+      if (g) g.value = input.gender;
+    }
+    const yt = document.getElementById('yajasiToggle');
+    if (yt) yt.checked = !!input.yajasi;
+    const bl = document.getElementById('birthLocation');
+    if (bl && input.birth_location) bl.value = input.birth_location;
+  } catch (_) {}
+}
+
+KarmaShare.init({
+  type: 'saju',
+  lang: 'en',
+  pageBase: '/saju-en',
+  getPayload: () => ({ input: window._sajuInput || null, result: window._sajuResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._sajuInput = input;
+    window._sajuResult = result;
+    _restoreSajuInput(input);
+    renderResult(result);
+  },
+});
 
 </script>
 </body>

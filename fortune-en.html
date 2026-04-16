@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="Free 2026 AI Fortune Reading - Karma">
 <meta name="twitter:description" content="AI-powered 2026 fortune based on Korean Saju. Love, wealth, career & health predictions.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <style>
   .fortune-grid { display: grid; gap: 14px; }
   .fortune-2col { display: grid; gap: 14px; grid-template-columns: 1fr; }
@@ -174,12 +174,19 @@
       <h2>💡 This Year's Advice</h2>
       <p id="fortuneAdvice" style="line-height:1.7"></p>
     </div>
+
+    <!-- KakaoTalk Share -->
+    <div class="card" id="shareCard" style="display:none;text-align:center">
+      <button class="btn btn-kakao" onclick="handleShareKakao()">💬 Share result on KakaoTalk</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">Share links are valid for 1 year</p>
+    </div>
   </div>
 
 </div>
 
 <script src="/js/lunar.js?v=1"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script>
 createDateSelects('dateSelects');
 
@@ -203,22 +210,25 @@ async function doFortune() {
   result.style.display = 'none';
 
   try {
+    const fortuneInput = {
+      birth_date: getBirthDate(),
+      birth_time: document.getElementById('birthTime').value,
+      gender: document.getElementById('gender').value,
+      year: parseInt(document.getElementById('fortuneYear').value),
+      lang: 'en',
+      yajasi: document.getElementById('yajasiToggle')?.checked || false,
+      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+    };
     const resp = await fetch(API_BASE + '/api/fortune', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        birth_date: getBirthDate(),
-        birth_time: document.getElementById('birthTime').value,
-        gender: document.getElementById('gender').value,
-        year: parseInt(document.getElementById('fortuneYear').value),
-        lang: 'en',
-        yajasi: document.getElementById('yajasiToggle')?.checked || false,
-        birth_location: document.getElementById('birthLocation')?.value || 'kr',
-      }),
+      body: JSON.stringify(fortuneInput),
     });
     if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
     const data = await resp.json();
     if (data.error || !data.fortune) { alert(data.error || 'Fortune analysis failed'); return; }
+    window._fortuneInput = fortuneInput;
+    window._fortuneResult = data;
     renderFortune(data);
   } catch(e) {
     alert('Error: ' + e.message);
@@ -252,10 +262,49 @@ function renderFortune(d) {
   }
 
   document.getElementById('result').style.display = 'grid';
+  document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
 }
 
+function handleShareKakao() {
+  const yr = (window._fortuneInput && window._fortuneInput.year) || new Date().getFullYear();
+  KarmaShare.shareKakao(`My ${yr} Fortune`, 'AI-powered new year fortune — check my result');
+}
+
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function _restoreFortuneInput(input) {
+  if (!input) return;
+  try {
+    if (input.birth_date) {
+      const [y, m, d] = input.birth_date.split('-');
+      const by = document.getElementById('birthYear');
+      const bm = document.getElementById('birthMonth');
+      const bd = document.getElementById('birthDay');
+      if (by) by.value = String(parseInt(y, 10));
+      if (bm) bm.value = String(parseInt(m, 10));
+      if (bd) bd.value = String(parseInt(d, 10));
+    }
+    if (input.birth_time) { const el = document.getElementById('birthTime'); if (el) el.value = input.birth_time; }
+    if (input.gender) { const el = document.getElementById('gender'); if (el) el.value = input.gender; }
+    if (input.year) { const el = document.getElementById('fortuneYear'); if (el) el.value = String(input.year); }
+    const yt = document.getElementById('yajasiToggle'); if (yt) yt.checked = !!input.yajasi;
+    const bl = document.getElementById('birthLocation'); if (bl && input.birth_location) bl.value = input.birth_location;
+  } catch (_) {}
+}
+
+KarmaShare.init({
+  type: 'fortune',
+  lang: 'en',
+  pageBase: '/fortune-en',
+  getPayload: () => ({ input: window._fortuneInput || null, result: window._fortuneResult || null }),
+  onLoadShared: ({ input, result }) => {
+    window._fortuneInput = input;
+    window._fortuneResult = result;
+    _restoreFortuneInput(input);
+    renderFortune(result);
+  },
+});
 </script>
 </body>
 </html>

@@ -404,6 +404,13 @@ option { background: #1a1a2e; color: #e0e0e0; }
 }
 .btn-secondary:hover { box-shadow: none; background: rgba(255,255,255,0.15); }
 .btn-small { padding: 8px 16px; font-size: 0.85rem; width: auto; }
+.btn-kakao {
+  background: #FEE500;
+  color: #191919;
+  text-shadow: none;
+  border: none;
+}
+.btn-kakao:hover { box-shadow: 0 6px 20px rgba(254,229,0,0.35); }
 
 /* 링크 */
 .link { text-align: center; margin-top: 10px; font-size: 0.85rem; }

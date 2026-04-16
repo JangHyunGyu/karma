@@ -28,7 +28,7 @@
 <meta name="twitter:title" content="Free AI Tarot Card Reading - Karma">
 <meta name="twitter:description" content="See your past, present, and future with 3 tarot cards. AI-powered Rider-Waite tarot reading.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
 /* ===== 타로 페이지 전용 스타일 ===== */
@@ -343,6 +343,7 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=3"></script>
+<script src="/js/share.js?v=1"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -601,18 +602,23 @@
   }
 
   // ===== API 호출 =====
+  let _tarotInput = null;
+  let _tarotResult = null;
   async function requestReading() {
     const cardsData = selectedCards.map(c => ({ id: c.id, reversed: c.reversed }));
     const question = document.getElementById('tarotQuestion').value.trim();
 
     try {
+      const input = { cards: cardsData, question, lang: lang() };
       const resp = await fetch(API_BASE + '/api/tarot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cards: cardsData, question, lang: lang() }),
+        body: JSON.stringify(input),
       });
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
+      _tarotInput = input;
+      _tarotResult = data;
       document.getElementById('tarotLoading').classList.remove('show');
       showResult(data);
     } catch (err) {
@@ -677,6 +683,12 @@
       </div>`;
     }
 
+    // 카카오톡 공유
+    html += `<div class="tarot-result-card" style="text-align:center">
+      <button class="btn btn-kakao" id="tarotShareBtn" style="max-width:320px;margin:0 auto">💬 ${_L('카카오톡으로 결과 공유', 'Share result on KakaoTalk')}</button>
+      <p style="font-size:0.72rem;color:#888;margin-top:8px">${_L('공유 링크는 1년간 유지됩니다', 'Share links are valid for 1 year')}</p>
+    </div>`;
+
     // 버튼
     html += `<div class="tarot-btn-wrap">
       <button class="tarot-reset-btn" onclick="location.reload()">${_L('다시 뽑기', 'Draw Again')}</button>
@@ -684,7 +696,27 @@
 
     wrap.innerHTML = html;
     wrap.classList.add('show');
+    const shareBtn = document.getElementById('tarotShareBtn');
+    if (shareBtn) shareBtn.addEventListener('click', () => {
+      KarmaShare.shareKakao(
+        _L('내 타로 리딩 결과', 'My Tarot Reading'),
+        _L('AI 타로 리딩 결과를 확인해보세요', 'Check out my AI tarot reading')
+      );
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showResultShared(result) {
+    phase = 'result';
+    const qw = document.getElementById('questionWrap');
+    if (qw) qw.style.display = 'none';
+    const inst = document.getElementById('tarotInstruction');
+    if (inst) inst.style.display = 'none';
+    const info = document.getElementById('selectedInfo');
+    if (info) info.style.display = 'none';
+    const grid = document.getElementById('tarotGrid');
+    if (grid) grid.style.display = 'none';
+    showResult(result);
   }
 
   function showError(msg) {
@@ -706,6 +738,18 @@
     const q = document.getElementById('tarotQuestion');
     if (q) q.placeholder = l === 'en' ? 'Enter your question (optional)' : '질문을 입력하세요 (선택사항)';
   };
+
+  KarmaShare.init({
+    type: 'tarot',
+    lang: 'en',
+    pageBase: '/tarot-en',
+    getPayload: () => ({ input: _tarotInput, result: _tarotResult }),
+    onLoadShared: ({ input, result }) => {
+      _tarotInput = input;
+      _tarotResult = result;
+      showResultShared(result);
+    },
+  });
 
 })();
 </script>
