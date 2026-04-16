@@ -10,7 +10,7 @@
 (function () {
   const API_BASE = 'https://karma-api.yama5993.workers.dev';
   const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js';
-  const KAKAO_APP_KEY = '41684f8ded61c7e396e37031d51bbc3c';
+  const KAKAO_APP_KEY = '6f68bee4af57f64f3a5aa093b1f87433';
   const DEFAULT_OG_IMAGE = 'https://karma.archerlab.dev/images/og-karma.png';
 
   let _config = null;
