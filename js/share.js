@@ -59,6 +59,30 @@
     return `${origin}${base}?id=${encodeURIComponent(id)}`;
   }
 
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (_) {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (_) { return false; }
+  }
+
   async function shareKakao(title, description, imageUrl) {
     if (!_config) { alert('공유 설정 오류'); return; }
     const btn = document.activeElement;
@@ -75,9 +99,21 @@
         input: payload.input,
         result: payload.result,
       });
-      await ensureKakaoSdk();
       const shareUrl = buildShareUrl(id);
       const isEn = _config.lang === 'en';
+
+      if (!isMobile()) {
+        const ok = await copyToClipboard(shareUrl);
+        const msg = ok
+          ? (isEn ? 'Link copied to clipboard!\nPaste it in KakaoTalk to share.\n\n' + shareUrl
+                  : '링크가 복사되었습니다!\n카카오톡에 붙여넣어 공유하세요.\n\n' + shareUrl)
+          : (isEn ? 'Share this link:\n\n' + shareUrl
+                  : '아래 링크를 복사해 공유하세요:\n\n' + shareUrl);
+        alert(msg);
+        return;
+      }
+
+      await ensureKakaoSdk();
       Kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
