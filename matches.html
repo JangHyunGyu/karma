@@ -109,7 +109,6 @@ async function openChat(otherId, nickname) {
   currentChatUser = otherId;
   document.getElementById('chatModal').style.display = 'block';
   document.getElementById('chatTitle').textContent = nickname + '님과의 쪽지';
-  document.getElementById('chatInput').focus();
 
   // 읽음 처리
   fetch(API_BASE + '/api/messages/' + otherId + '/read', {

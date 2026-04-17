@@ -617,6 +617,42 @@ option { background: #1a1a2e; color: #e0e0e0; }
   border-radius: 10px;
   letter-spacing: 0.3px;
 }
+.menu-card.disabled { opacity: 0.55; }
+.menu-card.disabled:hover { transform: none; border-color: rgba(201,160,68,0.12); box-shadow: none; }
+.menu-card.disabled:hover .menu-icon svg { transform: none; filter: drop-shadow(0 2px 12px rgba(201,160,68,0.25)); }
+.menu-card.disabled:hover::before { opacity: 0; }
+.menu-card.disabled:active { transform: none; }
+
+/* coming-soon \ubaa8\ub2ec */
+.coming-soon-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 999;
+  justify-content: center; align-items: center;
+}
+.coming-soon-modal.show { display: flex; }
+.coming-soon-inner {
+  background: rgba(20,15,30,0.95);
+  border: 1px solid rgba(201,160,68,0.3);
+  border-radius: 16px;
+  padding: 32px 28px;
+  text-align: center;
+  max-width: 320px;
+  margin: 20px;
+}
+.coming-soon-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.coming-soon-title { font-size: 1.1rem; font-weight: 700; color: #c9a044; margin-bottom: 8px; }
+.coming-soon-desc { font-size: 0.85rem; color: #aaa; line-height: 1.6; margin-bottom: 20px; }
+.coming-soon-btn {
+  padding: 10px 28px;
+  border: none; border-radius: 20px;
+  background: linear-gradient(135deg,#8b5e2f,#c9a044);
+  color: #fff;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.85rem; font-weight: 600;
+  cursor: pointer;
+}
 
 /* 랜딩 페이지 엔트리 카드 (서브페이지용) */
 .entry-card {

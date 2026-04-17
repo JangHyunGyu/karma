@@ -110,7 +110,6 @@ async function openChat(otherId, nickname) {
   currentChatUser = otherId;
   document.getElementById('chatModal').style.display = 'block';
   document.getElementById('chatTitle').textContent = 'Messages with ' + nickname;
-  document.getElementById('chatInput').focus();
 
   // Mark as read
   fetch(API_BASE + '/api/messages/' + otherId + '/read', {

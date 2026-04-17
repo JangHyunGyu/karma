@@ -1408,9 +1408,16 @@ const TAROT_MAJOR_ARCANA = [
 function buildTarotPrompt(cards, question, lang) {
   const isEn = lang === 'en';
   const cardDescs = cards.map((c, i) => {
-    const pos = i === 0 ? (isEn ? 'Past' : '과거') : i === 1 ? (isEn ? 'Present' : '현재') : (isEn ? 'Future' : '미래');
-    const dir = c.reversed ? (isEn ? 'REVERSED' : '역방향') : (isEn ? 'UPRIGHT' : '정방향');
     const keywords = c.reversed ? c.rev : c.up;
+    if (isEn) {
+      const pos = i === 0 ? 'Past' : i === 1 ? 'Present' : 'Future';
+      const dir = c.reversed ? 'REVERSED' : 'UPRIGHT';
+      return `- ${pos}: ${c.name} [${dir}]
+  Keywords (reference, translate to English in your response): ${keywords}
+  Imagery (reference, translate to English in your response): ${c.imagery}`;
+    }
+    const pos = i === 0 ? '과거' : i === 1 ? '현재' : '미래';
+    const dir = c.reversed ? '역방향' : '정방향';
     return `- ${pos}: ${c.nameKo} (${c.name}) [${dir}]
   키워드: ${keywords}
   카드 그림: ${c.imagery}`;
@@ -1420,6 +1427,8 @@ function buildTarotPrompt(cards, question, lang) {
 
   if (isEn) {
     const system = `You are a friendly, empathetic tarot counselor. Write so that someone who has never seen a tarot card can instantly understand. Avoid mystical or esoteric language.
+
+**LANGUAGE: You MUST respond entirely in English. Every string in the JSON output — including card position names, interpretations, overall, advice, and keywords — must be in English. Any Korean text in the user input is internal reference data only; translate its meaning into English.**
 
 ## Interpretation Rules
 1. **Direction matters**: Upright = things are working smoothly in that area. Reversed = something is stuck or overdone. Always reflect the direction.

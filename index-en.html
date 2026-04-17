@@ -168,7 +168,7 @@
       <div class="menu-title">Palm Reading</div>
       <div class="menu-desc">Palm Photo Analysis</div>
     </div>
-    <div class="menu-card" onclick="document.getElementById('comingSoon').style.display='flex'">
+    <div class="menu-card disabled" onclick="document.getElementById('comingSoon').classList.add('show')">
       <div class="menu-icon"><svg viewBox="0 0 60 60" width="60" height="60"><defs><radialGradient id="bg8" cx="50%" cy="35%"><stop offset="0%" stop-color="#2d1b5e"/><stop offset="100%" stop-color="#150d30"/></radialGradient></defs><rect rx="14" width="60" height="60" fill="url(#bg8)" stroke="url(#g1)" stroke-width="1.2" opacity="0.9"/><circle cx="22" cy="20" r="8" fill="url(#g1)" opacity="0.7"/><circle cx="38" cy="20" r="8" fill="url(#g1)" opacity="0.5"/><path d="M10 50 Q10 36 22 36 Q27 36 30 38 Q33 36 38 36 Q50 36 50 50" fill="url(#g1)" opacity="0.4"/><circle cx="22" cy="19" r="2" fill="#fff" opacity="0.2"/><circle cx="38" cy="19" r="2" fill="#fff" opacity="0.15"/></svg></div>
       <div class="menu-title">Matching</div>
       <div class="menu-desc">Find Your Match</div>
@@ -178,12 +178,12 @@
 
 </div>
 
-<div id="comingSoon" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;justify-content:center;align-items:center">
-  <div style="background:rgba(20,15,30,0.95);border:1px solid rgba(201,160,68,0.3);border-radius:16px;padding:32px 28px;text-align:center;max-width:320px;margin:20px">
-    <div style="font-size:2.5rem;margin-bottom:12px">🚧</div>
-    <div style="font-size:1.1rem;font-weight:700;color:#c9a044;margin-bottom:8px">Coming Soon</div>
-    <p style="font-size:0.85rem;color:#aaa;line-height:1.6;margin-bottom:20px">Profile matching service is currently under development.<br>Stay tuned for the launch!</p>
-    <button onclick="document.getElementById('comingSoon').style.display='none'" style="padding:10px 28px;border:none;border-radius:20px;background:linear-gradient(135deg,#8b5e2f,#c9a044);color:#fff;font-family:'Noto Serif KR',serif;font-size:0.85rem;font-weight:600;cursor:pointer">OK</button>
+<div id="comingSoon" class="coming-soon-modal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="coming-soon-inner">
+    <div class="coming-soon-icon">🚧</div>
+    <div class="coming-soon-title">Coming Soon</div>
+    <p class="coming-soon-desc">Profile matching service is currently under development.<br>Stay tuned for the launch!</p>
+    <button class="coming-soon-btn" onclick="document.getElementById('comingSoon').classList.remove('show')">OK</button>
   </div>
 </div>
 
