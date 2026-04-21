@@ -17,7 +17,7 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 let _cacheTableReady = false;
 let _perfStatsTableReady = false;
 
-async function createGeminiCache(apiKey, staticContent, model, ttl = '3600s') {
+async function createGeminiCache(apiKey, staticContent, model, ttl = '600s') {
   try {
     const res = await fetch(`${GEMINI_API_BASE}/cachedContents?key=${apiKey}`, {
       method: 'POST',
@@ -41,7 +41,7 @@ async function createGeminiCache(apiKey, staticContent, model, ttl = '3600s') {
   }
 }
 
-async function updateGeminiCacheTTL(apiKey, cacheName, ttl = '3600s') {
+async function updateGeminiCacheTTL(apiKey, cacheName, ttl = '600s') {
   try {
     const res = await fetch(`${GEMINI_API_BASE}/${cacheName}?key=${apiKey}`, {
       method: 'PATCH',
@@ -81,7 +81,7 @@ async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
       updateGeminiCacheTTL(apiKey, existing.cache_name).then(ok => {
         if (ok && env.DB) {
           env.DB.prepare(
-            "UPDATE gemini_cache SET expires_at = datetime('now', '+1 hour') WHERE cache_key = ?"
+            "UPDATE gemini_cache SET expires_at = datetime('now', '+10 minutes') WHERE cache_key = ?"
           ).bind(cacheKey).run().catch(() => {});
         }
       });
@@ -92,7 +92,7 @@ async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
   const cacheName = await createGeminiCache(apiKey, staticContent, model);
   if (cacheName) {
     await env.DB.prepare(
-      "INSERT OR REPLACE INTO gemini_cache (cache_key, cache_name, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))"
+      "INSERT OR REPLACE INTO gemini_cache (cache_key, cache_name, expires_at) VALUES (?, ?, datetime('now', '+10 minutes'))"
     ).bind(cacheKey, cacheName).run();
     return cacheName;
   }
