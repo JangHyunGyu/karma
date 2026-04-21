@@ -42,15 +42,13 @@
   html:has(body.bg-compat) { overflow: visible; }
   /* 카테고리별 궁합 점수 바 */
   .cat-grid { display: flex; flex-direction: column; gap: 16px; margin: 16px 0; }
-  .cat-item { cursor: pointer; }
   .cat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
   .cat-icon { font-size: 1.2rem; width: 28px; text-align: center; flex-shrink: 0; }
   .cat-label { font-size: 0.85rem; color: #ccc; flex: 1; }
   .cat-score { font-size: 0.95rem; font-weight: 700; min-width: 36px; text-align: right; }
   .cat-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
   .cat-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; width: 0; }
-  .cat-desc { font-size: 0.8rem; color: #999; line-height: 1.5; padding: 8px 0 0 38px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 0; }
-  .cat-desc.open { max-height: 200px; opacity: 1; }
+  .cat-desc { font-size: 0.85rem; color: #bbb; line-height: 1.6; padding: 10px 0 0 38px; }
   .cat-score-s { color: #ffd93d; }
   .cat-score-a { color: #81c784; }
   .cat-score-b { color: #64b5f6; }
@@ -463,7 +461,7 @@ function renderResult(d) {
       const sc = cat.score ?? 0;
       const g = sc >= 90 ? 's' : sc >= 75 ? 'a' : sc >= 60 ? 'b' : sc >= 40 ? 'c' : 'd';
       const colors = { s: 'linear-gradient(90deg,#ffd93d,#ffb74d)', a: 'linear-gradient(90deg,#81c784,#4caf50)', b: 'linear-gradient(90deg,#64b5f6,#42a5f5)', c: 'linear-gradient(90deg,#ffb74d,#ff9800)', d: 'linear-gradient(90deg,#ef5350,#e53935)' };
-      return `<div class="cat-item" onclick="this.querySelector('.cat-desc').classList.toggle('open')">
+      return `<div class="cat-item">
         <div class="cat-header">
           <span class="cat-icon">${c.icon}</span>
           <span class="cat-label">${_L(c.ko, c.en)}</span>
