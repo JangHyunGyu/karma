@@ -456,6 +456,27 @@
 </div>
 
 <script>
+// gsap CDN 로드 실패 시 no-op stub — ReferenceError 방지 (IIFE 진입 전에 정의)
+if (typeof window.gsap === 'undefined') {
+  var _gsapStub = {};
+  var _gsapNoop = function(){ return _gsapStub; };
+  _gsapStub.to = function(el, p){
+    try {
+      if (el && el.style) {
+        if (p && p.opacity !== undefined) el.style.opacity = p.opacity;
+        if (p && p.y !== undefined) el.style.transform = 'translateY(0)';
+        if (p && p.scale !== undefined) el.style.transform = (el.style.transform || '') + ' scale(' + p.scale + ')';
+      }
+    } catch (e) {}
+    return _gsapStub;
+  };
+  _gsapStub.from = _gsapNoop;
+  _gsapStub.fromTo = _gsapNoop;
+  _gsapStub.set = _gsapNoop;
+  _gsapStub.timeline = function(){ return _gsapStub; };
+  window.gsap = _gsapStub;
+  console.warn('[gsap] CDN load failed — using no-op stub');
+}
 (function() {
   'use strict';
 
