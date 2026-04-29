@@ -1,0 +1,32 @@
+# Karma - Free AI Fortune and Saju
+> Free Korean AI fortune platform for saju, daily fortune, yearly fortune, compatibility, tarot, face reading, and palm reading.
+
+## About
+Karma is a browser-based AI fortune service. Users can explore Korean saju, 2026 yearly fortune, daily fortune, compatibility, tarot readings, AI face reading, and AI palm reading without signup.
+
+## Features
+- Free AI saju analysis
+- 2026 yearly fortune and daily fortune
+- Saju compatibility and relationship readings
+- Tarot card readings
+- AI face reading and palm reading
+- Korean and English pages
+- No signup required
+
+## Important Note
+Karma provides entertainment and cultural interpretation. It is not professional financial, legal, medical, or psychological advice.
+
+## Links
+- Home: https://karma.archerlab.dev/
+- Saju: https://karma.archerlab.dev/saju
+- Daily fortune: https://karma.archerlab.dev/daily
+- Tarot: https://karma.archerlab.dev/tarot
+- Sitemap: https://karma.archerlab.dev/sitemap.xml
+- Developer: https://archerlab.dev
+
+## Languages
+- Korean (한국어)
+- English
+
+## Category
+AI Fortune, Saju, Tarot, Compatibility, Korean Astrology, Entertainment
