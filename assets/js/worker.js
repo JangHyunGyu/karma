@@ -17,6 +17,15 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 let _cacheTableReady = false;
 let _perfStatsTableReady = false;
 
+function getGeminiCacheScope(apiKey) {
+  let hash = 2166136261;
+  for (let i = 0; i < apiKey.length; i++) {
+    hash ^= apiKey.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 async function createGeminiCache(apiKey, staticContent, model, ttl = '600s') {
   try {
     const res = await fetch(`${GEMINI_API_BASE}/cachedContents?key=${apiKey}`, {
@@ -85,7 +94,7 @@ async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
           ).bind(cacheKey).run().catch(() => {});
         }
       });
-      return existing.cache_name;
+      return { name: existing.cache_name, hit: true };
     }
     await env.DB.prepare('DELETE FROM gemini_cache WHERE cache_key = ?').bind(cacheKey).run();
   }
@@ -94,7 +103,7 @@ async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
     await env.DB.prepare(
       "INSERT OR REPLACE INTO gemini_cache (cache_key, cache_name, expires_at) VALUES (?, ?, datetime('now', '+10 minutes'))"
     ).bind(cacheKey, cacheName).run();
-    return cacheName;
+    return { name: cacheName, hit: false };
   }
   return null;
 }
@@ -1225,29 +1234,37 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
   const _contentsSize = promptText.length;
 
   // 캐싱 시도
-  let cachedContentName = null;
-  if (isStructured && _env?.DB && apiKeys.length) {
-    try {
-      cachedContentName = await getOrCreateCache(_env, cacheKey, prompt.system, GEMINI_MODEL, apiKeys[0]);
-    } catch (e) {
-      console.warn('[GeminiCache] Error:', e.message);
-    }
-  }
-
-  const payload = {
-    contents: [{ parts: [{ text: promptText }] }],
-    generationConfig: { temperature: 0.5, thinkingConfig: { thinkingLevel: "high" } },
-  };
-  if (cachedContentName) {
-    payload.cachedContent = cachedContentName;
-  } else if (isStructured) {
-    payload.systemInstruction = { parts: [{ text: prompt.system }] };
-  }
-  const body = JSON.stringify(payload);
   const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
     const isLast = i === apiKeys.length - 1;
     try {
+      let cachedContentName = null;
+      let cacheHit = false;
+      let scopedCacheKey = cacheKey;
+
+      if (isStructured && _env?.DB) {
+        try {
+          scopedCacheKey = `${cacheKey}:kh${getGeminiCacheScope(apiKeys[i])}`;
+          const cacheResult = await getOrCreateCache(_env, scopedCacheKey, prompt.system, GEMINI_MODEL, apiKeys[i]);
+          if (cacheResult?.name) {
+            cachedContentName = cacheResult.name;
+            cacheHit = !!cacheResult.hit;
+          }
+        } catch (e) {
+          console.warn('[GeminiCache] Error:', e.message);
+        }
+      }
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { temperature: 0.5, thinkingConfig: { thinkingLevel: "high" } },
+      };
+      if (cachedContentName) {
+        payload.cachedContent = cachedContentName;
+      } else if (isStructured) {
+        payload.systemInstruction = { parts: [{ text: prompt.system }] };
+      }
+      const body = JSON.stringify(payload);
       const resp = await fetch(`${GEMINI_URL}?key=${apiKeys[i]}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1283,8 +1300,8 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         const _um = data.usageMetadata || {};
         logPerfStats(_env, _ctx, {
           app: `karma:${endpoint}`,
-          cache_key: cacheKey,
-          cache_hit: cachedContentName ? 1 : 0,
+          cache_key: scopedCacheKey,
+          cache_hit: cacheHit ? 1 : 0,
           prompt_tokens: _um.promptTokenCount || 0,
           cached_tokens: _um.cachedContentTokenCount || 0,
           output_tokens: _um.candidatesTokenCount || 0,
