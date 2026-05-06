@@ -153,7 +153,14 @@
 </style>
 <script src="/js/browser-check.js"></script>
 <script src="/js/components.js?v=5"></script>
-<script src="/js/share.js?v=3"></script>
+<script>
+window.KarmaShare = window.KarmaShare || {
+  _pendingInit: null,
+  init: function(config) { this._pendingInit = config; },
+  shareKakao: function() { alert('Sharing is temporarily unavailable. Please refresh and try again.'); }
+};
+</script>
+<script data-cfasync="false" src="/js/share.js?v=4"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",

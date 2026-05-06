@@ -8,6 +8,7 @@
 //   2) 공유 버튼 클릭 시 KarmaShare.shareKakao(title, description)
 //   3) 페이지 로드 시 자동으로 ?id=xxx 감지해서 onLoadShared 호출
 (function () {
+  const previousKarmaShare = window.KarmaShare;
   const API_BASE = 'https://karma-api.yama5993.workers.dev';
   const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js';
   const KAKAO_APP_KEY = '6f68bee4af57f64f3a5aa093b1f87433';
@@ -175,4 +176,7 @@
   }
 
   window.KarmaShare = { init, shareKakao };
+  if (previousKarmaShare && previousKarmaShare._pendingInit) {
+    init(previousKarmaShare._pendingInit);
+  }
 })();
