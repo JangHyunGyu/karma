@@ -184,6 +184,20 @@ function getBirthDate() {
 }
 
 // ===== 커스텀 콤보박스 =====
+function setComboLayerState(combo, active) {
+  if (!combo) return;
+
+  const parentCard = combo.closest('.card');
+  if (parentCard) parentCard.classList.toggle('combo-active', active);
+
+  let node = combo.parentElement;
+  while (node && node !== parentCard && node !== document.body && node !== document.documentElement) {
+    node.classList.toggle('combo-layer-active', active);
+    node.classList.toggle('combo-layer-direct', active && node === combo.parentElement);
+    node = node.parentElement;
+  }
+}
+
 function createCombo(selectEl) {
   if (!selectEl || selectEl.dataset.comboInit) return;
   selectEl.dataset.comboInit = '1';
@@ -220,6 +234,7 @@ function createCombo(selectEl) {
       dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
       div.classList.add('selected');
       combo.classList.remove('open');
+      setComboLayerState(combo, false);
       selectEl.dispatchEvent(new Event('change'));
     });
     dropdown.appendChild(div);
@@ -250,20 +265,12 @@ function createCombo(selectEl) {
     document.querySelectorAll('.combo.open').forEach(c => {
       if (c !== combo) {
         c.classList.remove('open');
-        const card = c.closest('.card');
-        if (card) card.classList.remove('combo-active');
+        setComboLayerState(c, false);
       }
     });
     combo.classList.toggle('open');
     // 부모 카드에 z-index 클래스 토글
-    const parentCard = combo.closest('.card');
-    if (parentCard) {
-      if (combo.classList.contains('open')) {
-        parentCard.classList.add('combo-active');
-      } else {
-        parentCard.classList.remove('combo-active');
-      }
-    }
+    setComboLayerState(combo, combo.classList.contains('open'));
     // fixed 위치 계산
     if (combo.classList.contains('open')) {
       positionDropdown();
@@ -394,6 +401,7 @@ function updateMonths() {
         dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
         div.classList.add('selected');
         combo.classList.remove('open');
+        setComboLayerState(combo, false);
         updateDays();
         saveInputs();
       });
@@ -483,8 +491,7 @@ function initAllCombos() {
 document.addEventListener('click', () => {
   document.querySelectorAll('.combo.open').forEach(c => {
     c.classList.remove('open');
-    const card = c.closest('.card');
-    if (card) card.classList.remove('combo-active');
+    setComboLayerState(c, false);
   });
 });
 
@@ -493,8 +500,7 @@ window.addEventListener('scroll', (e) => {
   if (e.target.closest && e.target.closest('.combo-dropdown')) return;
   document.querySelectorAll('.combo.open').forEach(c => {
     c.classList.remove('open');
-    const card = c.closest('.card');
-    if (card) card.classList.remove('combo-active');
+    setComboLayerState(c, false);
   });
 }, true);
 

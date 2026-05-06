@@ -1050,10 +1050,39 @@ body .tarot-card.selected .card-back {
 }
 
 /* Keep custom list boxes readable above textured panels. */
-.card.combo-active,
+.card.combo-active {
+  overflow: visible;
+  z-index: 9000 !important;
+}
+
 .card:has(.combo.open) {
   overflow: visible;
   z-index: 9000 !important;
+}
+
+.combo-layer-active {
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 10040 !important;
+}
+
+.combo-layer-direct {
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 10045 !important;
+}
+
+.card.combo-active > *:has(.combo.open),
+.card.combo-active :is(.date-selects, .date-select-group, .row, .row3, .options-row, .opt-group, .custom-select-wrap, [id^="locationWrap"]):has(.combo.open) {
+  position: relative;
+  overflow: visible !important;
+  z-index: 10040 !important;
+}
+
+.card.combo-active :is(.date-selects, .row, .row3, .options-row):has(.combo.open) > *:has(.combo.open) {
+  position: relative;
+  overflow: visible !important;
+  z-index: 10045 !important;
 }
 
 .combo.open {

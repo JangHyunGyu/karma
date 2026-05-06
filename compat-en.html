@@ -317,6 +317,7 @@ function updateMonthsFor(prefix) {
         dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
         div.classList.add('selected');
         combo.classList.remove('open');
+        if (typeof setComboLayerState === 'function') setComboLayerState(combo, false);
         updateDaysFor(prefix);
         saveCompatInputs();
       });
