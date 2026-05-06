@@ -665,7 +665,39 @@ function restoreShareInput(input) {
 }
 
 // 초기화
+function enableKarmaClickBursts() {
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  if (reduceMotion) return;
+
+  const interactiveSelector = [
+    'a',
+    'button',
+    '[role="button"]',
+    '.menu-card',
+    '.entry-card',
+    '.match-card',
+    '.tarot-card',
+    '.combo-trigger',
+    '.combo-option',
+    '.card[data-href]'
+  ].join(',');
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !(event.target instanceof Element)) return;
+    const target = event.target.closest(interactiveSelector);
+    if (!target || target.closest('.karma-click-burst') || target.closest('.disabled, [disabled]')) return;
+
+    const burst = document.createElement('span');
+    burst.className = 'karma-click-burst';
+    burst.style.left = event.clientX + 'px';
+    burst.style.top = event.clientY + 'px';
+    document.body.appendChild(burst);
+    burst.addEventListener('animationend', () => burst.remove(), { once: true });
+  }, { passive: true });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  enableKarmaClickBursts();
   initAllCombos();
   const isSharedLink = new URLSearchParams(window.location.search).has('id');
   if (document.getElementById('locationWrap')) createLocationSelect('locationWrap');

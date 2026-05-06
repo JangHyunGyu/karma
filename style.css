@@ -1,5 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&display=swap');
 
+:root {
+  --karma-ui-surface: url('/images/ui/karma-ui-surface.webp');
+  --karma-ui-frame: url('/images/ui/karma-ui-frame.webp');
+  --karma-ui-hover: url('/images/ui/karma-ui-hover-aura.webp');
+  --karma-ui-click: url('/images/ui/karma-ui-click-burst.webp');
+  --karma-tarot-back: url('/images/ui/karma-tarot-back.webp');
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { overflow-x: hidden; max-width: 100vw; }
 body {
@@ -734,4 +742,309 @@ option { background: #1a1a2e; color: #e0e0e0; }
   body.bg-saju::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-saju-mobile.webp'); }
   body.bg-fortune::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-fortune-mobile.webp'); }
   body.bg-compat::after { background-image: linear-gradient(rgba(10,10,30,0.85), rgba(10,10,30,0.85)), url('/images/bg-compat-mobile.webp'); }
+}
+
+/* Image asset UI skin */
+body.bg-main::after, body.bg-saju::after, body.bg-fortune::after, body.bg-compat::after {
+  background-blend-mode: normal, soft-light, normal;
+}
+body.bg-main::after {
+  background-image:
+    linear-gradient(rgba(10,10,30,0.83), rgba(10,10,30,0.83)),
+    var(--karma-ui-surface),
+    url('/images/bg-main.webp');
+}
+body.bg-saju::after {
+  background-image:
+    linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+    var(--karma-ui-surface),
+    url('/images/bg-saju.webp');
+}
+body.bg-fortune::after {
+  background-image:
+    linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+    var(--karma-ui-surface),
+    url('/images/bg-fortune.webp');
+}
+body.bg-compat::after {
+  background-image:
+    linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+    var(--karma-ui-surface),
+    url('/images/bg-compat.webp');
+}
+
+.card,
+.menu-card,
+.match-card,
+.coming-soon-inner,
+.tarot-result-card,
+.zodiac-card,
+.cat-card,
+.year-page .lead {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(155deg, rgba(25,16,38,0.86), rgba(9,7,22,0.94)),
+    var(--karma-ui-surface) center / 520px 520px !important;
+  background-blend-mode: normal, soft-light !important;
+  border-color: rgba(201,160,68,0.22) !important;
+  box-shadow: 0 16px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,230,160,0.04);
+}
+
+.card::before,
+.menu-card::before,
+.match-card::before,
+.coming-soon-inner::before,
+.tarot-result-card::before,
+.zodiac-card::before,
+.cat-card::before,
+.year-page .lead::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    var(--karma-ui-frame) center / 100% 100% no-repeat,
+    var(--karma-ui-hover) center -30% / 145% 86% no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.24;
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.32s ease;
+}
+
+.card > *,
+.menu-card > *,
+.match-card > *,
+.coming-soon-inner > *,
+.tarot-result-card > *,
+.zodiac-card > *,
+.cat-card > *,
+.year-page .lead > * {
+  position: relative;
+  z-index: 1;
+}
+
+.card:hover::before,
+.menu-card:hover::before,
+.entry-card:hover::before,
+.match-card:hover::before,
+.tarot-result-card:hover::before,
+.zodiac-card:hover::before,
+.cat-card:hover::before {
+  opacity: 0.52;
+  transform: scale(1.01);
+}
+
+.menu-card.disabled:hover::before,
+.btn:disabled::before {
+  opacity: 0;
+}
+
+.home-nav a,
+select.lang-select,
+.combo-trigger,
+.cal-btn,
+.btn,
+.coming-soon-btn,
+.tarot-reset-btn,
+.year-cta-row a,
+.year-page .cta-main {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgba(201,160,68,0.14), rgba(15,11,31,0.86)),
+    var(--karma-ui-surface) center / 340px 340px !important;
+  background-blend-mode: normal, soft-light !important;
+  border-color: rgba(201,160,68,0.34) !important;
+}
+
+.btn,
+.coming-soon-btn,
+.tarot-reset-btn,
+.year-page .cta-main {
+  background:
+    linear-gradient(135deg, rgba(139,94,47,0.94), rgba(201,160,68,0.95), rgba(212,175,85,0.92)),
+    var(--karma-ui-surface) center / 380px 380px !important;
+  background-blend-mode: normal, soft-light !important;
+}
+
+.btn.btn-kakao {
+  background: #FEE500 !important;
+  color: #191919;
+  text-shadow: none;
+}
+
+select.lang-select {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a044'/%3E%3C/svg%3E"),
+    linear-gradient(145deg, rgba(201,160,68,0.14), rgba(15,11,31,0.86)),
+    var(--karma-ui-surface) !important;
+  background-repeat: no-repeat, no-repeat, repeat !important;
+  background-position: right 10px center, center, center !important;
+  background-size: 10px 6px, auto, 340px 340px !important;
+  background-blend-mode: normal, normal, soft-light !important;
+}
+
+.home-nav a::before,
+.combo-trigger::before,
+.cal-btn::before,
+.btn::before,
+.coming-soon-btn::before,
+.tarot-reset-btn::before,
+.year-cta-row a::before,
+.year-page .cta-main::before {
+  content: '';
+  position: absolute;
+  inset: -110% -45%;
+  background: var(--karma-ui-hover) center / cover no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translateX(-12%) scale(0.9);
+  transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.home-nav a:hover::before,
+.combo-trigger:hover::before,
+.combo.open .combo-trigger::before,
+.cal-btn:hover::before,
+.cal-btn.active::before,
+.btn:hover::before,
+.coming-soon-btn:hover::before,
+.tarot-reset-btn:hover::before,
+.year-cta-row a:hover::before,
+.year-page .cta-main:hover::before {
+  opacity: 0.68;
+  transform: translateX(0) scale(1);
+}
+
+input,
+select,
+.combo-trigger,
+.combo-dropdown,
+.combo-option,
+.tag,
+.score-badge,
+.detail-score-item,
+.advice-box,
+.saju-box,
+.pillar {
+  background-color: rgba(255,255,255,0.065);
+  background-image: var(--karma-ui-surface);
+  background-size: 260px 260px;
+  background-blend-mode: soft-light;
+}
+
+.combo-dropdown {
+  background:
+    linear-gradient(155deg, rgba(26,20,46,0.96), rgba(7,6,18,0.98)),
+    var(--karma-ui-surface) center / 360px 360px;
+  background-blend-mode: normal, soft-light;
+  border-color: rgba(201,160,68,0.28);
+}
+
+.entry-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.entry-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    var(--karma-ui-frame) center / 100% 100% no-repeat,
+    var(--karma-ui-hover) center / 140% 90% no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
+}
+.entry-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+body .card-back {
+  background:
+    linear-gradient(rgba(10,4,18,0.06), rgba(10,4,18,0.2)),
+    var(--karma-tarot-back) center / cover no-repeat !important;
+  border-color: rgba(240,216,112,0.82) !important;
+  box-shadow: inset 0 0 24px rgba(0,0,0,0.38), 0 0 22px rgba(201,160,68,0.15);
+}
+body .tarot-card:hover {
+  box-shadow: 0 12px 34px rgba(0,0,0,0.42), 0 0 30px rgba(201,160,68,0.18) !important;
+}
+body .tarot-card.selected::after {
+  background:
+    var(--karma-ui-hover) center / cover no-repeat,
+    linear-gradient(135deg, #f0d870, #c9a044) !important;
+  background-blend-mode: screen, normal;
+}
+body .tarot-card.selected .card-back {
+  filter: brightness(1.12) saturate(1.06);
+}
+
+.karma-click-burst {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 104px;
+  height: 104px;
+  z-index: 10000;
+  background: var(--karma-ui-click) center / cover no-repeat;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  animation: karma-click-burst 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes karma-click-burst {
+  0% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  }
+  58% { opacity: 0.7; }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.35) rotate(12deg);
+  }
+}
+
+@media (max-width: 768px) {
+  body.bg-main::after {
+    background-image:
+      linear-gradient(rgba(10,10,30,0.83), rgba(10,10,30,0.83)),
+      var(--karma-ui-surface),
+      url('/images/bg-main-mobile.webp');
+  }
+  body.bg-saju::after {
+    background-image:
+      linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+      var(--karma-ui-surface),
+      url('/images/bg-saju-mobile.webp');
+  }
+  body.bg-fortune::after {
+    background-image:
+      linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+      var(--karma-ui-surface),
+      url('/images/bg-fortune-mobile.webp');
+  }
+  body.bg-compat::after {
+    background-image:
+      linear-gradient(rgba(10,10,30,0.84), rgba(10,10,30,0.84)),
+      var(--karma-ui-surface),
+      url('/images/bg-compat-mobile.webp');
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .karma-click-burst {
+    display: none;
+    animation: none;
+  }
 }
