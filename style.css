@@ -1048,3 +1048,45 @@ body .tarot-card.selected .card-back {
     animation: none;
   }
 }
+
+/* Keep custom list boxes readable above textured panels. */
+.card.combo-active,
+.card:has(.combo.open) {
+  overflow: visible;
+  z-index: 9000 !important;
+}
+
+.combo.open {
+  position: relative;
+  z-index: 10050 !important;
+}
+
+.combo.open .combo-trigger {
+  border-color: rgba(240,216,112,0.86);
+  box-shadow: 0 0 0 1px rgba(201,160,68,0.18), 0 0 18px rgba(201,160,68,0.22);
+}
+
+.combo-dropdown {
+  z-index: 10060 !important;
+  background:
+    linear-gradient(155deg, rgba(24,16,38,0.99), rgba(7,6,18,0.99)),
+    var(--karma-ui-surface) center / 320px 320px !important;
+  background-blend-mode: normal, soft-light !important;
+  border: 1px solid rgba(240,216,112,0.52) !important;
+  box-shadow: 0 22px 54px rgba(0,0,0,0.72), 0 0 28px rgba(201,160,68,0.18);
+  backdrop-filter: blur(12px);
+}
+
+.combo-option {
+  color: #efe6d2;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  background-color: rgba(10,8,22,0.72);
+}
+
+.combo-option:hover,
+.combo-option.selected {
+  color: #fff7df;
+  background:
+    linear-gradient(135deg, rgba(201,160,68,0.32), rgba(77,45,110,0.36)),
+    var(--karma-ui-hover) center / cover no-repeat;
+}
