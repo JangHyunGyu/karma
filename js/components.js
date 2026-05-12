@@ -702,7 +702,273 @@ function enableKarmaClickBursts() {
   }, { passive: true });
 }
 
+// ===== imagegen 기반 UI 아이콘 치환 =====
+const KARMA_ICON_BASE = '/images/ui/generated/';
+const KARMA_ICON_FILES = {
+  'cat-advice': 'cat-advice.png',
+  'cat-calendar': 'cat-calendar.png',
+  'cat-career': 'cat-career.png',
+  'cat-caution': 'cat-caution.png',
+  'cat-color': 'cat-color.png',
+  'cat-compass': 'cat-compass.png',
+  'cat-detail': 'cat-detail.png',
+  'cat-health': 'cat-health.png',
+  'cat-home': 'cat-home.png',
+  'cat-love': 'cat-love.png',
+  'cat-lucky': 'cat-lucky.png',
+  'cat-number': 'cat-number.png',
+  'cat-personality': 'cat-personality.png',
+  'cat-share': 'cat-share.png',
+  'cat-social': 'cat-social.png',
+  'cat-study': 'cat-study.png',
+  'cat-wealth': 'cat-wealth.png',
+  'element-earth': 'element-earth.png',
+  'element-fire': 'element-fire.png',
+  'element-metal': 'element-metal.png',
+  'element-water': 'element-water.png',
+  'element-wood': 'element-wood.png',
+  'service-compat': 'service-compat.png',
+  'service-daily': 'service-daily.png',
+  'service-face': 'service-face.png',
+  'service-fortune': 'service-fortune.png',
+  'service-matching': 'service-matching.png',
+  'service-palm': 'service-palm.png',
+  'service-saju': 'service-saju.png',
+  'service-soon': 'service-soon.png',
+  'service-tarot': 'service-tarot.png',
+  'upload-face': 'upload-face.png',
+  'upload-palm': 'upload-palm.png',
+  'util-advice': 'util-advice.png',
+  'util-archer': 'util-archer.png',
+  'util-calendar': 'util-calendar.png',
+  'util-camera': 'util-camera.png',
+  'util-check': 'util-check.png',
+  'util-close': 'util-close.png',
+  'util-cycle': 'util-cycle.png',
+  'util-detail': 'util-detail.png',
+  'util-home': 'util-home.png',
+  'util-key': 'util-key.png',
+  'util-language': 'util-language.png',
+  'util-loading': 'util-loading.png',
+  'util-message': 'util-message.png',
+  'util-moon': 'util-moon.png',
+  'util-rocket': 'util-rocket.png',
+  'util-search': 'util-search.png',
+  'util-share': 'util-share.png',
+  'util-sparkle': 'util-sparkle.png',
+  'util-warning': 'util-warning.png',
+  'zodiac-dog': 'zodiac-dog.png',
+  'zodiac-dragon': 'zodiac-dragon.png',
+  'zodiac-goat': 'zodiac-goat.png',
+  'zodiac-horse': 'zodiac-horse.png',
+  'zodiac-horse-fire': 'zodiac-horse-fire.png',
+  'zodiac-monkey': 'zodiac-monkey.png',
+  'zodiac-ox': 'zodiac-ox.png',
+  'zodiac-pig': 'zodiac-pig.png',
+  'zodiac-rabbit': 'zodiac-rabbit.png',
+  'zodiac-rat': 'zodiac-rat.png',
+  'zodiac-rooster': 'zodiac-rooster.png',
+  'zodiac-snake': 'zodiac-snake.png',
+  'zodiac-tiger': 'zodiac-tiger.png',
+};
+
+function karmaIconUrl(name) {
+  return KARMA_ICON_BASE + (KARMA_ICON_FILES[name] || name + '.png');
+}
+
+function karmaIconElement(name, className) {
+  const span = document.createElement('span');
+  span.className = className || 'karma-inline-icon';
+  span.setAttribute('aria-hidden', 'true');
+  const img = document.createElement('img');
+  img.src = karmaIconUrl(name);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  span.appendChild(img);
+  return span;
+}
+
+function karmaIconHtml(name, className) {
+  return '<span class="' + (className || 'karma-inline-icon') + '" aria-hidden="true"><img src="' + karmaIconUrl(name) + '" alt="" loading="lazy" decoding="async"></span>';
+}
+window.karmaIconHtml = karmaIconHtml;
+
+const KARMA_EMOJI_ICONS = {
+  '🏹': 'util-archer',
+  '🏠': 'util-home',
+  '🌐': 'util-language',
+  '🧑': 'service-face',
+  '🤚': 'service-palm',
+  '🖐️': 'service-palm',
+  '🖐': 'service-palm',
+  '💕': 'cat-love',
+  '💖': 'cat-love',
+  '💚': 'cat-love',
+  '❤️': 'cat-love',
+  '❤': 'cat-love',
+  '💰': 'cat-wealth',
+  '💼': 'cat-career',
+  '🏥': 'cat-health',
+  '📚': 'cat-study',
+  '🤝': 'cat-social',
+  '🍀': 'cat-lucky',
+  '💡': 'cat-advice',
+  '📅': 'util-calendar',
+  '🎨': 'cat-color',
+  '🔢': 'cat-number',
+  '🧭': 'cat-compass',
+  '📋': 'cat-detail',
+  '📌': 'cat-caution',
+  '⚠️': 'util-warning',
+  '⚠': 'util-warning',
+  '💬': 'util-share',
+  '🔍': 'util-search',
+  '🔮': 'service-saju',
+  '🃏': 'service-tarot',
+  '🌅': 'service-daily',
+  '🌟': 'service-fortune',
+  '✨': 'util-sparkle',
+  '🔑': 'util-key',
+  '🚧': 'service-soon',
+  '🚀': 'util-rocket',
+  '🌙': 'util-moon',
+  '🧠': 'cat-personality',
+  '🔄': 'util-cycle',
+  '☯': 'util-loading',
+  '🌿': 'element-wood',
+  '🔥': 'element-fire',
+  '🏔': 'element-earth',
+  '⚔': 'element-metal',
+  '🌊': 'element-water',
+  '🐀': 'zodiac-rat',
+  '🐂': 'zodiac-ox',
+  '🐅': 'zodiac-tiger',
+  '🐇': 'zodiac-rabbit',
+  '🐉': 'zodiac-dragon',
+  '🐍': 'zodiac-snake',
+  '🐎': 'zodiac-horse-fire',
+  '🐐': 'zodiac-goat',
+  '🐒': 'zodiac-monkey',
+  '🐓': 'zodiac-rooster',
+  '🐕': 'zodiac-dog',
+  '🐖': 'zodiac-pig',
+};
+const KARMA_EMOJI_KEYS = Object.keys(KARMA_EMOJI_ICONS).sort((a, b) => b.length - a.length);
+
+function injectGeneratedIconCss() {
+  if (document.getElementById('karmaGeneratedIconCss')) return;
+  const style = document.createElement('style');
+  style.id = 'karmaGeneratedIconCss';
+  style.textContent = `
+    .karma-inline-icon{display:inline-flex;width:1.22em;height:1.22em;vertical-align:-0.22em;margin-right:0.22em;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
+    .karma-inline-icon img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 7px rgba(201,160,68,0.28))}
+    h1 .karma-inline-icon{width:1.05em;height:1.05em;vertical-align:-0.14em}
+    h2 .karma-inline-icon,h3 .karma-inline-icon{width:1.18em;height:1.18em}
+    .home-nav .karma-inline-icon,.btn .karma-inline-icon,.archerlab-link .karma-inline-icon{width:1.15em;height:1.15em;margin-right:0.18em}
+    .lang-select-wrap::before{content:'';position:absolute;left:9px;top:50%;width:18px;height:18px;transform:translateY(-50%);background:url('${karmaIconUrl('util-language')}') center/contain no-repeat;z-index:1;pointer-events:none;filter:drop-shadow(0 0 6px rgba(201,160,68,0.32))}
+    select.lang-select{padding-left:32px!important}
+    .menu-icon img{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(201,160,68,0.36));transition:transform .3s,filter .3s}
+    .menu-card:hover .menu-icon img{transform:scale(1.08);filter:drop-shadow(0 6px 22px rgba(201,160,68,0.58))}
+    .upload-area .upload-visual{font-size:0!important;line-height:0}
+    .upload-area .upload-visual img{width:128px;height:128px;object-fit:contain;filter:drop-shadow(0 8px 28px rgba(201,160,68,0.24))}
+    .spinner::before{content:''!important;background:url('${karmaIconUrl('util-loading')}') center/contain no-repeat;filter:drop-shadow(0 0 15px rgba(255,217,61,0.45))}
+    .card-back-ornament,.card-back-symbol{font-size:0!important;display:inline-block;width:1.25em;height:1.25em;background:url('${karmaIconUrl('util-sparkle')}') center/contain no-repeat;filter:drop-shadow(0 0 6px rgba(201,160,68,0.42))}
+    .card-back-symbol{width:2.1em;height:2.1em}
+    .tarot-card.selected::after{content:''!important;background:url('${karmaIconUrl('util-check')}') center/82% 82% no-repeat,linear-gradient(135deg,#f0d870,#c9a044)!important}
+  `;
+  document.head.appendChild(style);
+}
+
+function shouldSkipEmojiReplacement(node) {
+  const parent = node.parentElement;
+  return !parent || !!parent.closest('script,style,noscript,textarea,input,select,option,.karma-inline-icon,.karma-no-icon-replace');
+}
+
+function replaceEmojiTextNode(node) {
+  const text = node.nodeValue;
+  if (!text || !KARMA_EMOJI_KEYS.some(k => text.includes(k))) return;
+  if (shouldSkipEmojiReplacement(node)) return;
+
+  const fragment = document.createDocumentFragment();
+  let index = 0;
+  while (index < text.length) {
+    const match = KARMA_EMOJI_KEYS.find(key => text.startsWith(key, index));
+    if (match) {
+      fragment.appendChild(karmaIconElement(KARMA_EMOJI_ICONS[match]));
+      index += match.length;
+    } else {
+      fragment.appendChild(document.createTextNode(text[index]));
+      index += 1;
+    }
+  }
+  node.parentNode.replaceChild(fragment, node);
+}
+
+function replaceEmojiIcons(root) {
+  if (!root) return;
+  if (root.nodeType === Node.TEXT_NODE) {
+    replaceEmojiTextNode(root);
+    return;
+  }
+  if (!(root instanceof Element || root instanceof Document || root instanceof DocumentFragment)) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(replaceEmojiTextNode);
+}
+
+function observeEmojiIcons() {
+  replaceEmojiIcons(document.body);
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => replaceEmojiIcons(node));
+      if (mutation.type === 'characterData') replaceEmojiIcons(mutation.target);
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
+
+function applyGeneratedServiceIcons() {
+  const order = [
+    'service-saju',
+    'service-daily',
+    'service-fortune',
+    'service-compat',
+    'service-tarot',
+    'service-face',
+    'service-palm',
+    'service-matching',
+  ];
+  document.querySelectorAll('.menu-grid .menu-card .menu-icon').forEach((icon, index) => {
+    const name = order[index] || 'service-soon';
+    icon.innerHTML = '<img src="' + karmaIconUrl(name) + '" alt="" loading="lazy" decoding="async">';
+  });
+}
+
+function applyGeneratedUploadVisuals() {
+  const path = location.pathname;
+  const visual = document.querySelector('.upload-area .upload-visual');
+  if (!visual) return;
+  if (path.includes('face')) {
+    visual.innerHTML = '<img src="' + karmaIconUrl('upload-face') + '" alt="" loading="lazy" decoding="async">';
+  } else if (path.includes('palm')) {
+    visual.innerHTML = '<img src="' + karmaIconUrl('upload-palm') + '" alt="" loading="lazy" decoding="async">';
+  }
+}
+
+function normalizeNativeSelectEmojis() {
+  document.querySelectorAll('select.lang-select option').forEach(option => {
+    option.textContent = option.textContent.replace(/^\s*🌐\s*/, '');
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  injectGeneratedIconCss();
+  applyGeneratedServiceIcons();
+  applyGeneratedUploadVisuals();
+  normalizeNativeSelectEmojis();
+  observeEmojiIcons();
   enableKarmaClickBursts();
   initAllCombos();
   const isSharedLink = new URLSearchParams(window.location.search).has('id');
