@@ -138,6 +138,9 @@ body.bg-compat .home-nav, body.bg-compat .header-bg {
   background: rgba(201,160,68,0.15);
   box-shadow: 0 0 12px rgba(201,160,68,0.2);
 }
+.archerlab-link + .home-nav { top: 54px; }
+.archerlab-link + .home-nav + .container,
+.archerlab-link + .home-nav + .year-page { padding-top: 92px; }
 
 /* 우측 상단: 언어 선택 리스트박스 */
 .lang-select-wrap {
