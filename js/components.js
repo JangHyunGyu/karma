@@ -887,11 +887,15 @@ function injectGeneratedIconCss() {
   const style = document.createElement('style');
   style.id = 'karmaGeneratedIconCss';
   style.textContent = `
-    .karma-inline-icon{display:inline-flex;width:1.22em;height:1.22em;vertical-align:-0.22em;margin-right:0.22em;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
+    .karma-inline-icon{display:inline-flex;width:1.22em;height:1.22em;vertical-align:-0.08em;margin-right:0.22em;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
+    .karma-icon-line .karma-inline-icon{margin-right:0;vertical-align:middle}
+    h1.karma-icon-heading{display:flex;align-items:center;justify-content:center;gap:.28em;line-height:1.16;flex-wrap:nowrap}
+    h1.karma-icon-heading .karma-inline-icon{width:1.02em;height:1.02em;transform:translateY(-0.04em)}
+    h1.karma-icon-heading .karma-heading-text{display:inline-block;min-width:0;max-width:calc(100% - 1.3em);line-height:1.16;text-align:left}
+    .nav-title.karma-icon-line{display:inline-flex;align-items:center;gap:.22em}
     .karma-inline-icon picture,.menu-icon picture,.upload-area .upload-visual picture{display:inline-flex;width:100%;height:100%;align-items:center;justify-content:center}
-    .karma-inline-icon img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 7px rgba(201,160,68,0.28))}
-    h1 .karma-inline-icon{width:1.05em;height:1.05em;vertical-align:-0.14em}
-    h2 .karma-inline-icon,h3 .karma-inline-icon{width:1.18em;height:1.18em}
+    .karma-inline-icon img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 7px rgba(201,160,68,0.28))}
+    h2 .karma-inline-icon,h3 .karma-inline-icon{width:1.18em;height:1.18em;vertical-align:-0.04em}
     .home-nav .karma-inline-icon,.btn .karma-inline-icon,.archerlab-link .karma-inline-icon{width:1.15em;height:1.15em;margin-right:0.18em}
     .lang-select-wrap::before{content:'';position:absolute;left:9px;top:50%;width:18px;height:18px;transform:translateY(-50%);background-image:url('${karmaIconPngUrl('util-language')}');background-image:${karmaIconImageSet('util-language')};background-position:center;background-size:contain;background-repeat:no-repeat;z-index:1;pointer-events:none;filter:drop-shadow(0 0 6px rgba(201,160,68,0.32))}
     select.lang-select{padding-left:32px!important}
@@ -917,19 +921,71 @@ function replaceEmojiTextNode(node) {
   if (!text || !KARMA_EMOJI_KEYS.some(k => text.includes(k))) return;
   if (shouldSkipEmojiReplacement(node)) return;
 
+  const parent = node.parentElement;
   const fragment = document.createDocumentFragment();
   let index = 0;
+  let replaced = false;
   while (index < text.length) {
     const match = KARMA_EMOJI_KEYS.find(key => text.startsWith(key, index));
     if (match) {
       fragment.appendChild(karmaIconElement(KARMA_EMOJI_ICONS[match]));
       index += match.length;
+      replaced = true;
     } else {
       fragment.appendChild(document.createTextNode(text[index]));
       index += 1;
     }
   }
   node.parentNode.replaceChild(fragment, node);
+  if (replaced) markKarmaIconParent(parent);
+}
+
+function markKarmaIconParent(parent) {
+  if (!(parent instanceof Element)) return;
+  if (parent.matches('h1,h2,h3,.nav-title,.home-nav a,.archerlab-link,.btn')) {
+    parent.classList.add('karma-icon-line');
+  }
+  if (parent.matches('h1')) {
+    parent.classList.add('karma-icon-heading');
+    normalizeKarmaHeading(parent);
+  }
+}
+
+function normalizeKarmaHeading(heading) {
+  const nodes = [];
+  Array.from(heading.childNodes).forEach(node => {
+    if (node instanceof Element && node.classList.contains('karma-heading-text')) {
+      nodes.push(...Array.from(node.childNodes));
+    } else {
+      nodes.push(node);
+    }
+  });
+
+  const fragment = document.createDocumentFragment();
+  let textWrap = null;
+  let textWrapHasContent = false;
+  nodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
+      if (!textWrap || !textWrapHasContent) return;
+      textWrap.appendChild(node);
+      return;
+    }
+    if (node instanceof Element && node.classList.contains('karma-inline-icon')) {
+      textWrap = null;
+      textWrapHasContent = false;
+      fragment.appendChild(node);
+      return;
+    }
+    if (!textWrap) {
+      textWrap = document.createElement('span');
+      textWrap.className = 'karma-heading-text';
+      fragment.appendChild(textWrap);
+    }
+    textWrap.appendChild(node);
+    textWrapHasContent = true;
+  });
+
+  heading.replaceChildren(fragment);
 }
 
 function replaceEmojiIcons(root) {
