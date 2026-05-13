@@ -17,13 +17,18 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 let _cacheTableReady = false;
 let _perfStatsTableReady = false;
 
-function getGeminiCacheScope(apiKey) {
+function stableHash(value) {
   let hash = 2166136261;
-  for (let i = 0; i < apiKey.length; i++) {
-    hash ^= apiKey.charCodeAt(i);
+  const text = String(value || '');
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(36);
+}
+
+function getGeminiCacheScope(apiKey) {
+  return stableHash(apiKey);
 }
 
 async function createGeminiCache(apiKey, staticContent, model, ttl = '600s') {
@@ -1229,7 +1234,8 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = isStructured ? prompt.user : prompt;
   const promptPreview = promptText.slice(0, 100);
-  const cacheKey = isStructured ? `karma:${_caller}:${(prompt.lang || 'ko')}` : null;
+  const staticPromptHash = isStructured ? stableHash(prompt.system || '') : '';
+  const cacheKey = isStructured ? `karma:${_caller}:${(prompt.lang || 'ko')}:sys${staticPromptHash}` : null;
   const _sysSize = isStructured ? (prompt.system || '').length : 0;
   const _contentsSize = promptText.length;
 
@@ -1973,6 +1979,23 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
   const todayJi = todayDP.ji;
   const todayGanOhang = CHEONGAN_OHANG[todayGan];
   const todayJiOhang = JIJI_OHANG[todayJi];
+  const todayPillar = [{ name: '일진', gan: todayGan, ji: todayJi }];
+  const dailyRel = analyzeSajuRelations(todayPillar, saju.pillars);
+  const iljiPillar = saju.pillars.find(p => p.name === '일주') || {};
+  const iljiOhang = iljiPillar.ji ? JIJI_OHANG[iljiPillar.ji] : '';
+  const branchRelations = iljiOhang ? getOhangRelations(iljiOhang, todayJiOhang) : { sangsaeng: [], sanggeuk: [], same: false };
+  const branchRelDesc = [];
+  if (branchRelations.sangsaeng.length) branchRelDesc.push(`상생(${branchRelations.sangsaeng.join(', ')})`);
+  if (branchRelations.sanggeuk.length) branchRelDesc.push(`상극(${branchRelations.sanggeuk.join(', ')})`);
+  if (branchRelations.same) branchRelDesc.push('비화(같은 오행)');
+  let dayCycleIndex = 0;
+  for (let i = 0; i < 60; i++) {
+    if (CHEONGAN[i % 10] === todayGan && JIJI[i % 12] === todayJi) {
+      dayCycleIndex = i;
+      break;
+    }
+  }
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(tY, tM - 1, tD)).getUTCDay()];
 
   const relations = getOhangRelations(ilOhang, todayGanOhang);
   const relDesc = [];
@@ -1987,6 +2010,7 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
 - "긍정적으로 보내세요" / "마음가짐이 중요" → 구체 행동으로 대체
 - "약간의 주의가 필요" → 몇 시에 무엇을 피하라고 단정
 - 전체를 다 좋다고 하면 안 됨. 일진 충이 있으면 있는 대로, 최소 한 가지는 직설적 경고 포함
+- 매일 같은 문장 구조와 결론 반복 금지. 입력의 오늘 날짜 식별자, 60갑자 순번, 일진-원국 합/충을 근거로 날짜별로 다른 사건·시간대·행운 색·숫자를 골라라
 
 ## 해석 원칙 (직설 모드)
 1. 일진 천간·지지가 원국과 충이면 **오늘 실제로 터질 이벤트**를 구체적으로 (사소한 싸움/지갑 분실/계약 깨짐/교통사고 리스크 등)
@@ -1995,6 +2019,7 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
 4. 금전: "큰 지출 금지" 같은 뻔한 말 말고 구체적으로. "오늘 쇼핑 앱 열면 계획에 없던 돈 나감" 수준
 5. 건강: 몸 어느 부위 탈날 가능성, 과음·과로·스트레스 리스크 직설
 6. 직장: 상사와 갈등 시간대, 회의 망칠 확률, 실수하기 쉬운 시간
+7. 합/충이 없더라도 오늘 지지와 일지의 오행 관계를 반드시 해석 근거로 삼아 전날과 다른 포인트를 만든다
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답:
@@ -2016,11 +2041,20 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
   const user = `## 기본 정보
 ${genderText ? `- 성별: ${genderText}` : ''}
 - 오늘 날짜: ${todayStr}
+- 요일: ${weekday}요일
+- 오늘 날짜 식별자: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60
 
 ## 오늘의 일진 (日辰)
 - 천간: ${todayGan} (${todayGanOhang})
 - 지지: ${todayJi} (${todayJiOhang})
+- 60갑자 순번: ${dayCycleIndex + 1}/60
 - 오늘 일진과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+- 일지(${iljiPillar.ji || '미상'}, ${iljiOhang || '미상'})와 오늘 지지(${todayJi}, ${todayJiOhang})의 관계: ${branchRelDesc.length ? branchRelDesc.join(', ') : '특별한 관계 없음'}
+
+## 일진-원국 합/충 (코드 계산)
+- 천간합: ${dailyRel.ganHap.length ? dailyRel.ganHap.join(', ') : '없음'}
+- 지지육합: ${dailyRel.jiHap.length ? dailyRel.jiHap.join(', ') : '없음'}
+- 지지충: ${dailyRel.jiChung.length ? dailyRel.jiChung.join(', ') : '없음'}
 
 ## ${tY}년 세운 (참고)
 - 천간: ${yGan} (${yOhang})
