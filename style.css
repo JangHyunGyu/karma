@@ -5,7 +5,8 @@
   --karma-ui-frame: url('/images/ui/karma-ui-frame.webp');
   --karma-ui-hover: url('/images/ui/karma-ui-hover-aura.webp');
   --karma-ui-click: url('/images/ui/karma-ui-click-burst.webp');
-  --karma-tarot-back: url('/images/ui/karma-tarot-back-v2.webp');
+  --karma-tarot-back: image-set(url('/images/ui/karma-tarot-back-v2.webp') type('image/webp'), url('/images/ui/karma-tarot-back-v2.png') type('image/png'));
+  --karma-tarot-back-fallback: url('/images/ui/karma-tarot-back-v2.png');
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -972,6 +973,9 @@ select,
 }
 
 body .card-back {
+  background:
+    linear-gradient(rgba(10,4,18,0.06), rgba(10,4,18,0.2)),
+    var(--karma-tarot-back-fallback) center / cover no-repeat !important;
   background:
     linear-gradient(rgba(10,4,18,0.06), rgba(10,4,18,0.2)),
     var(--karma-tarot-back) center / cover no-repeat !important;

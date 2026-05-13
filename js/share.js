@@ -12,9 +12,11 @@
   const API_BASE = 'https://karma-api.yama5993.workers.dev';
   const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js';
   const KAKAO_APP_KEY = '6f68bee4af57f64f3a5aa093b1f87433';
-  const DEFAULT_OG_IMAGE = 'https://karma.archerlab.dev/images/og-karma.png';
+  const DEFAULT_OG_IMAGE_WEBP = 'https://karma.archerlab.dev/images/og-karma.webp';
+  const DEFAULT_OG_IMAGE_PNG = 'https://karma.archerlab.dev/images/og-karma.png';
 
   let _config = null;
+  let _supportsWebp = null;
 
   function ensureKakaoSdk() {
     return new Promise((resolve, reject) => {
@@ -62,6 +64,17 @@
 
   function isMobile() {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  }
+
+  function supportsWebp() {
+    if (_supportsWebp) return _supportsWebp;
+    _supportsWebp = new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img.width === 1);
+      img.onerror = () => resolve(false);
+      img.src = 'data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
+    });
+    return _supportsWebp;
   }
 
   async function copyToClipboard(text) {
@@ -115,12 +128,13 @@
       }
 
       await ensureKakaoSdk();
+      const defaultImageUrl = (await supportsWebp()) ? DEFAULT_OG_IMAGE_WEBP : DEFAULT_OG_IMAGE_PNG;
       Kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
           title: title || (isEn ? 'Karma AI Analysis' : '카르마 AI 분석 결과'),
           description: description || (isEn ? 'View my AI analysis result' : '내 AI 분석 결과를 확인해보세요'),
-          imageUrl: imageUrl || DEFAULT_OG_IMAGE,
+          imageUrl: imageUrl || defaultImageUrl,
           imageWidth: 1200,
           imageHeight: 630,
           link: { mobileWebUrl: shareUrl, webUrl: shareUrl },

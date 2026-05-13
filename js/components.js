@@ -772,25 +772,51 @@ const KARMA_ICON_FILES = {
   'zodiac-tiger': 'zodiac-tiger.png',
 };
 
-function karmaIconUrl(name) {
+function karmaIconPngUrl(name) {
   return KARMA_ICON_BASE + (KARMA_ICON_FILES[name] || name + '.png');
+}
+
+function karmaIconWebpUrl(name) {
+  return karmaIconPngUrl(name).replace(/\.png$/i, '.webp');
+}
+
+function karmaIconUrl(name) {
+  return karmaIconWebpUrl(name);
+}
+
+function karmaIconImageSet(name) {
+  return "image-set(url('" + karmaIconWebpUrl(name) + "') type('image/webp'), url('" + karmaIconPngUrl(name) + "') type('image/png'))";
+}
+
+function karmaIconPictureElement(name) {
+  const picture = document.createElement('picture');
+  const source = document.createElement('source');
+  source.srcset = karmaIconWebpUrl(name);
+  source.type = 'image/webp';
+  const img = document.createElement('img');
+  img.src = karmaIconPngUrl(name);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  picture.appendChild(source);
+  picture.appendChild(img);
+  return picture;
 }
 
 function karmaIconElement(name, className) {
   const span = document.createElement('span');
   span.className = className || 'karma-inline-icon';
   span.setAttribute('aria-hidden', 'true');
-  const img = document.createElement('img');
-  img.src = karmaIconUrl(name);
-  img.alt = '';
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  span.appendChild(img);
+  span.appendChild(karmaIconPictureElement(name));
   return span;
 }
 
+function karmaIconPictureHtml(name) {
+  return '<picture><source srcset="' + karmaIconWebpUrl(name) + '" type="image/webp"><img src="' + karmaIconPngUrl(name) + '" alt="" loading="lazy" decoding="async"></picture>';
+}
+
 function karmaIconHtml(name, className) {
-  return '<span class="' + (className || 'karma-inline-icon') + '" aria-hidden="true"><img src="' + karmaIconUrl(name) + '" alt="" loading="lazy" decoding="async"></span>';
+  return '<span class="' + (className || 'karma-inline-icon') + '" aria-hidden="true">' + karmaIconPictureHtml(name) + '</span>';
 }
 window.karmaIconHtml = karmaIconHtml;
 
@@ -862,20 +888,21 @@ function injectGeneratedIconCss() {
   style.id = 'karmaGeneratedIconCss';
   style.textContent = `
     .karma-inline-icon{display:inline-flex;width:1.22em;height:1.22em;vertical-align:-0.22em;margin-right:0.22em;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
+    .karma-inline-icon picture,.menu-icon picture,.upload-area .upload-visual picture{display:inline-flex;width:100%;height:100%;align-items:center;justify-content:center}
     .karma-inline-icon img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 7px rgba(201,160,68,0.28))}
     h1 .karma-inline-icon{width:1.05em;height:1.05em;vertical-align:-0.14em}
     h2 .karma-inline-icon,h3 .karma-inline-icon{width:1.18em;height:1.18em}
     .home-nav .karma-inline-icon,.btn .karma-inline-icon,.archerlab-link .karma-inline-icon{width:1.15em;height:1.15em;margin-right:0.18em}
-    .lang-select-wrap::before{content:'';position:absolute;left:9px;top:50%;width:18px;height:18px;transform:translateY(-50%);background:url('${karmaIconUrl('util-language')}') center/contain no-repeat;z-index:1;pointer-events:none;filter:drop-shadow(0 0 6px rgba(201,160,68,0.32))}
+    .lang-select-wrap::before{content:'';position:absolute;left:9px;top:50%;width:18px;height:18px;transform:translateY(-50%);background-image:url('${karmaIconPngUrl('util-language')}');background-image:${karmaIconImageSet('util-language')};background-position:center;background-size:contain;background-repeat:no-repeat;z-index:1;pointer-events:none;filter:drop-shadow(0 0 6px rgba(201,160,68,0.32))}
     select.lang-select{padding-left:32px!important}
     .menu-icon img{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(201,160,68,0.36));transition:transform .3s,filter .3s}
     .menu-card:hover .menu-icon img{transform:scale(1.08);filter:drop-shadow(0 6px 22px rgba(201,160,68,0.58))}
     .upload-area .upload-visual{font-size:0!important;line-height:0}
     .upload-area .upload-visual img{width:128px;height:128px;object-fit:contain;filter:drop-shadow(0 8px 28px rgba(201,160,68,0.24))}
-    .spinner::before{content:''!important;background:url('${karmaIconUrl('util-loading')}') center/contain no-repeat;filter:drop-shadow(0 0 15px rgba(255,217,61,0.45))}
-    .card-back-ornament,.card-back-symbol{font-size:0!important;display:inline-block;width:1.25em;height:1.25em;background:url('${karmaIconUrl('util-sparkle')}') center/contain no-repeat;filter:drop-shadow(0 0 6px rgba(201,160,68,0.42))}
+    .spinner::before{content:''!important;background-image:url('${karmaIconPngUrl('util-loading')}');background-image:${karmaIconImageSet('util-loading')};background-position:center;background-size:contain;background-repeat:no-repeat;filter:drop-shadow(0 0 15px rgba(255,217,61,0.45))}
+    .card-back-ornament,.card-back-symbol{font-size:0!important;display:inline-block;width:1.25em;height:1.25em;background-image:url('${karmaIconPngUrl('util-sparkle')}');background-image:${karmaIconImageSet('util-sparkle')};background-position:center;background-size:contain;background-repeat:no-repeat;filter:drop-shadow(0 0 6px rgba(201,160,68,0.42))}
     .card-back-symbol{width:2.1em;height:2.1em}
-    .tarot-card.selected::after{content:''!important;background:url('${karmaIconUrl('util-check')}') center/82% 82% no-repeat,linear-gradient(135deg,#f0d870,#c9a044)!important}
+    .tarot-card.selected::after{content:''!important;background-image:url('${karmaIconPngUrl('util-check')}'),linear-gradient(135deg,#f0d870,#c9a044)!important;background-image:${karmaIconImageSet('util-check')},linear-gradient(135deg,#f0d870,#c9a044)!important;background-position:center,center!important;background-size:82% 82%,auto!important;background-repeat:no-repeat,no-repeat!important}
   `;
   document.head.appendChild(style);
 }
@@ -942,7 +969,7 @@ function applyGeneratedServiceIcons() {
   ];
   document.querySelectorAll('.menu-grid .menu-card .menu-icon').forEach((icon, index) => {
     const name = order[index] || 'service-soon';
-    icon.innerHTML = '<img src="' + karmaIconUrl(name) + '" alt="" loading="lazy" decoding="async">';
+    icon.innerHTML = karmaIconPictureHtml(name);
   });
 }
 
@@ -951,9 +978,9 @@ function applyGeneratedUploadVisuals() {
   const visual = document.querySelector('.upload-area .upload-visual');
   if (!visual) return;
   if (path.includes('face')) {
-    visual.innerHTML = '<img src="' + karmaIconUrl('upload-face') + '" alt="" loading="lazy" decoding="async">';
+    visual.innerHTML = karmaIconPictureHtml('upload-face');
   } else if (path.includes('palm')) {
-    visual.innerHTML = '<img src="' + karmaIconUrl('upload-palm') + '" alt="" loading="lazy" decoding="async">';
+    visual.innerHTML = karmaIconPictureHtml('upload-palm');
   }
 }
 
