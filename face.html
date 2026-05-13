@@ -371,7 +371,7 @@ analyzeBtn.addEventListener('click', async () => {
 function renderResult(d) {
   const score = d.overall_score || 0;
   document.getElementById('totalScore').textContent = score;
-  const grade = d.overall_grade || getGrade(score);
+  const grade = cleanGrade(d.overall_grade || getGrade(score));
   document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
   document.getElementById('summary').textContent = d.summary || '';
 
@@ -380,16 +380,19 @@ function renderResult(d) {
   document.getElementById('scoreCircle').style.strokeDashoffset = offset;
 
   const cats = document.getElementById('categories');
-  cats.innerHTML = '<h2>' + _L('📋 상세 분석','📋 Detailed Analysis') + '</h2>' + (d.categories || []).map(c => `
-    <div class="cat-item">
-      <div class="cat-top">
-        <span class="cat-name">${c.name}</span>
-        <span class="cat-score">${c.score}${_L('점','pts')}</span>
+  cats.innerHTML = '<h2>' + _L('📋 상세 분석','📋 Detailed Analysis') + '</h2>' + (d.categories || []).map(c => {
+    const sc = scoreValue(c.score);
+    return `
+      <div class="cat-item">
+        <div class="cat-top">
+          <span class="cat-name">${esc(c.name)}</span>
+          <span class="cat-score">${sc}${_L('점','pts')}</span>
+        </div>
+        <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${sc}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
+        <div class="cat-desc">${esc(c.desc)}</div>
       </div>
-      <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${c.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
-      <div class="cat-desc">${c.desc}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   const fort = d.fortune || {};
   document.getElementById('fortune').innerHTML = [
@@ -401,14 +404,14 @@ function renderResult(d) {
     <div class="fort-card">
       <div class="fort-icon">${icon}</div>
       <div class="fort-label">${label}</div>
-      <div class="fort-text">${text || '-'}</div>
+      <div class="fort-text">${esc(text || '-')}</div>
     </div>
   `).join('');
 
   document.getElementById('advice').textContent = d.advice || '';
   const celeb = document.getElementById('celeb');
   if (d.celebrity_resemblance) {
-    celeb.innerHTML = '⭐ <span>' + _L('닮은 유명인: ','Celebrity Resemblance: ') + '<b>' + d.celebrity_resemblance + '</b></span>';
+    celeb.innerHTML = '⭐ <span>' + _L('닮은 유명인: ','Celebrity Resemblance: ') + '<b>' + esc(d.celebrity_resemblance) + '</b></span>';
     celeb.style.display = 'flex';
   } else {
     celeb.style.display = 'none';
@@ -443,6 +446,19 @@ function _restoreFaceInput(input) {
 
 function getGrade(s) {
   if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
+}
+function cleanGrade(g) {
+  g = String(g || '').toUpperCase();
+  return ['S', 'A', 'B', 'C', 'D'].includes(g) ? g : 'D';
+}
+function scoreValue(v) {
+  const n = Number(v);
+  return Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
+}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
 }
 
 </script>

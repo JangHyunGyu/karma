@@ -754,20 +754,20 @@ if (typeof window.gsap === 'undefined') {
     data.cards.forEach((card, i) => {
       html += `<div class="tarot-result-card">
         <h3>${posLabels[i]} — ${lang() === 'en' ? card.name : card.nameKo}</h3>
-        <p>${card.interpretation}</p>
+        <p>${esc(card.interpretation)}</p>
       </div>`;
     });
 
     // 종합
     html += `<div class="tarot-result-card">
       <h3>✨ ${_L('종합 해석', 'Overall Reading')}</h3>
-      <p>${data.overall}</p>
+      <p>${esc(data.overall)}</p>
     </div>`;
 
     // 조언
     html += `<div class="tarot-result-card">
       <h3>💡 ${_L('조언', 'Advice')}</h3>
-      <p>${data.advice}</p>
+      <p>${esc(data.advice)}</p>
     </div>`;
 
     // 키워드
@@ -775,7 +775,7 @@ if (typeof window.gsap === 'undefined') {
       html += `<div class="tarot-result-card">
         <h3>🔑 ${_L('키워드', 'Keywords')}</h3>
         <div class="tarot-keywords">
-          ${data.keywords.map(k => `<span class="tarot-keyword">${k}</span>`).join('')}
+          ${data.keywords.map(k => `<span class="tarot-keyword">${esc(k)}</span>`).join('')}
         </div>
       </div>`;
     }
@@ -819,12 +819,18 @@ if (typeof window.gsap === 'undefined') {
     const wrap = document.getElementById('tarotResult');
     wrap.innerHTML = `<div class="tarot-result-card">
       <h3>⚠️ ${_L('오류', 'Error')}</h3>
-      <p>${msg}</p>
+      <p>${esc(msg)}</p>
     </div>
     <div class="tarot-btn-wrap">
       <button class="tarot-reset-btn" onclick="location.reload()">${_L('다시 시도', 'Try Again')}</button>
     </div>`;
     wrap.classList.add('show');
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
   }
 
   // 언어 전환 시 placeholder 업데이트

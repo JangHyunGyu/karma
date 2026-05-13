@@ -1899,6 +1899,22 @@ function buildFortunePrompt(saju, gender, year, lang) {
   const yJiOhang = JIJI_OHANG[yJi];
   const ilOhang = saju.ilganOhang;
   const relations = getOhangRelations(ilOhang, yOhang);
+  const yearPillar = [{ name: '세운', gan: yGan, ji: yJi }];
+  const yearRel = analyzeSajuRelations(yearPillar, saju.pillars);
+  const iljiPillar = saju.pillars.find(p => p.name === '일주') || {};
+  const iljiOhang = iljiPillar.ji ? JIJI_OHANG[iljiPillar.ji] : '';
+  const branchRelations = iljiOhang ? getOhangRelations(iljiOhang, yJiOhang) : { sangsaeng: [], sanggeuk: [], same: false };
+  const branchRelDesc = [];
+  if (branchRelations.sangsaeng.length) branchRelDesc.push(`상생(${branchRelations.sangsaeng.join(', ')})`);
+  if (branchRelations.sanggeuk.length) branchRelDesc.push(`상극(${branchRelations.sanggeuk.join(', ')})`);
+  if (branchRelations.same) branchRelDesc.push('비화(같은 오행)');
+  let yearCycleIndex = 0;
+  for (let i = 0; i < 60; i++) {
+    if (CHEONGAN[i % 10] === yGan && JIJI[i % 12] === yJi) {
+      yearCycleIndex = i;
+      break;
+    }
+  }
 
   // 세운과 일간의 관계 요약
   const relDesc = [];
@@ -1913,6 +1929,7 @@ function buildFortunePrompt(saju, gender, year, lang) {
 - "주의하면 괜찮습니다" → 무엇을·언제 하라고 단정
 - "전반적으로 무난" / "큰 문제 없음" → 이런 뻔한 말 쓰지 말고 실제 이벤트 찍기
 - "긍정적 마인드" 같은 뜬구름
+- 해마다 같은 결론 반복 금지. 입력의 세운 60갑자 순번, 세운-원국 합/충, 일지-세운 지지 관계를 근거로 해당 연도만의 사건·월·행운 요소를 골라라
 
 ## 해석 원칙 (직설 모드)
 1. 세운 천간이 원국과 충·합 → **실제 사건**으로 번역 (이직/이별/돈문제/수술/관재)
@@ -1946,7 +1963,14 @@ ${genderText ? `- 성별: ${genderText}` : ''}
 ## ${year}년 세운 (年運)
 - 천간: ${yGan} (${yOhang})
 - 지지: ${yJi} (${yJiOhang})
+- 60갑자 순번: ${yearCycleIndex + 1}/60
 - 세운과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+- 일지(${iljiPillar.ji || '미상'}, ${iljiOhang || '미상'})와 세운 지지(${yJi}, ${yJiOhang})의 관계: ${branchRelDesc.length ? branchRelDesc.join(', ') : '특별한 관계 없음'}
+
+## 세운-원국 합/충 (코드 계산)
+- 천간합: ${yearRel.ganHap.length ? yearRel.ganHap.join(', ') : '없음'}
+- 지지육합: ${yearRel.jiHap.length ? yearRel.jiHap.join(', ') : '없음'}
+- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}
 
 ## 사주 원국
 ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
@@ -2318,10 +2342,10 @@ async function handleCompatQuick(request, env) {
 }
 
 async function handleFortune(request, env) {
-  const { birth_date, birth_time, gender, year: reqYear, lang, birth_location } = await request.json();
+  const { birth_date, birth_time, gender, year: reqYear, lang, yajasi, birth_location } = await request.json();
   if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', false, birth_location || '');
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
   const apiKeys = getGeminiKeys(env);
@@ -2407,8 +2431,8 @@ async function handleMatchDetail(idA, idB, env, lang) {
   ]);
   if (!userA || !userB) return json({ error: '프로필을 찾을 수 없습니다' }, 404);
 
-  const sajuA = calculateSaju(userA.birth_date, userA.birth_time || '');
-  const sajuB = calculateSaju(userB.birth_date, userB.birth_time || '');
+  const sajuA = calculateSaju(userA.birth_date, userA.birth_time || '', userA.gender || '');
+  const sajuB = calculateSaju(userB.birth_date, userB.birth_time || '', userB.gender || '');
   const score = ohangCompatibility(sajuA, sajuB);
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
@@ -2429,7 +2453,7 @@ async function handleMatchDetail(idA, idB, env, lang) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ ...baseResult, ai: null });
 
-  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender), 'match-detail', env);
+  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang), 'match-detail', env);
   return json({ ...baseResult, ai });
 }
 

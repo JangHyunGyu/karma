@@ -394,7 +394,7 @@ analyzeBtn.addEventListener('click', async () => {
 function renderResult(d) {
   const score = d.overall_score || 0;
   document.getElementById('totalScore').textContent = score;
-  const grade = d.overall_grade || getGrade(score);
+  const grade = cleanGrade(d.overall_grade || getGrade(score));
   document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
   document.getElementById('summary').textContent = d.summary || '';
 
@@ -402,22 +402,25 @@ function renderResult(d) {
   document.getElementById('scoreCircle').style.strokeDashoffset = offset;
 
   const linesEl = document.getElementById('lines');
-  linesEl.innerHTML = '<h2>📋 Detailed Palm Line Analysis</h2>' + (d.lines || []).map(l => `
-    <div class="line-item">
-      <div class="line-top">
-        <span class="line-name">${l.name}</span>
-        <span class="line-score">${l.score} pts</span>
+  linesEl.innerHTML = '<h2>📋 Detailed Palm Line Analysis</h2>' + (d.lines || []).map(l => {
+    const sc = scoreValue(l.score);
+    return `
+      <div class="line-item">
+        <div class="line-top">
+          <span class="line-name">${esc(l.name)}</span>
+          <span class="line-score">${sc} pts</span>
+        </div>
+        ${l.length ? `<span class="line-length">${esc(l.length)}</span>` : ''}
+        <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${sc}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
+        <div class="line-desc">${esc(l.desc)}</div>
       </div>
-      ${l.length ? `<span class="line-length">${l.length}</span>` : ''}
-      <div class="bar-item"><div class="bar-track"><div class="bar-fill" style="width:${l.score}%;background:linear-gradient(90deg,#8b5e2f,#c9a044)"></div></div></div>
-      <div class="line-desc">${l.desc}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   const hs = d.hand_shape || {};
   document.getElementById('handShape').innerHTML = `
-    <div class="hs-type">${hs.type || '-'}</div>
-    <div class="hs-desc">${hs.desc || ''}</div>
+    <div class="hs-type">${esc(hs.type || '-')}</div>
+    <div class="hs-desc">${esc(hs.desc || '')}</div>
   `;
 
   const fort = d.fortune || {};
@@ -430,7 +433,7 @@ function renderResult(d) {
     <div class="fort-card">
       <div class="fort-icon">${icon}</div>
       <div class="fort-label">${label}</div>
-      <div class="fort-text">${text || '-'}</div>
+      <div class="fort-text">${esc(text || '-')}</div>
     </div>
   `).join('');
 
@@ -468,6 +471,19 @@ function _restorePalmInput(input) {
 
 function getGrade(s) {
   if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
+}
+function cleanGrade(g) {
+  g = String(g || '').toUpperCase();
+  return ['S', 'A', 'B', 'C', 'D'].includes(g) ? g : 'D';
+}
+function scoreValue(v) {
+  const n = Number(v);
+  return Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
+}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
 }
 
 KarmaShare.init({
