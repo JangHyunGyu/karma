@@ -262,7 +262,15 @@ window.KarmaShare = window.KarmaShare || {
 </script>
 <script data-cfasync="false" src="/js/share.js?v=4"></script>
 <script>
-createDateSelects('dateSelects');
+(function initSajuDateSelects(retries = 10) {
+  if (typeof createDateSelects === 'function') {
+    createDateSelects('dateSelects');
+    return;
+  }
+  if (retries > 0) {
+    setTimeout(() => initSajuDateSelects(retries - 1), 50);
+  }
+})();
 
 // API now returns English keys when lang=en (Wood, Fire, Earth, Metal, Water)
 const OHANG_COLORS = { 'Wood':'#4CAF50', 'Fire':'#F44336', 'Earth':'#795548', 'Metal':'#FFC107', 'Water':'#2196F3' };
