@@ -393,6 +393,7 @@ analyzeBtn.addEventListener('click', async () => {
       body: JSON.stringify({
         image: imageData, mimeType: imageMime,
         hand: palmInput.hand,
+        dominant: palmInput.dominant,
         gender: palmInput.gender,
         lang: palmInput.lang,
       }),

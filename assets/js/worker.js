@@ -1578,7 +1578,7 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
         { inline_data: { mime_type: mimeType, data: imageBase64 } },
       ],
     }],
-    generationConfig: { temperature: 0.5, thinkingConfig: { thinkingLevel: "high" } },
+    generationConfig: { temperature: 0.7, thinkingConfig: { thinkingLevel: "high" } },
   });
   const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
@@ -1641,6 +1641,47 @@ async function saveImageToR2(env, image, mimeType, type) {
   }
 }
 
+function inferHandSide(value) {
+  const text = String(value || '').toLowerCase();
+  if (text.includes('right') || text.includes('오른')) return 'right';
+  if (text.includes('left') || text.includes('왼')) return 'left';
+  return '';
+}
+
+function buildPalmHandContext(hand, dominant, lang) {
+  const isEn = lang === 'en';
+  const shotSide = inferHandSide(hand);
+  const dominantSide = inferHandSide(dominant);
+  const sideLabel = {
+    right: isEn ? 'right hand' : '오른손',
+    left: isEn ? 'left hand' : '왼손',
+  };
+  const dominantLabel = {
+    right: isEn ? 'right-handed' : '오른손잡이',
+    left: isEn ? 'left-handed' : '왼손잡이',
+  };
+
+  const mode = shotSide && dominantSide
+    ? (shotSide === dominantSide
+      ? (isEn ? 'acquired fortune: current habits, effort, and later-life flow' : '후천운: 현재 습관, 노력, 중년 이후 흐름')
+      : (isEn ? 'innate fortune: born temperament and early-life tendency' : '선천운: 타고난 기질과 초년 성향'))
+    : '';
+
+  if (isEn) {
+    return [
+      `Dominant hand: ${dominantLabel[dominantSide] || dominant || 'not provided'}`,
+      `Photo hand: ${sideLabel[shotSide] || hand || 'not provided'}`,
+      mode ? `Reading mode: ${mode}` : '',
+    ].filter(Boolean).join('\n');
+  }
+
+  return [
+    `주 사용 손: ${dominantLabel[dominantSide] || dominant || '미입력'}`,
+    `촬영한 손: ${sideLabel[shotSide] || hand || '미입력'}`,
+    mode ? `해석 기준: ${mode}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 async function handleFaceReading(request, env) {
   const { image, mimeType, gender, age, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
@@ -1660,6 +1701,14 @@ async function handleFaceReading(request, env) {
 얼굴이 확인되면 관상 감정 진행.
 ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 
+## 사진별 차별화 필수
+- 먼저 사진에서 실제로 보이는 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
+- \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 얼굴형, 좌우 비대칭, 조명/가림 여부.
+- 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
+- 사진에서 잘 안 보이는 부위는 지어내지 말고 "사진상 확인 어려움"이라고 쓰고 점수를 50~65 사이로 낮추세요.
+- 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
+- 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수·유명인도 달라져야 합니다.
+
 ## 직설 모드 원칙
 - 점수가 낮은 부위는 낮은 점수를 매기고, 왜 낮은지 솔직하게 (예: "이마가 좁고 굴곡이 있어 초년 부모덕 박함, 혼자 개척해야 하는 상")
 - 얼굴에 드러나는 성격 결함 직설 (고집, 의심 많음, 질투, 속물적, 감정 기복)
@@ -1678,6 +1727,7 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 {
   "overall_score": 85,
   "overall_grade": "A",
+  "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 덕담 금지. 예: '초년 고생 후 중년부터 재물 모이는 상, 단 배우자복은 약함')",
   "categories": [
     {"name": "이마 (천정)", "score": 80, "desc": "(2~3문장. 초년운·부모덕·학업운. 박복하면 박복하다고 직설)"},
@@ -1705,13 +1755,14 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 }
 
 async function handlePalmReading(request, env) {
-  const { image, mimeType, hand, gender, lang } = await request.json();
+  const { image, mimeType, hand, dominant, gender, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
   const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
+  const handContext = buildPalmHandContext(hand, dominant, lang);
 
   const prompt = `당신은 40년 경력의 수상학 직설가입니다. 손금에 새겨진 것을 있는 그대로 읽어주세요. 좋게 포장하지 마세요.
 손금은 확률·경향을 드러내는 지도입니다. 끊긴 선·흐린 선·흉터까지 솔직하게 해석하고, 그게 실제 인생에서 무슨 사건으로 나타날지 단정하세요.
@@ -1720,7 +1771,16 @@ async function handlePalmReading(request, env) {
 {"error": "손바닥 사진이 아닙니다. 손금이 잘 보이도록 손을 펴서 촬영한 사진을 업로드해주세요."}
 
 손바닥이 확인되면 손금 감정 진행.
-${hand ? `촬영한 손: ${hand}` : ''}${gender ? `, 성별: ${gender}` : ''}
+${handContext}${gender ? `\n성별: ${gender}` : ''}
+
+## 사진별 차별화 필수
+- 먼저 사진에서 실제로 보이는 손바닥 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
+- \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 손바닥 폭, 손가락 길이/벌어짐, 엄지 각도, 생명선 깊이/끊김, 두뇌선 기울기, 감정선 위치, 운명선 선명도, 태양선 유무, 결혼선 가시성, 굳은살/흉터/조명/흐림 여부.
+- 각 \`lines.desc\`의 첫 문장은 반드시 해당 손금의 실제 관찰 특징으로 시작하세요. 관찰 없이 운세부터 말하지 마세요.
+- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 낮추세요.
+- 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
+- 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
+- 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
 
 ## 직설 모드 원칙
 - **끊긴 선·흐린 선·섬(島)·흉터**는 그에 해당하는 인생 사건으로 번역 (생명선 끊김 → 큰 병/사고 시기, 감정선 섬 → 상처 깊은 이별, 운명선 흐림 → 직업 방황)
@@ -1742,6 +1802,7 @@ ${hand ? `촬영한 손: ${hand}` : ''}${gender ? `, 성별: ${gender}` : ''}
 {
   "overall_score": 82,
   "overall_grade": "A",
+  "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 덕담 금지. 예: '초중년 고생선 뚜렷, 40대 중반 큰 전환점 있는 손')",
   "lines": [
     {"name": "생명선", "score": 85, "length": "길다/보통/짧다", "desc": "(2~3문장. 건강 전반 + 큰 병·사고 올 가능성 시기. 끊김·섬 있으면 직설)"},
