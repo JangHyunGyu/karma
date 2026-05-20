@@ -1578,7 +1578,7 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
         { inline_data: { mime_type: mimeType, data: imageBase64 } },
       ],
     }],
-    generationConfig: { temperature: 0.7, thinkingConfig: { thinkingLevel: "high" } },
+    generationConfig: { temperature: 0.6, thinkingConfig: { thinkingLevel: "high" } },
   });
   const errors = [];
   for (let i = 0; i < apiKeys.length; i++) {
