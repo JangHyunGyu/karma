@@ -2033,6 +2033,12 @@ function buildFortunePrompt(saju, gender, year, lang) {
 - "긍정적 마인드" 같은 뜬구름
 - 해마다 같은 결론 반복 금지. 입력의 세운 60갑자 순번, 세운-원국 합/충, 일지-세운 지지 관계를 근거로 해당 연도만의 사건·월·행운 요소를 골라라
 
+## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+- 세운(올해 천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 세운의 오행만 설명하는 도입부는 절대 금지(예: "올해는 ○(○) 기운이 강한 해라..." 금지).
+- 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 세운은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
+- 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 신강/신약, 어떤 오행이 과다/부족한지에 따라 같은 세운도 길흉이 정반대로 갈린다.
+- year_summary 첫 문장은 반드시 이 사람의 일간과 그 상태(신강/신약, 과다/부족 오행, 세운이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+
 ## 해석 원칙 (직설 모드)
 1. 세운 천간이 원국과 충·합 → **실제 사건**으로 번역 (이직/이별/돈문제/수술/관재)
 2. **월별로 찍어라**: 몇 월에 뭐가 터지는지 구체적 월 명시 ("3월 금전 손실 주의" > "상반기 조심")
@@ -2062,7 +2068,18 @@ function buildFortunePrompt(saju, gender, year, lang) {
 ${genderText ? `- 성별: ${genderText}` : ''}
 - 올해: ${year}년
 
-## ${year}년 세운 (年運)
+## 사주 원국 (해석의 1순위 근거)
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+${saju.daeun ? `
+## 대운 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+
+## ${year}년 세운 (年運 — 원국에 작용하는 방아쇠)
 - 천간: ${yGan} (${yOhang})
 - 지지: ${yJi} (${yJiOhang})
 - 60갑자 순번: ${yearCycleIndex + 1}/60
@@ -2072,18 +2089,7 @@ ${genderText ? `- 성별: ${genderText}` : ''}
 ## 세운-원국 합/충 (코드 계산)
 - 천간합: ${yearRel.ganHap.length ? yearRel.ganHap.join(', ') : '없음'}
 - 지지육합: ${yearRel.jiHap.length ? yearRel.jiHap.join(', ') : '없음'}
-- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}
-
-## 사주 원국
-${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
-- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
-- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
-${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
-${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
-${saju.daeun ? `
-## 대운 흐름
-${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
-` : ''}`;
+- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}`;
 
   return { system, user, lang };
 }
@@ -2138,6 +2144,12 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
 - 전체를 다 좋다고 하면 안 됨. 일진 충이 있으면 있는 대로, 최소 한 가지는 직설적 경고 포함
 - 매일 같은 문장 구조와 결론 반복 금지. 입력의 오늘 날짜 식별자, 60갑자 순번, 일진-원국 합/충을 근거로 날짜별로 다른 사건·시간대·행운 색·숫자를 골라라
 
+## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+- 오늘의 일진(천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 일진의 오행만 설명하는 도입부는 절대 금지(예: "오늘은 ○(○) 기운이 강한 날이라..." 금지).
+- 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 일진은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
+- 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
+- overall 첫 문장은 반드시 이 사람의 일간과 그 상태(어떤 오행이 과다/부족한지, 일진이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+
 ## 해석 원칙 (직설 모드)
 1. 일진 천간·지지가 원국과 충이면 **오늘 실제로 터질 이벤트**를 구체적으로 (사소한 싸움/지갑 분실/계약 깨짐/교통사고 리스크 등)
 2. **시간대별로**: 좋은 시간 + 나쁜 시간 명시 ("오전 10~12시 상승, 오후 3시 이후 급락")
@@ -2170,7 +2182,18 @@ ${genderText ? `- 성별: ${genderText}` : ''}
 - 요일: ${weekday}요일
 - 오늘 날짜 식별자: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60
 
-## 오늘의 일진 (日辰)
+## 사주 원국 (해석의 1순위 근거)
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+${saju.daeun ? `
+## 대운 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+
+## 오늘의 일진 (日辰 — 원국에 작용하는 방아쇠)
 - 천간: ${todayGan} (${todayGanOhang})
 - 지지: ${todayJi} (${todayJiOhang})
 - 60갑자 순번: ${dayCycleIndex + 1}/60
@@ -2184,18 +2207,7 @@ ${genderText ? `- 성별: ${genderText}` : ''}
 
 ## ${tY}년 세운 (참고)
 - 천간: ${yGan} (${yOhang})
-- 지지: ${yJi} (${JIJI_OHANG[yJi]})
-
-## 사주 원국
-${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
-- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
-- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
-${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
-${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
-${saju.daeun ? `
-## 대운 흐름
-${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
-` : ''}`;
+- 지지: ${yJi} (${JIJI_OHANG[yJi]})`;
 
   return { system, user, lang };
 }
