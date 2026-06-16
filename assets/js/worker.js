@@ -1463,6 +1463,12 @@ function buildTarotPrompt(cards, question, lang) {
 7. **Reversed = direct warning**: When reversed, name what's broken and what they'll lose if they don't fix it this week.
 8. **Banned phrases**: "The universe is telling you...", "The card speaks of...", "Energy flows/is blocked", "stay positive", "trust the process" — never.
 
+## Spread-Specific Differentiation
+- Treat the exact three-card order, direction, and question as this reading's fingerprint. A different card, reversed state, or question must change the core conflict, advice, and keywords.
+- The first sentence of overall must name at least two drawn cards and explain their cause-effect link. Do not start with a generic life theme.
+- If there is no question, choose one dominant real-life arena from this exact card combination; do not cover love, career, and personal growth with equal generic weight.
+- Keywords must come from this exact spread, not a reusable tarot keyword list.
+
 ## Response — JSON only
 {
   "cards": [
@@ -1497,6 +1503,12 @@ ${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${questi
 6. **금기 깨기**: 질문이 연애면 "지금 만나는 사람 바람 피울 리스크 있다"까지 솔직하게. 돈이면 "지금 하려는 투자 말려라" 수준. 건강이면 "병원 가라"까지.
 7. **역방향 = 직설 경고**: 역방향 나오면 그 영역에서 무엇이 망가졌는지, 지금 안 고치면 무엇을 잃을지 단정적으로
 8. **금지 표현**: "우주가...", "카드가 말하기를...", "에너지가 흐른다/막혀있다", "긍정적 마인드" 등
+
+## 배열별 차별화 필수
+- 뽑힌 3장의 카드명, 순서, 정/역방향, 질문을 이번 리딩의 지문으로 삼으세요. 카드 한 장, 방향 하나, 질문 하나가 달라지면 핵심 갈등·조언·키워드도 달라져야 합니다.
+- overall 첫 문장은 반드시 뽑힌 카드 2장 이상을 직접 언급하고, 그 카드들이 어떤 원인→결과 흐름을 만드는지로 시작하세요. 일반적인 인생 주제로 시작하지 마세요.
+- 질문이 없는 경우에도 카드 조합에서 가장 강한 현실 영역 하나를 골라 깊게 파세요. 연애·직업·성장을 같은 비중의 무난한 설명으로 나열하지 마세요.
+- keywords는 이번 카드 조합에서 나온 단어만 고르세요. 재사용 가능한 타로 공통 키워드 목록처럼 만들지 마세요.
 
 ## 응답 — JSON만
 {
@@ -1745,6 +1757,8 @@ ${faceExpertRubric()}
 - 사진에서 잘 안 보이는 부위는 지어내지 말고 "사진상 확인 어려움"이라고 쓰고 점수를 50~65 사이로 낮추세요.
 - 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수·유명인도 달라져야 합니다.
+- summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
+- overall_score와 categories 점수는 보이는 특징에서 나온 결론이어야 합니다. 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
 
 ## 직설 모드 원칙
 - 점수가 낮은 부위는 낮은 점수를 매기고, 왜 낮은지 솔직하게 (예: "이마가 좁고 굴곡이 있어 초년 부모덕 박함, 혼자 개척해야 하는 상")
@@ -1821,6 +1835,9 @@ ${palmExpertRubric()}
 - 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
 - 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
+- summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 확인 어려운 손금 1개를 함께 언급해 이 손만의 대비를 만드세요.
+- fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼으세요. 근거 없이 일반 운세처럼 말하지 마세요.
+- overall_score와 각 lines 점수는 관찰된 선명도·끊김·가시성에서 나와야 합니다. 손바닥 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
 
 ## 직설 모드 원칙
 - **끊긴 선·흐린 선·섬(島)·흉터**는 먼저 실제 관찰로 기록한 뒤 전통 수상학상 어떤 경향으로 보는지 설명
@@ -1946,6 +1963,12 @@ ${OHANG_RELATIONS}
 5. 대운: 좋은 시기는 짧게, **힘든 시기는 언제·무엇이·얼마나 힘든지** 구체적으로. "30대 중반 대운 충으로 이직 실패·연애 파탄 동시 타격" 식
 6. 천간합/지지충을 반드시 실제 인생 사건(이혼, 파산, 질병, 관재)으로 번역
 
+## 개인화 필수 (누구나 비슷한 사주 풀이면 실패)
+- 해석의 출발점은 반드시 이 사람의 정확한 원국, 일간, 오행 과다·부족, 내부 합/충, 대운입니다. 성별이나 일반 사주 상식만으로 결론을 만들지 마세요.
+- pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
+- strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 위험 3개를 골라야 합니다.
+- 첫 문단부터 "당신은..."으로 일반 성격을 말하지 말고, 이 사람의 일간과 가장 두드러진 오행 불균형 또는 합/충을 찍고 시작하세요.
+
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답. 설명은 직설적이고 구체적으로. 뻔한 말 쓰면 다시 뽑아야 함:
 {
@@ -1986,7 +2009,12 @@ ${rel.jiChung.length ? `- 지지충: ${rel.jiChung.join(', ')}` : '- 지지충: 
 ${saju.daeun ? `
 ## 대운 (大運) — 10년 단위 인생 흐름
 ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
-` : ''}`;
+` : ''}
+
+## 개인화 키 (반복 방지 기준)
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 합충 키: 천간합=${rel.ganHap.length ? rel.ganHap.join('/') : '없음'}; 지지육합=${rel.jiHap.length ? rel.jiHap.join('/') : '없음'}; 지지충=${rel.jiChung.length ? rel.jiChung.join('/') : '없음'}`;
 
   return { system, user, lang };
 }
@@ -2038,6 +2066,8 @@ function buildFortunePrompt(saju, gender, year, lang) {
 - 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 세운은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
 - 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 신강/신약, 어떤 오행이 과다/부족한지에 따라 같은 세운도 길흉이 정반대로 갈린다.
 - year_summary 첫 문장은 반드시 이 사람의 일간과 그 상태(신강/신약, 과다/부족 오행, 세운이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+- love, money, health, career, advice는 서로 다른 근거를 써야 합니다. 같은 "올해 조심" 문장을 분야명만 바꿔 반복하지 말고, 원국 오행·일지 관계·세운 합/충·대운 중 무엇을 근거로 삼았는지 문장 안에 드러내세요.
+- lucky의 색·숫자·방향·월은 이 사람에게 필요한 보완 오행 또는 세운 60갑자 순번에서 끌어오세요. 흔한 행운색/7 같은 기본값을 재사용하지 마세요.
 
 ## 해석 원칙 (직설 모드)
 1. 세운 천간이 원국과 충·합 → **실제 사건**으로 번역 (이직/이별/돈문제/수술/관재)
@@ -2089,7 +2119,13 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 ## 세운-원국 합/충 (코드 계산)
 - 천간합: ${yearRel.ganHap.length ? yearRel.ganHap.join(', ') : '없음'}
 - 지지육합: ${yearRel.jiHap.length ? yearRel.jiHap.join(', ') : '없음'}
-- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}`;
+- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}
+
+## 개인화 키 (동년생/같은 해 반복 방지)
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 세운 키: ${year}-${yGan}${yJi}-${String(yearCycleIndex + 1).padStart(2, '0')}/60
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${yearRel.ganHap.concat(yearRel.jiHap, yearRel.jiChung).join('/') || '없음'}`;
 
   return { system, user, lang };
 }
@@ -2149,6 +2185,8 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
 - 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 일진은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
 - 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
 - overall 첫 문장은 반드시 이 사람의 일간과 그 상태(어떤 오행이 과다/부족한지, 일진이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+- love, money, career, study, social, health는 같은 경고를 분야명만 바꿔 반복하면 실패입니다. 각 항목마다 원국 오행·일지 관계·일진 합/충·요일/60갑자 순번 중 서로 다른 근거를 골라야 합니다.
+- lucky.color와 lucky.number는 오늘 일진과 이 사람에게 필요한 보완 오행에서 도출하세요. 매일 흔한 색이나 같은 숫자를 돌려쓰지 마세요.
 
 ## 해석 원칙 (직설 모드)
 1. 일진 천간·지지가 원국과 충이면 **오늘 실제로 터질 이벤트**를 구체적으로 (사소한 싸움/지갑 분실/계약 깨짐/교통사고 리스크 등)
@@ -2207,7 +2245,13 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 
 ## ${tY}년 세운 (참고)
 - 천간: ${yGan} (${yOhang})
-- 지지: ${yJi} (${JIJI_OHANG[yJi]})`;
+- 지지: ${yJi} (${JIJI_OHANG[yJi]})
+
+## 개인화 키 (같은 날짜 반복 방지)
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 일진 키: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60-${weekday}
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${dailyRel.ganHap.concat(dailyRel.jiHap, dailyRel.jiChung).join('/') || '없음'}`;
 
   return { system, user, lang };
 }
@@ -2256,6 +2300,12 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
 - **양쪽 민낯 모두**: A가 B를 지치게 하는 부분 + B가 A를 지치게 하는 부분 둘 다 명시
 - 위로 금지. "서로 이해하고 노력하면 된다" 같은 뻔한 말 금지 — 이미 노력으로 안 되는 지점이 있으면 그걸 말하세요
 - 궁합 점수가 낮으면 **헤어질 가능성/결혼 후 이혼 리스크**까지 직설
+
+## 조합별 차별화 필수
+- summary 첫 문장은 반드시 A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 직접 언급하며 시작하세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
+- personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·대운 흐름을 나눠 반영하세요.
+- strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
+- advice는 이 커플만의 금지 행동과 허용 행동을 나눠 적으세요. 다른 커플에게 그대로 붙여도 말이 되면 다시 써야 합니다.
 
 ## 오행 상생/상극 원리
 ${OHANG_RELATIONS}
@@ -2337,7 +2387,13 @@ ${complementary.length ? `- 오행 보완: ${complementary.join(', ')}` : '- 오
 - B: ${daeunInfoB}
 
 ## 궁합 점수
-- ${score}/100 (${grade}급)`;
+- ${score}/100 (${grade}급)
+
+## 조합 키 (반복 방지 기준)
+- A 원국 키: ${sajuA.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- B 원국 키: ${sajuB.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 차이 키: 목${sajuA.ohangCount.목}:${sajuB.ohangCount.목}-화${sajuA.ohangCount.화}:${sajuB.ohangCount.화}-토${sajuA.ohangCount.토}:${sajuB.ohangCount.토}-금${sajuA.ohangCount.금}:${sajuB.ohangCount.금}-수${sajuA.ohangCount.수}:${sajuB.ohangCount.수}
+- 관계 키: 일간=${relDesc.length ? relDesc.join('/') : '없음'}; 천간합=${rel.ganHap.length ? rel.ganHap.join('/') : '없음'}; 지지육합=${rel.jiHap.length ? rel.jiHap.join('/') : '없음'}; 지지충=${rel.jiChung.length ? rel.jiChung.join('/') : '없음'}; 보완=${complementary.length ? complementary.join('/') : '없음'}`;
 
   return { system, user, lang };
 }
