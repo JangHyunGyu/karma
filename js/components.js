@@ -3,6 +3,20 @@
 // ===== API 설정 =====
 const API_BASE = 'https://karma-api.yama5993.workers.dev';
 
+function safeLocalStorageGet(key) {
+  try {
+    return window.localStorage ? window.localStorage.getItem(key) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    if (window.localStorage) window.localStorage.setItem(key, value);
+  } catch (_) {}
+}
+
 // ===== 프론트엔드 에러 자동 수집 =====
 window.onerror = function(message, source, line, col, error) {
   try {
@@ -33,23 +47,23 @@ window.addEventListener('unhandledrejection', function(e) {
 
 // ===== 브라우저 언어 기반 자동 리다이렉트 (첫 방문 시) =====
 (function() {
-    if (localStorage.getItem('karma_lang')) return;
+    if (safeLocalStorageGet('karma_lang')) return;
     var pageLang = (document.documentElement.lang || 'ko').substring(0, 2);
     var browserLang = (navigator.language || navigator.userLanguage || 'ko').substring(0, 2);
     var isKo = browserLang === 'ko';
     if (pageLang === 'ko' && !isKo) {
         var enLink = document.querySelector('link[hreflang="en"]');
-        if (enLink) { localStorage.setItem('karma_lang', 'en'); location.replace(enLink.href); return; }
+        if (enLink) { safeLocalStorageSet('karma_lang', 'en'); location.replace(enLink.href); return; }
     } else if (pageLang === 'en' && isKo) {
         var koLink = document.querySelector('link[hreflang="ko"]');
-        if (koLink) { localStorage.setItem('karma_lang', 'ko'); location.replace(koLink.href); return; }
+        if (koLink) { safeLocalStorageSet('karma_lang', 'ko'); location.replace(koLink.href); return; }
     }
-    localStorage.setItem('karma_lang', pageLang);
+    safeLocalStorageSet('karma_lang', pageLang);
 })();
 
 // ===== 언어 전환 (hreflang 기반 페이지 리다이렉트) =====
 function changeLang(lang) {
-  localStorage.setItem('karma_lang', lang);
+  safeLocalStorageSet('karma_lang', lang);
   var link = document.querySelector('link[hreflang="' + lang + '"]');
   if (link) { location.href = link.href; return; }
   document.documentElement.lang = lang;
@@ -132,12 +146,12 @@ function saveInputs() {
   if (t) data.birthTime = t.value;
   if (loc) data.birthLocation = loc.value;
   data.calendarType = _calendarType;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  safeLocalStorageSet(STORAGE_KEY, JSON.stringify(data));
 }
 
 function restoreInputs() {
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const data = JSON.parse(safeLocalStorageGet(STORAGE_KEY) || '{}');
     if (data.year) setComboValue('birthYear', data.year);
     if (data.month) setComboValue('birthMonth', data.month);
     if (data.day) setComboValue('birthDay', data.day);
