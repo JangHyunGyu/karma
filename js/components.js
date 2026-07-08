@@ -17,33 +17,49 @@ function safeLocalStorageSet(key, value) {
   } catch (_) {}
 }
 
+function hasExternalClientErrorMarker(value) {
+  return /webkit-masked-url:\/\/hidden|(?:chrome|moz|safari-web)-extension:\/\//i.test(String(value || ''));
+}
+
+function shouldIgnoreClientError(message, source, stack) {
+  return hasExternalClientErrorMarker(source) || hasExternalClientErrorMarker(stack);
+}
+
 // ===== 프론트엔드 에러 자동 수집 =====
-window.onerror = function(message, source, line, col, error) {
-  try {
-    navigator.sendBeacon(API_BASE + '/api/error-log', JSON.stringify({
-      message: String(message),
-      source: source,
-      line: line,
-      col: col,
-      stack: error?.stack || '',
-      page: location.pathname,
-      userAgent: navigator.userAgent,
-    }));
-  } catch {}
-};
-window.addEventListener('unhandledrejection', function(e) {
-  try {
-    navigator.sendBeacon(API_BASE + '/api/error-log', JSON.stringify({
-      message: 'Unhandled Promise: ' + String(e.reason),
-      source: '',
-      line: 0,
-      col: 0,
-      stack: e.reason?.stack || '',
-      page: location.pathname,
-      userAgent: navigator.userAgent,
-    }));
-  } catch {}
-});
+if (!window.__karmaErrorReporterInstalled) {
+  window.__karmaErrorReporterInstalled = true;
+  window.onerror = function(message, source, line, col, error) {
+    const stack = error?.stack || '';
+    if (shouldIgnoreClientError(message, source, stack)) return;
+    try {
+      navigator.sendBeacon(API_BASE + '/api/error-log', JSON.stringify({
+        message: String(message),
+        source: source,
+        line: line,
+        col: col,
+        stack: stack,
+        page: location.pathname,
+        userAgent: navigator.userAgent,
+      }));
+    } catch {}
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    const stack = e.reason?.stack || '';
+    const message = 'Unhandled Promise: ' + String(e.reason);
+    if (shouldIgnoreClientError(message, '', stack)) return;
+    try {
+      navigator.sendBeacon(API_BASE + '/api/error-log', JSON.stringify({
+        message: message,
+        source: '',
+        line: 0,
+        col: 0,
+        stack: stack,
+        page: location.pathname,
+        userAgent: navigator.userAgent,
+      }));
+    } catch {}
+  });
+}
 
 // ===== 브라우저 언어 기반 자동 리다이렉트 (첫 방문 시) =====
 (function() {

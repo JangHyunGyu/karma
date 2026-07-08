@@ -2786,8 +2786,17 @@ async function handleReadNotifications(userId, env) {
 
 // --- Error Log Routes (from routes/error.js) ---
 
+function isIgnorableClientErrorLog(message, source, stack, page) {
+  const text = [message, source, stack, page].filter(Boolean).join('\n');
+  return /webkit-masked-url:\/\/hidden|(?:chrome|moz|safari-web)-extension:\/\//i.test(text);
+}
+
 async function handlePostErrorLog(request, env) {
   const { message, source, line, col, stack, page, userAgent } = await request.json();
+
+  if (isIgnorableClientErrorLog(message, source, stack, page)) {
+    return json({ ok: true, ignored: true });
+  }
 
   try {
     await env.DB.prepare(

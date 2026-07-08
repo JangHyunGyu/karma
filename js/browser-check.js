@@ -65,7 +65,19 @@
     var _lastError = '';
     var _errorCount = 0;
 
+    window.__karmaErrorReporterInstalled = true;
+
+    function _hasExternalScriptMarker(value) {
+        return /webkit-masked-url:\/\/hidden|(?:chrome|moz|safari-web)-extension:\/\//i.test(String(value || ''));
+    }
+
+    function _shouldIgnoreError(message, stack, url) {
+        if (_hasExternalScriptMarker(stack) || _hasExternalScriptMarker(url)) return true;
+        return false;
+    }
+
     function _sendError(message, stack, url) {
+        if (_shouldIgnoreError(message, stack, url)) return;
         var key = message + (url || '');
         if (key === _lastError) { _errorCount++; if (_errorCount > 3) return; }
         else { _lastError = key; _errorCount = 1; }
