@@ -1,12 +1,14 @@
-/*
-  Cache-Control: no-cache, no-store, must-revalidate
-  Pragma: no-cache
+/assets/js/worker.js
+  X-Robots-Tag: noindex, nofollow
 
-/images/*
-  Cache-Control: no-cache, must-revalidate
+/google-seo-guide.md
+  X-Robots-Tag: noindex, nofollow
 
-/*.css
-  Cache-Control: no-cache, must-revalidate
+/wrangler.toml
+  X-Robots-Tag: noindex, nofollow
 
-/*.js
-  Cache-Control: no-cache, must-revalidate
+/validate-*.js
+  X-Robots-Tag: noindex, nofollow
+
+/.github/*
+  X-Robots-Tag: noindex, nofollow

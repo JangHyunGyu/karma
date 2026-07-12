@@ -61,22 +61,6 @@ if (!window.__karmaErrorReporterInstalled) {
   });
 }
 
-// ===== 브라우저 언어 기반 자동 리다이렉트 (첫 방문 시) =====
-(function() {
-    if (safeLocalStorageGet('karma_lang')) return;
-    var pageLang = (document.documentElement.lang || 'ko').substring(0, 2);
-    var browserLang = (navigator.language || navigator.userLanguage || 'ko').substring(0, 2);
-    var isKo = browserLang === 'ko';
-    if (pageLang === 'ko' && !isKo) {
-        var enLink = document.querySelector('link[hreflang="en"]');
-        if (enLink) { safeLocalStorageSet('karma_lang', 'en'); location.replace(enLink.href); return; }
-    } else if (pageLang === 'en' && isKo) {
-        var koLink = document.querySelector('link[hreflang="ko"]');
-        if (koLink) { safeLocalStorageSet('karma_lang', 'ko'); location.replace(koLink.href); return; }
-    }
-    safeLocalStorageSet('karma_lang', pageLang);
-})();
-
 // ===== 언어 전환 (hreflang 기반 페이지 리다이렉트) =====
 function changeLang(lang) {
   safeLocalStorageSet('karma_lang', lang);
