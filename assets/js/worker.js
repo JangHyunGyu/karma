@@ -1184,16 +1184,33 @@ function ohangCompatibility(saju1, saju2) {
   const oh1 = saju1.ilganOhang;
   const oh2 = saju2.ilganOhang;
 
-  if (SANGSAENG[oh1] === oh2 || SANGSAENG[oh2] === oh1) score += 20;
-  if (SANGGEUK[oh1] === oh2 || SANGGEUK[oh2] === oh1) score -= 15;
-  if (oh1 === oh2) score += 10;
+  // 일간 하나만 보던 기존 점수에서 일지와 전체 원국 합·충까지 반영한다.
+  if (SANGSAENG[oh1] === oh2 || SANGSAENG[oh2] === oh1) score += 10;
+  if (SANGGEUK[oh1] === oh2 || SANGGEUK[oh2] === oh1) score -= 8;
+  if (oh1 === oh2) score += 4;
 
-  for (const key of Object.keys(OHANG)) {
-    if (saju1.ohangCount[key] === 0 && saju2.ohangCount[key] >= 2) score += 5;
-    if (saju2.ohangCount[key] === 0 && saju1.ohangCount[key] >= 2) score += 5;
+  const dayA = saju1.pillars.find(p => p.name === '일주');
+  const dayB = saju2.pillars.find(p => p.name === '일주');
+  if (dayA && dayB) {
+    const dayRel = analyzeSajuRelations([dayA], [dayB]);
+    score += Math.min(8, dayRel.ganHap.length * 4);
+    score += Math.min(10, dayRel.jiHap.length * 10);
+    score -= Math.min(10, dayRel.jiChung.length * 10);
+    if (dayA.ji === dayB.ji) score += 3;
   }
 
-  return Math.max(0, Math.min(100, score));
+  const wholeRel = analyzeSajuRelations(saju1.pillars, saju2.pillars);
+  score += Math.min(8, wholeRel.ganHap.length * 2);
+  score += Math.min(12, wholeRel.jiHap.length * 3);
+  score -= Math.min(15, wholeRel.jiChung.length * 3);
+
+  for (const key of Object.keys(OHANG)) {
+    if (saju1.ohangCount[key] === 0 && saju2.ohangCount[key] >= 2) score += 3;
+    if (saju2.ohangCount[key] === 0 && saju1.ohangCount[key] >= 2) score += 3;
+  }
+
+  // 전통 명리 관계를 요약한 휴리스틱이므로 과도한 0/100 확정값은 피한다.
+  return Math.max(20, Math.min(95, Math.round(score)));
 }
 
 // ============================================================
@@ -1449,18 +1466,18 @@ function buildTarotPrompt(cards, question, lang) {
   const hasQuestion = question && question.trim().length > 0;
 
   if (isEn) {
-    const system = `You are a 30-year-veteran tarot reader with zero tolerance for sugar-coating. People paid money to hear the truth, not get a pep talk. If the cards warn, you warn — bluntly.
+    const system = `You are a precise tarot interpreter. Connect only the drawn cards, their order, direction, and the querent's actual question. Tarot supports reflection; it does not establish hidden facts or guarantee future events.
 
 **LANGUAGE: You MUST respond entirely in English. Every string in the JSON output — including card position names, interpretations, overall, advice, and keywords — must be in English. Any Korean text in the user input is internal reference data only; translate its meaning into English.**
 
 ## Interpretation Rules
-1. **Direction is binding**: Upright = that energy is flowing correctly. Reversed = it's **blocked, distorted, or excessive**. Reversed = warning sign. Do not soften it.
-2. **Minimal imagery**: One sentence max on visuals, then land immediately on "what this means for your actual life."
-3. **Narrative arc**: Past → Present → Future is ONE story of cause and consequence. Name which past choice created the current problem, and which current behavior will detonate in the future.
-4. **Plain, blunt language**: No mystical filler ("the universe", "energy flows", "reversed energy"). State facts.
-5. **No hedging**: Ban "might", "could possibly", "may come to". Replace with "this will happen unless you change X."
-6. **Break taboos**: If the question is about love, call out cheating risk, a partner pulling away, or that they're with the wrong person. If money, say "don't make this investment" when the cards say so. If health, say "see a doctor." Don't water it down.
-7. **Reversed = direct warning**: When reversed, name what's broken and what they'll lose if they don't fix it this week.
+1. **Direction is binding**: Upright emphasizes the card's expressed qualities. Reversed indicates delay, internalization, imbalance, or a blocked expression; choose the meaning that fits the neighboring cards.
+2. **Observation before application**: Briefly cite a symbol or keyword, then explain how it frames the question.
+3. **Narrative arc**: Past → Present → Future is one interpretive story. Do not invent a past choice, another person's intent, or an undisclosed event as fact.
+4. **Plain language**: No mystical filler ("the universe", "energy flows", "reversed energy"). Clearly distinguish card symbolism from known facts.
+5. **Calibrated claims**: Use conditional language for future outcomes and name the user-controlled action that could change the direction.
+6. **Safety**: Never infer cheating, disease, pregnancy, crime, legal outcomes, or investment performance from cards. For high-stakes questions, provide reflective prompts and recommend relevant professional help when appropriate.
+7. **Reversed cards**: State the specific tension shown by this spread and one practical way to test or address it; do not threaten a guaranteed loss.
 8. **Banned phrases**: "The universe is telling you...", "The card speaks of...", "Energy flows/is blocked", "stay positive", "trust the process" — never.
 
 ## Spread-Specific Differentiation
@@ -1472,12 +1489,12 @@ function buildTarotPrompt(cards, question, lang) {
 ## Response — JSON only
 {
   "cards": [
-    {"position": "Past", "interpretation": "(3-4 sentences. What happened and how it made you what you are today. Name the specific past choice that caused the current problem.)"},
-    {"position": "Present", "interpretation": "(3-4 sentences. What you're currently missing, avoiding, or refusing to face. Say it plainly.)"},
-    {"position": "Future", "interpretation": "(3-4 sentences. Where this is heading if nothing changes. State it as fact, not possibility.)"}
+    {"position": "Past", "interpretation": "(3-4 sentences. The past position's theme and how it may frame the current question; do not invent biography.)"},
+    {"position": "Present", "interpretation": "(3-4 sentences. The current tension, resource, or decision shown by the card pair.)"},
+    {"position": "Future", "interpretation": "(3-4 sentences. A conditional direction if the current pattern continues, plus what can change it.)"}
   ],
-  "overall": "(3-4 sentences. Tie past→present→future into one clear story. Include at least one uncomfortable truth the querent needs to accept.)",
-  "advice": "(3-4 sentences. Action THIS WEEK. No platitudes. Direct commands: 'Have the conversation with X', 'Stop doing Y right now', 'Don't sign that paper until Z.')",
+  "overall": "(3-4 sentences. Name at least two cards and connect their exact order/directions into one evidence-based theme.)",
+  "advice": "(3-4 sentences. One low-risk action this week and one question to verify in real life. No medical, legal, or financial directives.)",
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
 }`;
 
@@ -1486,22 +1503,21 @@ ${hasQuestion ? question : 'General life reading — no specific question'}
 
 ## Cards Drawn (Past → Present → Future)
 ${cardDescs}
-${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${question}". Don't give a generic reading.` : '\nCover love, career, and personal growth themes.'}`;
+${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${question}". Don't give a generic reading.` : '\nChoose the single life area most strongly supported by this exact spread and explain why.'}`;
 
     return { system, user, lang: 'en' };
   }
 
-  const system = `당신은 30년 경력의 타로 직설가입니다. 듣기 좋은 점괘 금지. 카드가 경고하면 경고 그대로 전달하세요.
-위로해달라고 온 사람한테 위로만 해주면 돈 받을 자격 없습니다. 카드가 뽑힌 대로, **지금 뭐가 잘못 돌아가고 있는지** 직설적으로 말해주세요.
+  const system = `당신은 카드의 상징, 순서, 정·역방향과 사용자의 실제 질문만 연결하는 정확한 타로 해설가입니다. 타로는 생각을 정리하는 도구이며 숨겨진 사실을 알아내거나 미래를 확정하지 않습니다.
 
 ## 해석 규칙
-1. **방향 반영**: 정방향 = 그 카드 의미대로 흐름. 역방향 = **막혔거나 어긋났거나 과잉**. 역방향은 경고 사인 — 얼버무리지 마세요.
-2. **카드 그림 설명 최소**: 한 문장이면 충분. 바로 "그래서 당신 인생에서 이게 무슨 뜻"으로 꽂으세요.
-3. **서사 연결**: 과거가 현재를 만들었고 현재가 미래로 이어집니다. 과거의 실수가 지금 어떤 대가로 돌아왔는지, 지금 행동이 미래에 어떤 결과로 터질지 연결
-4. **쉬운 말로**: 신비주의 표현 전면 금지. "에너지", "우주가", "역방향 에너지" 금지. 일상 말로 단정하세요.
-5. **직설 모드**: "이런 일이 일어날 수도 있습니다" 금지 → "이 상황은 ~때문에 벌어졌고 지금 이대로 가면 ~하게 된다"로 단정
-6. **금기 깨기**: 질문이 연애면 "지금 만나는 사람 바람 피울 리스크 있다"까지 솔직하게. 돈이면 "지금 하려는 투자 말려라" 수준. 건강이면 "병원 가라"까지.
-7. **역방향 = 직설 경고**: 역방향 나오면 그 영역에서 무엇이 망가졌는지, 지금 안 고치면 무엇을 잃을지 단정적으로
+1. **방향 반영**: 정방향은 카드 의미가 드러나는 방식, 역방향은 지연·내면화·과잉·막힘 중 인접 카드와 질문에 맞는 의미로 해석하세요.
+2. **관찰 후 적용**: 상징이나 키워드를 짧게 근거로 든 뒤 질문에 어떤 관점을 주는지 설명하세요.
+3. **서사 연결**: 과거→현재→미래를 하나의 해석 흐름으로 잇되 사용자의 과거 선택, 타인의 속마음, 공개되지 않은 사건을 사실처럼 만들지 마세요.
+4. **쉬운 말로**: "에너지", "우주가", "역방향 에너지" 같은 신비주의 표현을 피하고 카드 상징과 확인된 사실을 구분하세요.
+5. **미래 표현**: 미래는 현재 패턴이 이어질 때의 조건부 방향으로 쓰고 사용자가 바꿀 수 있는 행동을 함께 제시하세요.
+6. **안전 원칙**: 카드로 외도·질병·임신·범죄·법적 결과·투자 성과를 추정하지 마세요. 고위험 질문은 확인할 현실 정보와 필요한 경우 전문가 도움을 안내하세요.
+7. **역방향**: 이번 배열에서 나타난 구체 긴장과 확인 방법을 설명하고 손실을 확정적으로 위협하지 마세요.
 8. **금지 표현**: "우주가...", "카드가 말하기를...", "에너지가 흐른다/막혀있다", "긍정적 마인드" 등
 
 ## 배열별 차별화 필수
@@ -1513,12 +1529,12 @@ ${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${questi
 ## 응답 — JSON만
 {
   "cards": [
-    {"position": "과거", "interpretation": "(3~4문장. 그동안 무슨 일이 있었고 그게 지금 당신을 어떻게 만들었는지 직설적으로. 과거의 선택이 지금의 문제로 이어진 지점 명시)"},
-    {"position": "현재", "interpretation": "(3~4문장. 지금 당신이 뭘 잘못 보고 있는지, 뭘 외면하고 있는지, 뭐가 실제로 진행 중인지 솔직하게)"},
-    {"position": "미래", "interpretation": "(3~4문장. 지금 이대로 가면 어떻게 되는지 단정. '~할 수 있다' 금지. '이 상태 유지하면 ~이 터진다' 식)"}
+    {"position": "과거", "interpretation": "(3~4문장. 과거 위치 카드가 현재 질문의 배경을 어떻게 비추는지. 실제 과거사 창작 금지)"},
+    {"position": "현재", "interpretation": "(3~4문장. 현재 위치와 앞 카드 사이에 드러난 긴장·자원·결정 포인트)"},
+    {"position": "미래", "interpretation": "(3~4문장. 현재 패턴 유지 시 조건부 방향과 바꿀 수 있는 행동)"}
   ],
-  "overall": "(3~4문장. 과거→현재→미래 한 흐름으로. 이 사람이 지금 당장 받아들여야 할 불편한 진실 한 가지는 반드시 포함)",
-  "advice": "(3~4문장. 이번 주에 즉시 실행할 구체 행동. 격언 금지. '~하는 사람에게 ~라고 말해라', '~을 지금 그만둬라' 식 단정형 지시)",
+  "overall": "(3~4문장. 카드 2장 이상과 정·역방향을 직접 언급해 이번 배열만의 흐름으로 연결)",
+  "advice": "(3~4문장. 이번 주에 할 수 있는 저위험 행동 1개와 현실에서 확인할 질문 1개. 의료·법률·재무 지시 금지)",
   "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
 }`;
 
@@ -1527,7 +1543,7 @@ ${hasQuestion ? question : '특별한 질문 없이 전체 운세를 봅니다'}
 
 ## 뽑힌 카드 (과거 → 현재 → 미래)
 ${cardDescs}
-${hasQuestion ? `\n중요: 모든 해석은 "${question}"이라는 질문과 연결되어야 합니다. 뜬구름 잡는 해석은 하지 마세요.` : '\n연애, 직업, 개인적 성장 주제를 골고루 다뤄주세요.'}`;
+${hasQuestion ? `\n중요: 모든 해석은 "${question}"이라는 질문과 연결되어야 합니다. 뜬구름 잡는 해석은 하지 마세요.` : '\n이 카드 조합이 가장 강하게 지지하는 현실 영역 하나만 골라 그 이유와 함께 깊게 다뤄주세요.'}`;
 
   return { system, user, lang: 'ko' };
 }
@@ -1711,7 +1727,7 @@ function faceExpertRubric() {
 10. 물형/동물형 관상은 전체 인상을 설명하는 보조 비유로만 사용하세요. 특정 동물형을 이유로 인격·운명을 확정하지 마세요.
 11. 관찰→전통 해석→현실 조언 순서로 쓰세요. 관찰 근거 없이 성격이나 운세만 말하면 실패입니다.
 12. 건강은 의학적 진단처럼 쓰지 말고, 얼굴에 보이는 피로감·긴장감·생활관리 주의 정도로만 표현하세요. 특정 질병 확정, 수명, 발병 나이 단정은 금지.
-13. 닮은 유명인은 실제 인물 식별이 아니라 "분위기상 참고" 수준으로만 쓰세요. 확신이 낮으면 빈 문자열로 두세요.`;
+13. 얼굴 사진으로 실존 인물을 식별하거나 닮은 유명인을 추정하지 마세요. celebrity_resemblance는 항상 빈 문자열로 두세요.`;
 }
 
 function palmExpertRubric() {
@@ -1739,8 +1755,7 @@ async function handleFaceReading(request, env) {
   // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
   const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
 
-  const prompt = `당신은 40년 경력의 관상학 직설가입니다. 덕담 관상 금지. 얼굴에 드러난 것을 그대로 읽어주세요.
-관상은 칭찬 대잔치가 아닙니다. 박복한 상·고집 센 상·재물 흘리는 상 같은 불편한 진단도 있는 그대로 하세요.
+  const prompt = `당신은 사진에서 관찰 가능한 얼굴 특징과 전통 관상 해석을 명확히 구분하는 관상 해설가입니다. 관상은 오락·자기성찰용 전통 해석이며 실제 성격, 능력, 건강, 재산, 가족관계, 미래를 판정하지 않습니다.
 
 중요: 먼저 사진에 사람의 얼굴이 있는지 확인하세요. 얼굴이 없거나 사람이 아닌 사진이면 반드시 다음 JSON만 반환:
 {"error": "얼굴 사진이 아닙니다. 사람의 정면 얼굴이 보이는 사진을 업로드해주세요."}
@@ -1756,15 +1771,15 @@ ${faceExpertRubric()}
 - 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
 - 사진에서 잘 안 보이는 부위는 지어내지 말고 "사진상 확인 어려움"이라고 쓰고 점수를 50~65 사이로 낮추세요.
 - 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
-- 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수·유명인도 달라져야 합니다.
+- 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수도 달라져야 합니다.
 - summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
 - overall_score와 categories 점수는 보이는 특징에서 나온 결론이어야 합니다. 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
 
-## 직설 모드 원칙
-- 점수가 낮은 부위는 낮은 점수를 매기고, 왜 낮은지 솔직하게 (예: "이마가 좁고 굴곡이 있어 초년 부모덕 박함, 혼자 개척해야 하는 상")
-- 얼굴에 드러나는 성격 결함 직설 (고집, 의심 많음, 질투, 속물적, 감정 기복)
-- 재물 흐름·관재·생활관리 이슈를 얼굴 신호로 연결하되, 의학·법률·재무 사실처럼 단정하지 마세요.
-- **닮은 유명인**은 실존 인물 식별이 아니라 분위기 참고로만 다루고, 확실하지 않으면 빈 문자열을 반환하세요.
+## 정확성 원칙
+- 점수는 사진 품질과 해당 부위의 가시성, 전통 관상 기준의 균형을 요약하는 오락용 지표입니다. 사람의 가치나 능력 점수가 아닙니다.
+- 관찰 가능한 형태를 성격 결함, 부모덕, 범죄성, 지능, 건강 상태, 부유함과 직접 연결하지 마세요. 전통적으로 어떤 상징으로 읽는지 조건부로 설명하세요.
+- 재물·관계·생활관리 항목은 선택을 돌아볼 질문으로 바꾸고 의학·법률·재무 사실이나 미래 시점을 만들지 마세요.
+- 얼굴 사진으로 실존 인물을 식별하거나 닮은 유명인을 추정하지 말고 celebrity_resemblance는 항상 빈 문자열로 반환하세요.
 
 ## 분석 항목
 1. 이마(천정) - 지혜, 초년운, 부모덕
@@ -1780,23 +1795,23 @@ ${faceExpertRubric()}
   "overall_grade": "A",
   "quality_assessment": "(사진 품질, 정면성, 가림/조명/보정 여부. 분석 한계가 있으면 명시)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
-  "summary": "(한줄 요약. 덕담 금지. 예: '초년 고생 후 중년부터 재물 모이는 상, 단 배우자복은 약함')",
+  "summary": "(한줄 요약. 가장 뚜렷한 관찰 2개와 전통적 상징을 구분해 설명. 실제 인생사 단정 금지)",
   "categories": [
-    {"name": "이마 (천정)", "score": 80, "desc": "(2~3문장. 초년운·부모덕·학업운. 박복하면 박복하다고 직설)"},
-    {"name": "눈 (눈매)", "score": 85, "desc": "(2~3문장. 성격 민낯·의심 많은지·감정 기복·대인관계 패턴)"},
-    {"name": "코 (준두)", "score": 75, "desc": "(2~3문장. 재물운·자존심·돈 새는 상인지 직설)"},
-    {"name": "입 (입술)", "score": 90, "desc": "(2~3문장. 언변·식복·말로 싸움 많이 일으키는지)"},
-    {"name": "턱/광대", "score": 80, "desc": "(2~3문장. 말년운·의지력·고독 가능성)"},
-    {"name": "전체 인상", "score": 85, "desc": "(2~3문장. 종합. 인덕·관재·생활관리 주의점을 관찰 근거와 연결)"}
+    {"name": "이마 (천정)", "score": 80, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 초년·학습 상징을 조건부로 설명)"},
+    {"name": "눈 (눈매)", "score": 85, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 관계 표현 상징을 조건부로 설명)"},
+    {"name": "코 (준두)", "score": 75, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 현실감각·재물관리 상징을 조건부로 설명)"},
+    {"name": "입 (입술)", "score": 90, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 의사표현 상징을 조건부로 설명)"},
+    {"name": "턱/광대", "score": 80, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 지속력 상징을 조건부로 설명)"},
+    {"name": "전체 인상", "score": 85, "desc": "(2~3문장. 관찰 가능한 균형을 요약하고 전통 해석과 현실 확인 질문을 분리)"}
   ],
   "fortune": {
-    "wealth": "(재물운 3~4문장. 평생 얼마나 모을지, 어느 시기 날릴 위험 있는지 직설)",
-    "career": "(직업/사업운 3~4문장. 적성과 피해야 할 업무 방식 함께. 관찰 근거에 맞춰 월급형/사업형/전문직형 경향 설명)",
-    "love": "(연애/결혼운 3~4문장. 관계 방식, 갈등이 생기기 쉬운 지점, 맞는 상대 유형을 경향으로 설명)",
+    "wealth": "(코·하관 관찰을 근거로 전통 관상에서 말하는 재물 관리 상징과 현실적인 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",
+    "career": "(이마·눈·하관 관찰을 근거로 전통 관상에서 말하는 업무 표현 경향과 현실 점검 질문 3~4문장. 능력·직업 적합성 단정 금지)",
+    "love": "(눈·입·하관 관찰을 근거로 전통 관상에서 말하는 관계 표현 상징과 대화 질문 3~4문장. 실제 성격·관계 결과 단정 금지)",
     "health": "(건강운 3~4문장. 사진상 보이는 피로감·긴장감·생활관리 주의 중심. 특정 질환 확정이나 발병 나이 단정 금지)"
   },
   "advice": "(관상 기반 조언 3~4문장. 격언 금지. '이 상은 ~을 반드시 피하라, ~부터 ~을 준비해라' 식 구체 지시)",
-  "celebrity_resemblance": "(닮은 유명인 1~2명. 외모+커리어 패턴 참고해서 이 사람이 참고할 만한 부분과 피해야 할 부분 모두)"
+  "celebrity_resemblance": ""
 }` + langInstruction(lang);
 
   const result = await callGeminiVision(apiKeys, prompt, image, mimeType || 'image/jpeg', env);
@@ -1816,8 +1831,7 @@ async function handlePalmReading(request, env) {
   const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
   const handContext = buildPalmHandContext(hand, dominant, lang);
 
-  const prompt = `당신은 40년 경력의 수상학 직설가입니다. 손금에 새겨진 것을 있는 그대로 읽어주세요. 좋게 포장하지 마세요.
-손금은 확률·경향을 드러내는 지도입니다. 끊긴 선·흐린 선·흉터까지 솔직하게 해석하되, 사진에서 보이는 근거와 전통 수상학 해석을 분리해서 말하세요.
+  const prompt = `당신은 사진에서 관찰 가능한 손바닥 특징과 전통 수상학 해석을 명확히 구분하는 손금 해설가입니다. 손금은 오락·자기성찰용 전통 해석이며 실제 성격, 건강, 수명, 재산, 관계, 미래 사건을 판정하지 않습니다.
 
 중요: 먼저 사진에 사람의 손바닥이 있는지 확인하세요. 손바닥이 없거나 손금이 보이지 않는 사진이면 반드시 다음 JSON만 반환:
 {"error": "손바닥 사진이 아닙니다. 손금이 잘 보이도록 손을 펴서 촬영한 사진을 업로드해주세요."}
@@ -1843,7 +1857,7 @@ ${palmExpertRubric()}
 - **끊긴 선·흐린 선·섬(島)·흉터**는 먼저 실제 관찰로 기록한 뒤 전통 수상학상 어떤 경향으로 보는지 설명
 - 결혼선은 측면이 보여야 판단 가능. 안 보이면 확인 어렵다고 쓰고, 이혼·재혼·불륜을 단정하지 마세요.
 - 건강 관련 내용은 의학적 진단이 아니라 생활관리 주의로만 표현하세요.
-- 재물선이 약하면 돈 관리 방식의 리스크로 설명하되, "망함"처럼 결과 확정형 표현은 피하세요.
+- 재물선이 약하면 전통 수상학의 돈 관리 상징과 현실 점검 질문으로 설명하되 실제 습관·부·손실을 단정하지 마세요.
 - 점수 낮은 항목은 낮은 점수 + 직설적 설명. 평균 올리려 억지로 75+ 매기지 말 것
 
 ## 주요 손금 분석
@@ -1861,19 +1875,19 @@ ${palmExpertRubric()}
   "overall_grade": "A",
   "quality_assessment": "(사진 품질, 손바닥 전체 노출, 초점, 조명, 손금 선명도, 분석 한계)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
-  "summary": "(한줄 요약. 덕담 금지. 예: '초중년 고생선 뚜렷, 40대 중반 큰 전환점 있는 손')",
+  "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",
   "lines": [
     {"name": "생명선", "score": 85, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 생명선의 실제 깊이·연속성·호 형태 관찰부터 시작. 활력·회복력 중심, 질병/사고 단정 금지)"},
-    {"name": "두뇌선", "score": 78, "length": "길다/보통/짧다", "desc": "(2~3문장. 판단력·감정 기복·우울 경향까지)"},
+    {"name": "두뇌선", "score": 78, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 실제 선의 시작·길이·기울기 관찰 후 전통적인 사고 방식 상징을 조건부로 설명. 정신건강 추정 금지)"},
     {"name": "감정선", "score": 88, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 감정선의 위치·곡선·끊김 관찰부터 시작. 연애 패턴과 상처 처리 방식 중심으로 설명)"},
     {"name": "운명선", "score": 75, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(2~3문장. 중앙 세로선의 선명도 관찰부터 시작. 직업 안정성·전환이 잦은 경향으로 설명)"},
-    {"name": "태양선", "score": 70, "length": "있음/희미/없음", "desc": "(2~3문장. 성공·명예 가능성. 없으면 없다고 솔직하게)"},
+    {"name": "태양선", "score": 70, "length": "있음/희미/없음/확인 어려움", "desc": "(2~3문장. 실제 가시성 관찰 후 전통적인 성취 표현 상징을 조건부로 설명. 성공 예측 금지)"},
     {"name": "결혼선", "score": 80, "length": "1개/2개/여러개/확인 어려움", "desc": "(2~3문장. 새끼손가락 아래 측면이 보이는 경우만 해석. 안 보이면 확인 어렵다고 명시)"}
   ],
   "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "(손 형태로 본 성격 민낯 2~3문장)"},
   "fortune": {
-    "wealth": "(재물운 3~4문장. 평생 돈 모이는 손인지 새는 손인지, 큰 손실 올 시기)",
-    "career": "(직업운 3~4문장. 월급쟁이형인지 사업형인지 + **절대 하면 안 되는 방향** 명시)",
+    "wealth": "(재물 관련 선의 관찰과 전통적 돈 관리 상징, 현실 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",
+    "career": "(운명선·두뇌선 관찰과 전통적 업무 방식 상징, 현실 점검 질문 3~4문장. 직업 적합성·성공 단정 금지)",
     "love": "(연애/결혼운 3~4문장. 감정선·결혼선 가시성에 근거해 관계 방식, 맞는 상대 유형, 갈등 주의점을 경향으로 설명)",
     "health": "(건강운 3~4문장. 손의 긴장도·선명도·생활 리듬 기반 주의. 특정 질병 확정, 사고 시기 단정 금지. 필요 시 일반적 검진 권장)"
   },
@@ -1924,11 +1938,109 @@ const OHANG_RELATIONS = `
 function getOhangAnalysis(ohangCount) {
   const excess = [];
   const lack = [];
+  const entries = Object.entries(ohangCount).sort((a, b) => b[1] - a[1]);
+  const max = entries[0]?.[1] ?? 0;
+  const min = entries[entries.length - 1]?.[1] ?? 0;
   for (const [key, val] of Object.entries(ohangCount)) {
     if (val >= 4) excess.push(`${key}(${val}개) 과다`);
     else if (val === 0) lack.push(`${key} 부족`);
   }
-  return { excess, lack };
+  const dominant = entries.filter(([, val]) => val === max).map(([key, val]) => `${key}(${val})`);
+  const sparse = entries.filter(([, val]) => val === min).map(([key, val]) => `${key}(${val})`);
+  return { excess, lack, dominant, sparse };
+}
+
+function inverseOhangRelation(map, target) {
+  return Object.keys(map).find(key => map[key] === target) || '';
+}
+
+function buildSajuEvidence(saju) {
+  const count = saju.ohangCount;
+  const day = saju.ilganOhang;
+  const resource = inverseOhangRelation(SANGSAENG, day);
+  const output = SANGSAENG[day];
+  const wealth = SANGGEUK[day];
+  const authority = inverseOhangRelation(SANGGEUK, day);
+  const peerCount = count[day] || 0;
+  const resourceCount = count[resource] || 0;
+  const outputCount = count[output] || 0;
+  const wealthCount = count[wealth] || 0;
+  const authorityCount = count[authority] || 0;
+  const surfaceSupport = peerCount + resourceCount;
+  const surfaceDrain = outputCount + wealthCount + authorityCount;
+  const balance = surfaceSupport > surfaceDrain
+    ? '표면 글자 기준 일간 지원 쪽이 우세'
+    : surfaceSupport < surfaceDrain
+      ? '표면 글자 기준 일간 소모·통제 쪽이 우세'
+      : '표면 글자 기준 지원과 소모가 비슷함';
+  const { dominant, sparse, lack } = getOhangAnalysis(count);
+  return {
+    resource, output, wealth, authority,
+    roleLine: `비겁 ${day}${peerCount} / 인성 ${resource}${resourceCount} / 식상 ${output}${outputCount} / 재성 ${wealth}${wealthCount} / 관성 ${authority}${authorityCount}`,
+    balance,
+    dominant: dominant.join(', '),
+    sparse: sparse.join(', '),
+    missing: lack.join(', ') || '없음',
+    fingerprint: `${saju.pillars.map(p => `${p.gan}${p.ji}`).join('-')}|${['목','화','토','금','수'].map(k => `${k}${count[k]}`).join('-')}|S${surfaceSupport}D${surfaceDrain}`,
+  };
+}
+
+function getAgeAt(birthDate, targetDate) {
+  if (!birthDate) return null;
+  const [by, bm, bd] = birthDate.split('-').map(Number);
+  const target = typeof targetDate === 'string' ? new Date(`${targetDate}T12:00:00Z`) : targetDate;
+  if (!by || Number.isNaN(target?.getTime?.())) return null;
+  let age = target.getUTCFullYear() - by;
+  if ((target.getUTCMonth() + 1) < bm || ((target.getUTCMonth() + 1) === bm && target.getUTCDate() < bd)) age--;
+  return Math.max(0, age);
+}
+
+function getActiveDaeun(saju, birthDate, targetDate) {
+  const age = getAgeAt(birthDate, targetDate);
+  const daeun = age == null ? null : (saju.daeun || []).find(d => age >= d.fromAge && age <= d.toAge) || null;
+  return { age, daeun };
+}
+
+function formatActiveDaeun(saju, birthDate, targetDate) {
+  const { age, daeun } = getActiveDaeun(saju, birthDate, targetDate);
+  if (age == null) return '출생일 미전달로 현재 대운 판별 불가';
+  if (!daeun) return `만 ${age}세, 계산된 8개 대운 범위 밖`;
+  return `만 ${age}세 → ${daeun.label} ${daeun.gan}${daeun.ji}(${daeun.ohang}/${daeun.jiOhang})`;
+}
+
+function buildMonthlySignals(saju, year) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const sajuYear = getSajuYear(year, month, 15, 12, 0);
+    const sajuMonth = getSajuMonth(year, month, 15, 12, 0);
+    const yGan = yearCheongan(sajuYear);
+    const gan = monthCheongan(CHEONGAN.indexOf(yGan), sajuMonth);
+    const ji = monthJiji(sajuMonth);
+    const rel = analyzeSajuRelations([{ name: `${month}월`, gan, ji }], saju.pillars);
+    const relation = getOhangRelations(saju.ilganOhang, CHEONGAN_OHANG[gan]);
+    const facts = [];
+    if (relation.sangsaeng.length) facts.push(`일간과 상생 ${relation.sangsaeng.join('/')}`);
+    if (relation.sanggeuk.length) facts.push(`일간과 상극 ${relation.sanggeuk.join('/')}`);
+    if (relation.same) facts.push('일간과 같은 오행');
+    if (rel.ganHap.length) facts.push(`천간합 ${rel.ganHap.join('/')}`);
+    if (rel.jiHap.length) facts.push(`지지합 ${rel.jiHap.join('/')}`);
+    if (rel.jiChung.length) facts.push(`지지충 ${rel.jiChung.join('/')}`);
+    return `${month}월 중순 대표 월주 ${gan}${ji}: ${facts.join(', ') || '뚜렷한 합충 없음'}`;
+  });
+}
+
+function buildHourlySignals(saju, dayGan) {
+  const labels = ['23~01시','01~03시','03~05시','05~07시','07~09시','09~11시','11~13시','13~15시','15~17시','17~19시','19~21시','21~23시'];
+  return labels.map((label, index) => {
+    const hour = index === 0 ? 0 : index * 2;
+    const pillar = hourPillar(dayGan, hour);
+    const rel = analyzeSajuRelations([{ name: label, ...pillar }], saju.pillars);
+    const facts = [];
+    if (rel.ganHap.length) facts.push(`천간합 ${rel.ganHap.join('/')}`);
+    if (rel.jiHap.length) facts.push(`지지합 ${rel.jiHap.join('/')}`);
+    if (rel.jiChung.length) facts.push(`지지충 ${rel.jiChung.join('/')}`);
+    return `${label} ${pillar.gan}${pillar.ji}: ${facts.join(', ') || '뚜렷한 합충 없음'}`;
+  });
 }
 
 function langInstruction(lang) {
@@ -1936,59 +2048,56 @@ function langInstruction(lang) {
   return '';
 }
 
-function buildSajuPrompt(saju, gender, lang) {
+function buildSajuPrompt(saju, gender, lang, birthDate) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
-  const { excess, lack } = getOhangAnalysis(saju.ohangCount);
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
   const yinYang = ilganInfo.yin ? '음(陰)' : '양(陽)';
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
   const rel = analyzeInternalRelations(saju.pillars);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, new Date());
 
-  const system = `당신은 40년 경력의 사주명리학 직설가입니다. 위로·공감·포장 금지. 손님 비위 맞추지 말고 있는 그대로 후려치세요.
-돈 받고 보는 진짜 사주는 "좋은 말"이 아니라 "아픈 말"입니다. 듣기 싫어도 맞는 말을 하세요.
+  const system = `당신은 사주 원국의 계산값을 근거로 설명하는 명리 해설가입니다. 좋은 말이나 나쁜 말을 만들기보다 입력된 원국이 다른 이유를 정확히 구분하세요.
 
-## 절대 금지 표현 (이거 쓰면 해석 실패)
-- "~할 수도 있습니다" / "~일 가능성이 있습니다" → 단정형으로 쓰세요
-- "균형이 중요합니다" / "조화를 이루세요" → 구체적 행동 지시로 바꾸세요
-- "노력하면 좋습니다" / "긍정적으로 생각하세요" → 뻔한 위로 금지
-- "특별한 주의가 필요합니다" → 무엇을, 언제, 어떻게 조심해야 하는지 명시
+## 정확성 원칙
+- 입력에 없는 과거 사건, 가족사, 질병, 이혼, 파산, 범죄, 수명과 미래 사건을 사실처럼 만들지 마세요.
+- 현재 계산기는 겉으로 드러난 천간·지지 오행 수, 합·충, 대운을 제공합니다. 지장간·월령 가중치·12운성 전체가 없으므로 신강/신약, 용신, 희신을 확정하지 마세요.
+- 성격·연애·직업·대운은 전통 명리 관점의 경향으로 설명하고, 의료·법률·재무 결론은 내리지 마세요.
+- 시주가 없으면 hour는 빈 문자열로 두고 자녀운·말년을 추정하지 마세요.
+- 각 핵심 문단에는 반드시 [근거: 실제 입력값]을 한 번 이상 표시하세요. 근거가 없으면 쓰지 마세요.
 
 ## 오행 상생/상극 기본 원리
 ${OHANG_RELATIONS}
 
-## 해석 지침 (직설 모드)
-1. 성격 결함을 정확히 찌르세요. "고집 세다", "질투 많다", "돈 못 모은다", "감정 기복 심하다" 같은 표현 허용
-2. 연애 실패 패턴을 구체적으로: 어떤 타입한테 당하기 쉬운지, 왜 항상 같은 이별을 반복하는지
-3. 직업 적성은 물론 **안 맞는 직업**도 찍어주세요. "이 사주로 영업·창업 하면 망한다" 식으로 단언
-4. 건강: 약한 장기·질환 경향 직접 언급 (간·신장·심혈관·정신건강 등 오행별로). 몇 살 즈음 특히 조심해야 하는지 명시
-5. 대운: 좋은 시기는 짧게, **힘든 시기는 언제·무엇이·얼마나 힘든지** 구체적으로. "30대 중반 대운 충으로 이직 실패·연애 파탄 동시 타격" 식
-6. 천간합/지지충을 반드시 실제 인생 사건(이혼, 파산, 질병, 관재)으로 번역
-
 ## 개인화 필수 (누구나 비슷한 사주 풀이면 실패)
-- 해석의 출발점은 반드시 이 사람의 정확한 원국, 일간, 오행 과다·부족, 내부 합/충, 대운입니다. 성별이나 일반 사주 상식만으로 결론을 만들지 마세요.
+- 해석의 출발점은 원국 지문, 일간 역할별 오행 수, 우세·희소 오행, 내부 합/충, 현재 대운입니다. 성별이나 일반 사주 상식만으로 결론을 만들지 마세요.
 - pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
 - strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 위험 3개를 골라야 합니다.
-- 첫 문단부터 "당신은..."으로 일반 성격을 말하지 말고, 이 사람의 일간과 가장 두드러진 오행 불균형 또는 합/충을 찍고 시작하세요.
+- 단순히 0개/4개 이상일 때만 차이를 찾지 마세요. 매번 제공된 우세·희소 오행과 십성 역할 수를 비교해 이 원국만의 대비를 잡으세요.
+- 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 경향으로 시작하세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
 
 ## 응답 형식
-반드시 아래 JSON 형식으로만 응답. 설명은 직설적이고 구체적으로. 뻔한 말 쓰면 다시 뽑아야 함:
+반드시 아래 JSON 형식으로만 응답. 문체는 명확하고 구체적으로:
 {
   "pillar_reading": {
-    "year": "(년주 해석 3~4문장: 어린 시절·가정환경의 구체적 모습. 부모와의 갈등, 경제적 결핍, 정서적 방치 등 불편한 진실도 있는 그대로. 예: '부모 중 한쪽이 정서적으로 부재했다', '경제적으로 쪼들렸다')",
-    "month": "(월주 해석 3~4문장: 사회·직장에서의 민낯. 동료들이 뒤에서 어떻게 평가하는지, 상사와 부딪히는 지점, 승진에서 밀리는 이유까지)",
-    "day": "(일주 해석 3~4문장: 진짜 성격과 연애 본성. 겉과 속이 얼마나 다른지, 연애할 때 상대를 어떻게 지치게 하는지, 어떤 배우자 만나면 불행해지는지까지 직설)",
-    "hour": "(시주 해석 3~4문장: 자녀운과 말년. 자녀와 갈등 가능성, 말년 고독·건강 악화 여부까지. 시주 없으면 빈 문자열)"
+    "year": "(년주가 전체 원국에서 맡는 역할과 전통적 초년·외부환경 경향 3~4문장. 실제 가족사를 지어내지 말 것)",
+    "month": "(월주와 월지의 계절·사회 활동 경향 3~4문장. 직장 사건을 지어내지 말 것)",
+    "day": "(일간·일지 관계로 본 자기표현과 가까운 관계 방식 3~4문장)",
+    "hour": "(시주가 있을 때만 장기 목표·표현 경향 3~4문장. 시주 없으면 빈 문자열)"
   },
-  "personality": "(이 사람을 한마디로 후려치세요. 4~5문장. 장점 1 : 단점 3 비율. 예: '겉으론 유연해 보이지만 실제론 고집 세고 자기 판단이 무조건 맞다고 믿는 타입. 주변이 먼저 지친다')",
-  "strengths": ["강점 3가지 (각각 1~2문장. 과장 금지, 진짜 빛나는 순간만)"],
-  "cautions": ["치명적 약점 3가지 (각각 1~2문장. '이 패턴 때문에 인생 망치는 사람 많다' 수준으로 직설. 예: '감정 올라오면 관계를 먼저 끊고 나중에 후회하는 패턴 — 친구·애인·직장 다 이렇게 잃음')"],
-  "love_style": "(연애 민낯 4~5문장. 어떤 타입한테 끌려다니는지, 반복되는 실패 패턴, 상대가 당신과 헤어지고 싶어지는 순간, 결혼 후 어떤 문제로 싸우게 될지까지 직설)",
-  "career": "(적합한 직업 3개 + **절대 하면 안 되는 직업** 2개. 이유까지. 예: '창업·영업은 인내심 부족으로 망함. 대신 전문직·연구직에서 빛남')",
-  "daeun_reading": ["대운 8개 각각 2~3문장. 각 대운에서 실제 벌어질 일(이직/이혼/파산/병/성공)을 단정적으로. '이 시기 조심'이 아니라 '이 시기에 ~이 터진다'"],
-  "advice": "(인생 조언 3~4문장. 격언 금지. '당신 사주의 최대 리스크는 X다. 40대 전에 반드시 Y를 해둬야 노후에 Z를 피한다' 식으로 구체 행동+시기+이유)"
+  "personality": "(서로 다른 계산 근거 2개 이상을 연결한 성향 4~5문장)",
+  "strengths": ["서로 다른 근거에서 나온 강점 3가지. 각 항목에 근거 표기"],
+  "cautions": ["서로 다른 근거에서 나온 주의 경향 3가지. 단정 대신 작동 조건과 대응 행동 명시"],
+  "love_style": "(일간·일지·재성/관성 수를 근거로 관계의 표현·갈등·조율 방식 4~5문장)",
+  "career": "(식상·재성·관성·인성의 표면 수를 비교해 잘 맞는 업무 환경 3개와 부담이 큰 환경 2개, 이유 포함)",
+  "daeun_reading": ["대운 8개를 입력 순서대로 각각 2~3문장. 원국과 해당 대운 오행의 상호작용 및 준비할 행동만 설명. 사건 확정 금지"],
+  "advice": "(현재 대운과 가장 희소한 역할을 근거로 지금 실행할 행동 3~4문장)"
 }` + langInstruction(lang);
 
   const user = `## 기본 정보
 ${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
+- 현재 대운: ${activeDaeun}
 
 ## 사주 원국 (四柱 原局)
 ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
@@ -2001,6 +2110,13 @@ ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/
 - 목: ${saju.ohangCount.목} | 화: ${saju.ohangCount.화} | 토: ${saju.ohangCount.토} | 금: ${saju.ohangCount.금} | 수: ${saju.ohangCount.수}
 ${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
 ${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다 오행: ${dominant.join(', ')}
+- 최저 오행: ${sparse.join(', ')}
+
+## 일간 기준 역할별 표면 분포
+- ${evidence.roleLine}
+- ${evidence.balance}
+- 주의: 이 값은 지장간·월령 가중치가 없는 표면 비교이므로 신강/신약·용신을 확정하는 자료가 아님
 
 ## 사주 내부 합/충 관계 (코드로 계산된 결과)
 ${rel.ganHap.length ? `- 천간합: ${rel.ganHap.join(', ')}` : '- 천간합: 없음'}
@@ -2012,6 +2128,7 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 ` : ''}
 
 ## 개인화 키 (반복 방지 기준)
+- 원국 지문: ${evidence.fingerprint}
 - 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
 - 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
 - 합충 키: 천간합=${rel.ganHap.length ? rel.ganHap.join('/') : '없음'}; 지지육합=${rel.jiHap.length ? rel.jiHap.join('/') : '없음'}; 지지충=${rel.jiChung.length ? rel.jiChung.join('/') : '없음'}`;
@@ -2019,10 +2136,13 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
   return { system, user, lang };
 }
 
-function buildFortunePrompt(saju, gender, year, lang) {
+function buildFortunePrompt(saju, gender, year, lang, birthDate) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
-  const { excess, lack } = getOhangAnalysis(saju.ohangCount);
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, `${year}-07-01`);
+  const monthlySignals = buildMonthlySignals(saju, year);
   const yGan = yearCheongan(year);
   const yJi = yearJiji(year);
   const yOhang = CHEONGAN_OHANG[yGan];
@@ -2052,51 +2172,53 @@ function buildFortunePrompt(saju, gender, year, lang) {
   if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
   if (relations.same) relDesc.push('비화(같은 오행)');
 
-  const system = `당신은 40년 경력의 세운 전문가입니다. 듣기 좋은 덕담 금지. 올해 실제로 터질 일을 있는 그대로 찍어주세요.
-좋은 운은 간단히, **나쁜 운은 월·원인·파장까지** 구체적으로. 애매한 말로 얼버무리면 사람들이 미리 대비를 못 합니다.
+  const system = `당신은 원국·현재 대운·세운의 계산된 관계를 구분해 설명하는 명리 해설가입니다. 올해의 사건을 만들어내지 말고, 어떤 조건에서 어떤 선택이 유리하거나 부담스러운지를 근거와 함께 설명하세요.
 
 ## 절대 금지
-- "주의하면 괜찮습니다" → 무엇을·언제 하라고 단정
-- "전반적으로 무난" / "큰 문제 없음" → 이런 뻔한 말 쓰지 말고 실제 이벤트 찍기
-- "긍정적 마인드" 같은 뜬구름
+- 입력에 없는 이별·외도·손실·퇴사·수술·질환을 일어날 사실처럼 단정
+- 오행만으로 특정 장기나 질병, 투자 상품의 수익·손실, 법적 문제를 예측
+- 계산되지 않은 신강/신약·용신을 확정하거나 월별 합충 근거 없이 특정 월을 좋다/나쁘다고 지정
+- "전반적으로 무난", "긍정적으로 생각" 같은 재사용 가능한 문장
 - 해마다 같은 결론 반복 금지. 입력의 세운 60갑자 순번, 세운-원국 합/충, 일지-세운 지지 관계를 근거로 해당 연도만의 사건·월·행운 요소를 골라라
 
 ## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
 - 세운(올해 천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 세운의 오행만 설명하는 도입부는 절대 금지(예: "올해는 ○(○) 기운이 강한 해라..." 금지).
-- 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 세운은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
-- 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 신강/신약, 어떤 오행이 과다/부족한지에 따라 같은 세운도 길흉이 정반대로 갈린다.
-- year_summary 첫 문장은 반드시 이 사람의 일간과 그 상태(신강/신약, 과다/부족 오행, 세운이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+- 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 내부 합충)이다. 세운은 방아쇠이며 현재 대운을 함께 고려하라.
+- 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 같은 세운이 어떤 역할을 늘리는지 원국 지문과 비교하라.
+- year_summary 첫 문장은 반드시 원국의 특정 신호와 세운 또는 현재 대운의 관계를 직접 언급하며 시작하라.
 - love, money, health, career, advice는 서로 다른 근거를 써야 합니다. 같은 "올해 조심" 문장을 분야명만 바꿔 반복하지 말고, 원국 오행·일지 관계·세운 합/충·대운 중 무엇을 근거로 삼았는지 문장 안에 드러내세요.
-- lucky의 색·숫자·방향·월은 이 사람에게 필요한 보완 오행 또는 세운 60갑자 순번에서 끌어오세요. 흔한 행운색/7 같은 기본값을 재사용하지 마세요.
+- 각 항목에 [근거: 입력 신호]를 최소 한 번 표시하세요. lucky의 월은 제공된 월별 대표 신호 중 실제 합·충 또는 일간 관계가 있는 달만 선택하세요.
 
-## 해석 원칙 (직설 모드)
-1. 세운 천간이 원국과 충·합 → **실제 사건**으로 번역 (이직/이별/돈문제/수술/관재)
-2. **월별로 찍어라**: 몇 월에 뭐가 터지는지 구체적 월 명시 ("3월 금전 손실 주의" > "상반기 조심")
-3. 건강: 구체 부위·질환 경향 직접 언급. 정기검진 받아야 할 과목까지
-4. 연애: 솔로는 만날 타입뿐 아니라 **빠지면 안 될 타입**도. 커플은 **헤어질 확률 높은 시점**·권태기·외도 리스크 직설
-5. 돈: "투자 주의" 금지 → "주식·코인·부동산 중 무엇을 언제 피하라" 명시. 손실 규모 스케일도 (소액/중대형)
-6. 직장: 승진·이직·퇴사 가능성을 확률적 판단으로. "당신이 올해 그만두고 싶어지는 달은 ~월" 식 구체
+## 해석 원칙
+1. 세운·월운의 합충은 확정 사건이 아니라 변화 압력이 나타나는 영역과 대응 행동으로 번역하세요.
+2. 월을 언급할 때는 아래 월별 대표 월주의 실제 합·충·상생·상극을 문장 안에 함께 적으세요.
+3. 건강은 수면·과로·식사·스트레스 같은 일반 생활관리만 다루고 증상은 의료진에게 확인하도록 안내하세요.
+4. 연애는 관계에서 나타날 수 있는 표현·갈등 패턴과 대화 방법을 설명하고 외도·이별을 예언하지 마세요.
+5. 돈은 예산·계약 검토·충동지출 관리처럼 일반적인 의사결정 절차만 제안하고 종목·손실 규모를 예측하지 마세요.
+6. 직장은 역할·협업·결정 속도의 경향과 준비 행동을 설명하되 승진·퇴사 확률을 만들지 마세요.
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답:
 {
-  "year_summary": "(올해 운세 4~5문장. 한 문장 요약 + 최악의 시기(월)+ 최고의 시기(월) + 올해 터질 가장 큰 이벤트 한 개 단정적으로)",
-  "love": "(연애/결혼운 6~8문장. 솔로: 만날 타입 + **절대 만나지 말아야 할 타입** + 만나는 월. 커플: 권태기 월, 헤어질 가능성, 상대 외도 리스크, 결혼 하면 후회할지 직설. 기혼: 외도 유혹·부부 갈등 월 명시)",
-  "money": "(재물운 6~8문장. 수입 피크 월·손실 위험 월 찍기. 투자 상품별로 가능/금지 단정. 예: '3월 주식 진입 금지, 8월 부동산 보류, 11월 예상치 못한 큰 지출'. 사업자는 매출 급감 월까지)",
-  "health": "(건강운 5~6문장. 약한 장기·질환 직접 언급 - 간·신장·심혈관·우울·불면 등. 몇 월에 컨디션 바닥치는지, 무슨 검진을 받아야 하는지 구체적으로. '병원 꼭 가라' 수준의 경고 허용)",
-  "career": "(직장/사업운 6~8문장. 승진 가능성 퍼센트 감각으로, 이직 적기 월, 퇴사 충동 오는 월, 상사·동료와 충돌 월 명시. 사업자는 확장하면 망할 시기·버텨야 할 시기까지 단정)",
+  "year_summary": "(원국 지문+현재 대운+세운을 연결한 올해 흐름 4~5문장. 근거가 있는 상대적 기회 월과 점검 월 포함)",
+  "love": "(일지·관성/재성 표면 수·세운 관계를 근거로 표현 방식과 갈등 조율 5~6문장)",
+  "money": "(재성 표면 수·세운 관계를 근거로 소비·계약·예산 관리 포인트 5~6문장. 투자 예측 금지)",
+  "health": "(원국의 과다·희소 신호를 근거로 한 일반 생활 리듬 점검 4~5문장. 진단·발병 예측 금지)",
+  "career": "(식상·관성·인성 표면 수와 현재 대운·세운을 근거로 업무 방식과 준비 행동 5~6문장)",
   "lucky": {
     "color": "(올해 행운의 색)",
     "number": "(올해 행운의 숫자)",
     "direction": "(올해 행운의 방향)",
     "month": "(올해 가장 좋은 달)"
   },
-  "advice": "(올해 핵심 조언 3~4문장. 격언 금지. '~월 전에 반드시 ~을 해라, 안 하면 ~이 터진다' 식 구체 지시)"
+  "advice": "(올해 핵심 조언 3~4문장. 근거와 실행 시점을 포함하되 결과를 위협적으로 단정하지 말 것)"
 }` + langInstruction(lang);
 
   const user = `## 기본 정보
 ${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
 - 올해: ${year}년
+- ${year}년 기준 현재 대운: ${activeDaeun}
 
 ## 사주 원국 (해석의 1순위 근거)
 ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
@@ -2104,6 +2226,9 @@ ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/
 - 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
 ${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
 ${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다: ${dominant.join(', ')} / 최저: ${sparse.join(', ')}
+- 일간 역할별 표면 수: ${evidence.roleLine}
+- 표면 균형: ${evidence.balance} (신강/신약 확정값 아님)
 ${saju.daeun ? `
 ## 대운 흐름
 ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
@@ -2121,7 +2246,11 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 - 지지육합: ${yearRel.jiHap.length ? yearRel.jiHap.join(', ') : '없음'}
 - 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}
 
+## 월별 대표 신호 (각 양력 월 15일 정오 기준 월주, 사건 확정값 아님)
+${monthlySignals.map(line => `- ${line}`).join('\n')}
+
 ## 개인화 키 (동년생/같은 해 반복 방지)
+- 원국 지문: ${evidence.fingerprint}
 - 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
 - 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
 - 세운 키: ${year}-${yGan}${yJi}-${String(yearCycleIndex + 1).padStart(2, '0')}/60
@@ -2130,10 +2259,12 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
   return { system, user, lang };
 }
 
-function buildDailyPrompt(saju, gender, todayStr, lang) {
+function buildDailyPrompt(saju, gender, todayStr, lang, birthDate) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
-  const { excess, lack } = getOhangAnalysis(saju.ohangCount);
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, todayStr);
   const ilOhang = saju.ilganOhang;
 
   const [tY, tM, tD] = todayStr.split('-').map(Number);
@@ -2148,6 +2279,7 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
   const todayGanOhang = CHEONGAN_OHANG[todayGan];
   const todayJiOhang = JIJI_OHANG[todayJi];
   const todayPillar = [{ name: '일진', gan: todayGan, ji: todayJi }];
+  const hourlySignals = buildHourlySignals(saju, todayGan);
   const dailyRel = analyzeSajuRelations(todayPillar, saju.pillars);
   const iljiPillar = saju.pillars.find(p => p.name === '일주') || {};
   const iljiOhang = iljiPillar.ji ? JIJI_OHANG[iljiPillar.ji] : '';
@@ -2171,54 +2303,56 @@ function buildDailyPrompt(saju, gender, todayStr, lang) {
   if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
   if (relations.same) relDesc.push('비화(같은 오행)');
 
-  const system = `당신은 40년 경력의 일진 전문가입니다. 오늘 하루에 대해 솔직하게, 실제로 벌어질 일을 찍어주세요.
-"오늘은 무난한 하루" 같은 뻔한 말 금지. 일진이 안 좋으면 안 좋다고 직설하고, 무엇을 피해야 하는지 명시하세요.
+  const system = `당신은 개인 원국·현재 대운·오늘 일진의 계산된 관계를 구분해 설명하는 일진 해설가입니다. 실제 사건을 예언하지 말고 오늘 선택에 참고할 상대적 흐름과 행동을 근거 중심으로 안내하세요.
 
 ## 절대 금지
-- "긍정적으로 보내세요" / "마음가짐이 중요" → 구체 행동으로 대체
-- "약간의 주의가 필요" → 몇 시에 무엇을 피하라고 단정
-- 전체를 다 좋다고 하면 안 됨. 일진 충이 있으면 있는 대로, 최소 한 가지는 직설적 경고 포함
+- 입력에 없는 싸움·분실·사고·질병·계약 실패를 오늘 발생할 사실처럼 단정
+- 오행만으로 신체 부위의 증상이나 투자·결제 결과를 예측
+- 시간주 근거가 없는 시간대를 임의로 좋다/나쁘다고 지정
+- "긍정적으로 보내세요", "마음가짐이 중요" 같은 재사용 가능한 조언
 - 매일 같은 문장 구조와 결론 반복 금지. 입력의 오늘 날짜 식별자, 60갑자 순번, 일진-원국 합/충을 근거로 날짜별로 다른 사건·시간대·행운 색·숫자를 골라라
 
 ## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
 - 오늘의 일진(천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 일진의 오행만 설명하는 도입부는 절대 금지(예: "오늘은 ○(○) 기운이 강한 날이라..." 금지).
-- 해석의 출발점은 항상 **이 사람의 원국**(일간의 강약, 오행 과다·부족)이다. 일진은 '방아쇠'일 뿐이며, 그 방아쇠가 이 사람의 원국을 어떻게 건드리는지로 풀어라.
+- 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 합충)과 현재 대운이다. 일진이 이 지문을 어떻게 건드리는지로 풀어라.
 - 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
-- overall 첫 문장은 반드시 이 사람의 일간과 그 상태(어떤 오행이 과다/부족한지, 일진이 그 균형을 깨는지 채우는지)를 직접 언급하며 시작하라.
+- overall 첫 문장은 반드시 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 언급하며 시작하라.
 - love, money, career, study, social, health는 같은 경고를 분야명만 바꿔 반복하면 실패입니다. 각 항목마다 원국 오행·일지 관계·일진 합/충·요일/60갑자 순번 중 서로 다른 근거를 골라야 합니다.
-- lucky.color와 lucky.number는 오늘 일진과 이 사람에게 필요한 보완 오행에서 도출하세요. 매일 흔한 색이나 같은 숫자를 돌려쓰지 마세요.
+- 각 항목에 [근거: 입력 신호]를 표시하세요. lucky.color와 lucky.number는 오늘 일진과 가장 희소한 표면 오행에서 도출하세요.
 
-## 해석 원칙 (직설 모드)
-1. 일진 천간·지지가 원국과 충이면 **오늘 실제로 터질 이벤트**를 구체적으로 (사소한 싸움/지갑 분실/계약 깨짐/교통사고 리스크 등)
-2. **시간대별로**: 좋은 시간 + 나쁜 시간 명시 ("오전 10~12시 상승, 오후 3시 이후 급락")
-3. 연애: 고백·이별·데이트 어느 날 적절한지. 커플은 오늘 싸울 가능성·말조심 포인트까지
-4. 금전: "큰 지출 금지" 같은 뻔한 말 말고 구체적으로. "오늘 쇼핑 앱 열면 계획에 없던 돈 나감" 수준
-5. 건강: 몸 어느 부위 탈날 가능성, 과음·과로·스트레스 리스크 직설
-6. 직장: 상사와 갈등 시간대, 회의 망칠 확률, 실수하기 쉬운 시간
+## 해석 원칙
+1. 일진 합충은 사건 확정이 아니라 반응이 커지기 쉬운 주제와 점검 행동으로 번역하세요.
+2. 시간대를 언급할 때는 아래 시간주 신호의 실제 합·충을 함께 적으세요. 신호가 없으면 정확한 시간 예측을 만들지 마세요.
+3. 연애·대인관계는 말투, 속도, 경청처럼 사용자가 조절할 수 있는 행동을 제안하세요.
+4. 금전은 예산 확인·결제 보류·계약 재검토 같은 일반 절차만 제안하고 손실이나 투자 성과를 예측하지 마세요.
+5. 건강은 과음·과로·수면·식사 같은 일반 생활관리만 다루고 증상을 예측하지 마세요.
+6. 직장·학업은 집중과 의사소통 방식의 상대적 흐름을 설명하고 실패 확률을 만들지 마세요.
 7. 합/충이 없더라도 오늘 지지와 일지의 오행 관계를 반드시 해석 근거로 삼아 전날과 다른 포인트를 만든다
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답:
 {
-  "overall": "(오늘의 총운 3~4문장. 좋은 시간대+나쁜 시간대 명시 + 오늘 가장 조심할 한 가지를 단정적으로)",
-  "love": "(오늘의 연애운 3~4문장. 솔로: 호감 생길 가능성 + 만남 장소. 커플: 싸울 가능성 있는 지점·말 조심해야 할 주제. 기혼: 배우자에게 서운한 소리 들을 가능성까지)",
-  "money": "(오늘의 금전운 3~4문장. 오늘 지갑 열면 안 되는 상황, 예상치 못한 지출 리스크, 오늘 투자/결제/계약 가능 여부 단정)",
-  "career": "(오늘의 직장/사업운 3~4문장. 실수 잘 낼 시간대, 상사·동료와 부딪힐 지점, 중요한 결정 미뤄야 할지 단정)",
-  "study": "(오늘의 학업운 2~3문장. 집중 피크 시간대, 암기 vs 문제풀이 어느 쪽이 맞는지)",
-  "social": "(오늘의 대인운 2~3문장. 오늘 만나면 에너지 빨리는 사람 타입, 약속 깨질 가능성, 오늘 연락하면 안 좋은 사람)",
-  "health": "(오늘의 건강운 2~3문장. 탈날 만한 부위 직접 언급, 과음·밤샘·과식 리스크, 몸 어디 쑤시거나 두통 가능성까지)",
+  "overall": "(원국 지문+현재 대운+일진을 연결한 총운 3~4문장. 시간 신호가 있을 때만 상대적 편의 시간대 포함)",
+  "love": "(일지와 일진 관계에 근거한 표현·대화 포인트 3~4문장. 만남·싸움 예언 금지)",
+  "money": "(재성 표면 수와 일진 관계에 근거한 지출·계약 점검 3~4문장. 투자 예측 금지)",
+  "career": "(관성·식상 표면 수와 일진 관계에 근거한 업무 행동 3~4문장)",
+  "study": "(인성·식상 표면 수를 근거로 한 학습 방식 2~3문장)",
+  "social": "(비겁과 일진 합충을 근거로 한 대화·약속 관리 2~3문장)",
+  "health": "(일반적인 수면·식사·과로 관리 2~3문장. 증상·질병 예측 금지)",
   "lucky": {
     "color": "(오늘의 행운의 색)",
     "number": "(오늘의 행운의 숫자)"
   },
-  "advice": "(오늘 핵심 조언 1~2문장. 격언 금지. '오늘은 반드시 ~을 하지 마라' 또는 '~시 전에 ~을 끝내라' 식 구체 지시)"
+  "advice": "(입력 근거에 연결된 오늘의 실행 행동 1~2문장. 위협적 단정 금지)"
 }` + langInstruction(lang);
 
   const user = `## 기본 정보
 ${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
 - 오늘 날짜: ${todayStr}
 - 요일: ${weekday}요일
 - 오늘 날짜 식별자: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60
+- 오늘 기준 현재 대운: ${activeDaeun}
 
 ## 사주 원국 (해석의 1순위 근거)
 ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
@@ -2226,6 +2360,9 @@ ${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/
 - 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
 ${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
 ${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다: ${dominant.join(', ')} / 최저: ${sparse.join(', ')}
+- 일간 역할별 표면 수: ${evidence.roleLine}
+- 표면 균형: ${evidence.balance} (신강/신약 확정값 아님)
 ${saju.daeun ? `
 ## 대운 흐름
 ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
@@ -2243,11 +2380,15 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
 - 지지육합: ${dailyRel.jiHap.length ? dailyRel.jiHap.join(', ') : '없음'}
 - 지지충: ${dailyRel.jiChung.length ? dailyRel.jiChung.join(', ') : '없음'}
 
+## 시간주-원국 신호 (두 시간 단위 대표 시주, 사건 확정값 아님)
+${hourlySignals.map(line => `- ${line}`).join('\n')}
+
 ## ${tY}년 세운 (참고)
 - 천간: ${yGan} (${yOhang})
 - 지지: ${yJi} (${JIJI_OHANG[yJi]})
 
 ## 개인화 키 (같은 날짜 반복 방지)
+- 원국 지문: ${evidence.fingerprint}
 - 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
 - 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
 - 일진 키: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60-${weekday}
@@ -2256,13 +2397,18 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
   return { system, user, lang };
 }
 
-function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
+function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, birthDateA, birthDateB) {
   const genderTextA = genderA === 'male' ? '남성' : genderA === 'female' ? '여성' : '';
   const genderTextB = genderB === 'male' ? '남성' : genderB === 'female' ? '여성' : '';
   const ilganA = CHEONGAN_INFO[sajuA.ilgan] || {};
   const ilganB = CHEONGAN_INFO[sajuB.ilgan] || {};
   const { excess: excessA, lack: lackA } = getOhangAnalysis(sajuA.ohangCount);
   const { excess: excessB, lack: lackB } = getOhangAnalysis(sajuB.ohangCount);
+  const evidenceA = buildSajuEvidence(sajuA);
+  const evidenceB = buildSajuEvidence(sajuB);
+  const today = new Date();
+  const activeDaeunA = formatActiveDaeun(sajuA, birthDateA, today);
+  const activeDaeunB = formatActiveDaeun(sajuB, birthDateB, today);
 
   // 보완 관계 (완화: 차이 3 이상이면 보완으로 판정)
   const complementary = [];
@@ -2291,19 +2437,20 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang) {
   const daeunInfoA = sajuA.daeun ? sajuA.daeun.map(d => `${d.label}: ${d.gan}${d.ji}(${d.ohang}/${d.jiOhang})`).join(', ') : '정보없음';
   const daeunInfoB = sajuB.daeun ? sajuB.daeun.map(d => `${d.label}: ${d.gan}${d.ji}(${d.ohang}/${d.jiOhang})`).join(', ') : '정보없음';
 
-  const system = `당신은 40년 경력의 궁합 직설가입니다. 두 사람을 앉혀놓고 "이 관계 어떻게 될지" 가감없이 찍어주는 게 일입니다.
-궁합은 덕담이 아닙니다. 안 맞으면 안 맞다고, 헤어질 지점이 어디인지, 결혼하면 뭘로 싸울지 **직설적으로** 말해주세요.
-이미 계산된 점수의 근거를 설명하되, 낮은 점수는 낮은 대로 솔직하게. 예쁜 말로 포장하면 이 사람들이 잘못된 선택을 합니다.
+  const system = `당신은 두 원국의 계산된 공통점과 차이를 설명하는 명리 궁합 해설가입니다. 점수를 미화하지 말되, 관계의 미래나 사적인 행동을 사주만으로 예언하지 마세요.
 
 ## 해석 원칙 (CRITICAL)
 - **두루뭉술한 일반론 금지**. 주어진 데이터(일간, 일지, 오행 분포, 합/충, 대운)를 직접 인용
-- **양쪽 민낯 모두**: A가 B를 지치게 하는 부분 + B가 A를 지치게 하는 부분 둘 다 명시
-- 위로 금지. "서로 이해하고 노력하면 된다" 같은 뻔한 말 금지 — 이미 노력으로 안 되는 지점이 있으면 그걸 말하세요
-- 궁합 점수가 낮으면 **헤어질 가능성/결혼 후 이혼 리스크**까지 직설
+- A가 B에게 부담을 줄 수 있는 상호작용과 B가 A에게 부담을 줄 수 있는 상호작용을 각각 근거와 함께 명시
+- 외도·이혼·성욕·질병·재산 손실·임신·출산 시기를 추정하거나 사실처럼 단정하지 마세요.
+- 일지와 수화 비율은 전통 명리의 관계 템포 참고값일 뿐 실제 성행동·충실도·성적 지향을 판단하는 자료가 아닙니다.
+- 궁합 점수는 일간·일지·전체 원국의 합충·오행 보완을 가중 합산한 서비스용 휴리스틱이며 관계 성공 확률이 아닙니다.
+- 현재 대운이 판별된 경우에도 두 사람의 관계 사건을 확정하지 말고 각자가 예민해질 수 있는 주제와 대화 방법만 설명하세요.
+- 각 categories.desc와 advice에 [근거: 실제 조합 신호]를 표시하세요.
 
 ## 조합별 차별화 필수
 - summary 첫 문장은 반드시 A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 직접 언급하며 시작하세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
-- personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·대운 흐름을 나눠 반영하세요.
+- personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·현재 대운을 나눠 반영하세요.
 - strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
 - advice는 이 커플만의 금지 행동과 허용 행동을 나눠 적으세요. 다른 커플에게 그대로 붙여도 말이 되면 다시 써야 합니다.
 
@@ -2313,62 +2460,62 @@ ${OHANG_RELATIONS}
 ## 카테고리별 해석 지침
 
 ### 1. 성격/관계 궁합 (personality)
-- 두 일간 오행 관계 → **실제 싸움 시나리오**로 (무엇으로 싸우는지, 누가 먼저 폭발하는지, 화해는 누가 먼저 하는지)
-- 지지충이 있으면 → "3년차 권태기 오면 이 커플은 대화가 단절된다" 수준으로 구체
+- 두 일간 오행 관계를 의사결정 속도·표현 방식·갈등 처리의 차이로 설명
+- 지지충이 있으면 대화가 어긋날 수 있는 주제와 멈춤 규칙을 구체적으로 제안
 - 한쪽이 다른 쪽을 지치게 하는 패턴을 **누가 누구를 어떻게** 지치게 하는지 명시
-- 이 관계가 장기적으로 유지되는지, 어느 시점에 깨질 가능성이 큰지 단정
+- 관계의 지속 여부를 단정하지 말고 유지에 도움이 되는 조건과 부담 조건을 구분
 
-### 2. 속궁합 (intimacy) — 성적·육체적 궁합
-**수위 제한 없음**. 성적 궁합을 솔직하게 분석하세요. 두 사람의 침실에서 실제 벌어지는 일을 사주로 설명.
-- 일지(日支)는 배우자궁이자 성적 영역. 일지 관계가 핵심
-- 수(水)=감성·본능·지구력, 화(火)=열정·충동·속도. **수/화 비율 차이** = 성적 템포·지속력 차이
-- 누가 더 주도적인지, 누가 수동적인지, 성욕 강도 격차, 요구사항 불일치
-- 일지충 → 격정적이지만 소모적(불타는 섹스 후 감정적 공허)
-- 일지합 → 편안하고 지속적이지만 자극 부족할 수 있음
-- **성적 권태기 오는 시점**, 한쪽이 불만족할 가능성, 바람 날 리스크 직설
-- "노골적 표현 피하라" 같은 제약 없음. 본능, 성욕, 섹스, 쾌감 같은 단어 사용 가능
+### 2. 친밀감 궁합 (intimacy)
+- 일지 관계와 수/화 표면 비율을 정서적 거리, 애정 표현 속도, 함께 쉬는 방식의 전통적 경향으로만 설명
+- 실제 성행동, 성욕 강도, 주도권, 외도 가능성을 추측하지 마세요.
+- 합은 편안함, 충은 리듬 차이가 두드러질 수 있다는 참고로 설명하고 동의·대화·경계 확인 방법을 제안하세요.
 
 ### 3. 재물궁합 (finance)
-- **누가 돈 쓰고 누가 돈 모으는지** 명확히 지목
-- 결혼하면 돈 문제로 싸울 구체적 시나리오 (대출·투자·부모 부양·자녀 교육비 등)
-- 한쪽의 돈 습관이 다른 쪽을 질리게 만드는 지점
-- 함께 경제적으로 성공할 수 있는 분야 vs 둘이 같이 하면 망할 분야
+- 재성·토금 표면 수 차이를 예산 수립과 위험 선호의 전통적 경향으로 설명하되 실제 소비 습관을 단정하지 마세요.
+- 공동 계좌, 큰 계약, 가족 지원처럼 합의가 필요한 상황의 점검 질문을 제안하세요.
+- 투자 성과, 파산, 손실 규모를 예측하지 마세요.
 
-### 4. 대운 시기 궁합 (timing)
-- 두 사람 대운을 시기별로 매핑 — **깨질 가능성 큰 구간** 명시
-- "A의 30대 후반 대운충 시기에 이 관계 최대 위기, 이때 못 버티면 끝" 수준 직설
-- 결혼·동거·이직·출산 같은 큰 결정의 **금지 시기**도 명시
-- 권태기·외도 유혹·이혼 고려 올 수 있는 시기 단정
+### 4. 현재 대운 궁합 (timing)
+- 전체 대운을 임의로 매핑하지 말고 현재 판별된 대운 두 개를 원국과 비교하세요.
+- 큰 결정을 금지하거나 관계 위기 연도를 예언하지 말고, 각자 우선순위가 달라질 수 있는 영역과 사전 합의 항목을 제안하세요.
 
 ## 응답 형식 (JSON 엄수)
 반드시 아래 JSON 형식으로만 응답하세요. categories의 각 score는 0~100 정수:
 {
   "summary": "(두 사람의 궁합을 한 문장으로 솔직하게. 50자 이내. 예: '초반 불타지만 3년 고비 못 넘길 조합' 같이 직설)",
   "categories": {
-    "personality": { "score": 0, "desc": "(성격 궁합 5~7문장. 실제 싸움 시나리오 + 누가 누구를 지치게 하는지 + 장기 지속 가능성 판단)" },
-    "intimacy": { "score": 0, "desc": "(성적·육체적 궁합 5~7문장. 수위 제한 없음. 침실 실제 모습 + 주도권 + 템포/지구력 차이 + 권태기 시점 + 외도 리스크)" },
-    "finance": { "score": 0, "desc": "(재물 궁합 5~7문장. 누가 낭비·누가 저축, 결혼 후 돈으로 싸울 구체 시나리오, 같이 망할 분야)" },
-    "timing": { "score": 0, "desc": "(대운 시기 궁합 5~7문장. 관계 위기 구간·큰 결정 금지 시기 구체 연령/년도로)" }
+    "personality": { "score": 0, "desc": "(일간·합충 근거로 본 의사소통과 갈등 처리 5~7문장)" },
+    "intimacy": { "score": 0, "desc": "(일지·수화 표면 비율 근거로 본 정서적 친밀감과 애정 표현 5~7문장. 성행동 추정 금지)" },
+    "finance": { "score": 0, "desc": "(재성·토금 표면 수 근거로 본 공동 재무 의사결정 5~7문장. 실제 습관·성과 단정 금지)" },
+    "timing": { "score": 0, "desc": "(두 사람의 현재 대운 근거로 본 우선순위와 합의 포인트 5~7문장. 사건 예언 금지)" }
   },
   "strengths": ["이 커플 강점 3가지 (각각 2문장. 과장 금지, 진짜 빛나는 지점만)"],
-  "cautions": ["치명적 위험 3가지 (각각 2문장. 예: '3년차에 권태기 동시 타격, 이때 외도 리스크 큰 쪽은 A')"],
-  "advice": "(조언 5~7문장. 뻔한 격언 금지. 이 관계 유지하려면 지금·1년 내·5년 내 무엇을 **반드시** 해야 하는지, 안 하면 어떻게 깨지는지 직설)"
+  "cautions": ["실제 조합 근거에서 나온 주의점 3가지. 시기·외도·이혼 예언 금지"],
+  "advice": "(이 조합에 맞는 대화·경계·재무 합의 행동 5~7문장. 결과 위협이나 미래 단정 금지)"
 }` + langInstruction(lang);
 
   const user = `## Person A ${genderTextA ? `(${genderTextA})` : ''}
+${birthDateA ? `- 생년월일: ${birthDateA}` : ''}
 ${sajuA.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
 - 일간: ${sajuA.ilgan} (${sajuA.ilganOhang}, ${yinYangA}) — ${ilganA.desc || ''}
 - 오행: 목${sajuA.ohangCount.목} 화${sajuA.ohangCount.화} 토${sajuA.ohangCount.토} 금${sajuA.ohangCount.금} 수${sajuA.ohangCount.수}
 ${excessA.length ? `- 과다: ${excessA.join(', ')}` : ''}
 ${lackA.length ? `- 부족: ${lackA.join(', ')}` : ''}
+- 역할별 표면 수: ${evidenceA.roleLine}
+- 원국 지문: ${evidenceA.fingerprint}
+- 현재 대운: ${activeDaeunA}
 ${sajuA.daeun ? `- 대운: ${daeunInfoA}` : ''}
 
 ## Person B ${genderTextB ? `(${genderTextB})` : ''}
+${birthDateB ? `- 생년월일: ${birthDateB}` : ''}
 ${sajuB.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
 - 일간: ${sajuB.ilgan} (${sajuB.ilganOhang}, ${yinYangB}) — ${ilganB.desc || ''}
 - 오행: 목${sajuB.ohangCount.목} 화${sajuB.ohangCount.화} 토${sajuB.ohangCount.토} 금${sajuB.ohangCount.금} 수${sajuB.ohangCount.수}
 ${excessB.length ? `- 과다: ${excessB.join(', ')}` : ''}
 ${lackB.length ? `- 부족: ${lackB.join(', ')}` : ''}
+- 역할별 표면 수: ${evidenceB.roleLine}
+- 원국 지문: ${evidenceB.fingerprint}
+- 현재 대운: ${activeDaeunB}
 ${sajuB.daeun ? `- 대운: ${daeunInfoB}` : ''}
 
 ## 두 사주 간 합/충 분석 (코드로 계산된 결과)
@@ -2480,7 +2627,7 @@ async function handleSajuAnalysis(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
   const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang), 'saju', env) : null;
+  const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env) : null;
 
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ ...out, ai });
@@ -2499,7 +2646,7 @@ async function handleCompatQuick(request, env) {
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
   const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang), 'compat', env) : null;
+  const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env) : null;
 
   const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
   const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
@@ -2521,7 +2668,7 @@ async function handleFortune(request, env) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang), 'fortune', env);
+  const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
@@ -2542,7 +2689,7 @@ async function handleDaily(request, env) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKeys, buildDailyPrompt(saju, gender, todayStr, lang), 'daily', env);
+  const ai = await callGemini(apiKeys, buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
@@ -2623,7 +2770,7 @@ async function handleMatchDetail(idA, idB, env, lang) {
   const apiKeys = getGeminiKeys(env);
   if (!apiKeys.length) return json({ ...baseResult, ai: null });
 
-  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang), 'match-detail', env);
+  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
   return json({ ...baseResult, ai });
 }
 

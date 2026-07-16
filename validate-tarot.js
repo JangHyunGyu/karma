@@ -82,7 +82,7 @@ if (/lang\s*\|\|\s*'ko'/.test(workerSrc)) pass('lang 기본값 ko 처리');
 else fail('lang 기본값 처리 없음');
 
 // 영문 프롬프트 분기
-if (/isEn[\s\S]*?You are a professional tarot reader/.test(workerSrc)) pass('영문 프롬프트 분기 존재');
+if (/isEn[\s\S]*?You are a precise tarot interpreter/.test(workerSrc)) pass('영문 프롬프트 분기 존재');
 else fail('영문 프롬프트 분기 없음');
 
 // ============================================================
@@ -103,9 +103,9 @@ if (/lang="ko"/.test(tarotHtml)) pass('lang="ko" 설정');
 else fail('lang 설정 오류');
 
 // hreflang 링크
-if (/hreflang="ko".*tarot\.html/.test(tarotHtml)) pass('hreflang ko 링크');
+if (/hreflang="ko".*\/tarot"/.test(tarotHtml)) pass('hreflang ko 링크');
 else fail('hreflang ko 링크 없음');
-if (/hreflang="en".*tarot-en\.html/.test(tarotHtml)) pass('hreflang en 링크');
+if (/hreflang="en".*\/tarot-en"/.test(tarotHtml)) pass('hreflang en 링크');
 else fail('hreflang en 링크 없음');
 
 // 카드 그리드
@@ -187,16 +187,16 @@ const tarotEnHtml = fs.readFileSync(path.join(__dirname, 'tarot-en.html'), 'utf8
 if (/lang="en"/.test(tarotEnHtml)) pass('lang="en" 설정');
 else fail('lang="en" 설정 오류');
 
-if (/canonical.*tarot-en\.html/.test(tarotEnHtml)) pass('canonical URL 올바름');
+if (/canonical.*\/tarot-en"/.test(tarotEnHtml)) pass('canonical URL 올바름');
 else fail('canonical URL 오류');
 
-if (/og:url.*tarot-en\.html/.test(tarotEnHtml)) pass('og:url 올바름');
+if (/og:url.*\/tarot-en"/.test(tarotEnHtml)) pass('og:url 올바름');
 else fail('og:url 오류');
 
 if (/selected.*English/.test(tarotEnHtml)) pass('영어 옵션 selected');
 else fail('영어 옵션 selected 없음');
 
-if (/AI Tarot Reading/.test(tarotEnHtml)) pass('영문 페이지 제목');
+if (/Free AI Tarot Card Reading/.test(tarotEnHtml)) pass('영문 페이지 제목');
 else fail('영문 페이지 제목 없음');
 
 // ============================================================
@@ -207,19 +207,19 @@ console.log('\n📋 [5] index.html 메뉴 검증');
 const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const indexEnHtml = fs.readFileSync(path.join(__dirname, 'index-en.html'), 'utf8');
 
-if (/tarot\.html/.test(indexHtml)) pass('index.html에 타로 메뉴 링크 존재');
+if (/href="\/tarot"/.test(indexHtml)) pass('index.html에 타로 메뉴 링크 존재');
 else fail('index.html에 타로 메뉴 없음');
 
-if (/tarot-en\.html/.test(indexEnHtml)) pass('index-en.html에 타로 메뉴 링크 존재');
+if (/href="\/tarot-en"/.test(indexEnHtml)) pass('index-en.html에 타로 메뉴 링크 존재');
 else fail('index-en.html에 타로 메뉴 없음');
 
 // 메뉴 순서 확인 (궁합 다음, 관상 앞)
-const koMenuOrder = indexHtml.match(/onclick="location\.href='\/([^']+)'/g);
+const koMenuOrder = indexHtml.match(/class="menu-card"\s+href="\/([^"]+)"/g);
 if (koMenuOrder) {
-  const pages = koMenuOrder.map(m => m.match(/'\/([^']+)'/)[1]);
-  const tarotIdx = pages.indexOf('tarot.html');
-  const faceIdx = pages.indexOf('face.html');
-  const compatIdx = pages.indexOf('compat.html');
+  const pages = koMenuOrder.map(m => m.match(/href="\/([^"]+)"/)[1]);
+  const tarotIdx = pages.indexOf('tarot');
+  const faceIdx = pages.indexOf('face');
+  const compatIdx = pages.indexOf('compat');
   if (tarotIdx > compatIdx && tarotIdx < faceIdx) pass('메뉴 순서: 궁합 → 타로 → 관상');
   else fail(`메뉴 순서 오류: compat(${compatIdx}), tarot(${tarotIdx}), face(${faceIdx})`);
 } else {
@@ -289,7 +289,7 @@ else fail('프론트엔드에 API 키 노출됨!');
 
 // XSS 방지 — innerHTML에 사용자 입력이 직접 들어가지 않는지
 // (질문은 서버로 보내지고, 결과는 AI 응답만 표시)
-if (/tarotQuestion\.value\.trim\(\)/.test(tarotHtml)) pass('사용자 입력 trim 처리');
+if (/getElementById\('tarotQuestion'\)\.value\.trim\(\)/.test(tarotHtml)) pass('사용자 입력 trim 처리');
 else warn('사용자 입력 trim 확인 필요');
 
 if (/maxlength="100"/.test(tarotHtml)) pass('질문 입력 길이 제한(100자)');

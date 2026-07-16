@@ -1152,3 +1152,48 @@ body .tarot-card.selected .card-back {
   background: linear-gradient(90deg, rgba(216,176,76,0.34), rgba(12,9,24,0.95) 58%, rgba(12,9,24,0.92)) !important;
   border-color: rgba(248,224,128,0.58);
 }
+
+/* Search-friendly service guides: useful page context remains visible without interrupting the tools. */
+.seo-content {
+  max-width: 900px;
+  margin: 36px auto 64px;
+  padding: 28px;
+  color: #d8d8df;
+  background: rgba(13, 16, 33, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  line-height: 1.75;
+}
+.seo-content__title {
+  margin: 0 0 12px;
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+.seo-content__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.seo-content__grid p {
+  margin: 0;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+}
+.seo-content__grid strong,
+.seo-content__grid span { display: block; }
+.seo-content__grid strong { margin-bottom: 5px; color: #ffd36a; }
+.seo-content details {
+  margin-top: 10px;
+  padding: 13px 15px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+.seo-content summary { color: #fff; font-weight: 700; cursor: pointer; }
+.seo-content details p { margin: 10px 0 0; }
+@media (max-width: 700px) {
+  .seo-content { margin: 28px 14px 48px; padding: 20px; }
+  .seo-content__grid { grid-template-columns: 1fr; }
+}

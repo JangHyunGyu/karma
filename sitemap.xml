@@ -3,7 +3,7 @@
   <!-- Homepage -->
   <url>
     <loc>https://karma.archerlab.dev/</loc>
-    <lastmod>2026-07-12</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/" />
@@ -23,7 +23,7 @@
   <!-- Saju (Four Pillars / 사주팔자) -->
   <url>
     <loc>https://karma.archerlab.dev/saju</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/saju" />
@@ -43,7 +43,7 @@
   <!-- Daily Fortune (오늘의 운세) -->
   <url>
     <loc>https://karma.archerlab.dev/daily</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/daily" />
@@ -63,7 +63,7 @@
   <!-- Yearly Fortune (올해의 운세) -->
   <url>
     <loc>https://karma.archerlab.dev/fortune</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/fortune" />
@@ -83,7 +83,7 @@
   <!-- Compatibility (궁합) -->
   <url>
     <loc>https://karma.archerlab.dev/compat</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/compat" />
@@ -103,7 +103,7 @@
   <!-- Tarot Reading (타로) -->
   <url>
     <loc>https://karma.archerlab.dev/tarot</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/tarot" />
@@ -123,7 +123,7 @@
   <!-- Face Reading (관상) -->
   <url>
     <loc>https://karma.archerlab.dev/face</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/face" />
@@ -143,7 +143,7 @@
   <!-- Palm Reading (손금) -->
   <url>
     <loc>https://karma.archerlab.dev/palm</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/palm" />
@@ -163,7 +163,7 @@
   <!-- 2026 Year of the Red Horse (병오년 신년운세) -->
   <url>
     <loc>https://karma.archerlab.dev/2026</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/2026" />
@@ -183,7 +183,7 @@
   <!-- MBTI vs Saju (MBTI 가고 사주 온다) -->
   <url>
     <loc>https://karma.archerlab.dev/mbti-saju</loc>
-    <lastmod>2026-07-12</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
     <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/mbti-saju" />
