@@ -67,6 +67,7 @@ for (const page of ['saju', 'daily', 'fortune', 'compat', 'tarot', 'face', 'palm
 }
 
 console.log('\n🧭 사주 프롬프트 근거·변별력');
+check(workerSource.includes("'Content-Type': 'application/json; charset=utf-8'"), 'API JSON 응답에 UTF-8 문자셋 명시');
 const samples = [
   { birth: '1991-02-03', time: '07:30', gender: 'female' },
   { birth: '1991-08-19', time: '21:10', gender: 'female' },

@@ -168,7 +168,7 @@ const CORS_HEADERS = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS },
   });
 }
 
@@ -3064,7 +3064,7 @@ async function handleShareGet(id, env) {
   if (!data) return json({ error: 'Not found or expired' }, 404);
   return new Response(data, {
     status: 200,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS },
   });
 }
 
