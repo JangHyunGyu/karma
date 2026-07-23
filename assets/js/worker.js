@@ -1280,7 +1280,12 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
 
       const payload = {
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { temperature: 0.5, thinkingConfig: { thinkingLevel: "high" } },
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 16384,
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel: "high" },
+        },
       };
       if (cachedContentName) {
         payload.cachedContent = cachedContentName;
@@ -1307,15 +1312,22 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         await logApiError(_env, `[${endpoint}] Gemini API 전체 실패`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
         return null;
       }
-      const parts = data.candidates?.[0]?.content?.parts || [];
+      const candidate = data.candidates?.[0] || {};
+      const finishReason = candidate.finishReason || 'N/A';
+      const parts = candidate.content?.parts || [];
       const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
       if (!allText) {
-        await logApiError(_env, `[${endpoint}] Gemini 빈 응답`, `finishReason: ${data.candidates?.[0]?.finishReason || 'N/A'}`, { endpoint, promptPreview });
+        errors.push(`key${i+1}: empty response (finishReason: ${finishReason})`);
+        if (!isLast) continue;
+        await logApiError(_env, `[${endpoint}] Gemini 빈 응답`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
         return null;
       }
-      const jsonMatch = allText.match(/\{[\s\S]*\}/);
+      const normalizedText = allText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      const jsonMatch = normalizedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        await logApiError(_env, `[${endpoint}] Gemini JSON 미발견`, `응답: ${allText.slice(0, 300)}`, { endpoint, promptPreview });
+        errors.push(`key${i+1}: JSON not found (finishReason: ${finishReason})`);
+        if (!isLast) continue;
+        await logApiError(_env, `[${endpoint}] Gemini JSON 미발견`, `${errors.join('\n')}\n응답: ${allText.slice(0, 300)}`, { endpoint, promptPreview, keyCount: apiKeys.length });
         return null;
       }
       try {
@@ -1336,7 +1348,14 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         });
         return _parsed;
       } catch (e2) {
-        await logApiError(_env, `[${endpoint}] Gemini JSON 파싱 실패`, `${e2.message}\n응답: ${jsonMatch[0].slice(0, 300)}`, { endpoint, promptPreview });
+        errors.push(`key${i+1}: ${e2.message} (finishReason: ${finishReason})`);
+        if (!isLast) continue;
+        await logApiError(
+          _env,
+          `[${endpoint}] Gemini JSON 파싱 실패`,
+          `${errors.join('\n')}\n응답: ${jsonMatch[0].slice(0, 300)}`,
+          { endpoint, promptPreview, keyCount: apiKeys.length }
+        );
         return null;
       }
     } catch (e) {
