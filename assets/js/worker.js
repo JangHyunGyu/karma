@@ -165,6 +165,15 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+const LEGACY_ACCOUNT_API_PATTERNS = Object.freeze([
+  /^\/api\/(?:register|login|profile)$/,
+  /^\/api\/(?:match-list|match|like|likes\/received|matches|messages|notifications)(?:\/|$)/,
+]);
+
+function isLegacyAccountApi(path) {
+  return LEGACY_ACCOUNT_API_PATTERNS.some((pattern) => pattern.test(path));
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -3118,6 +3127,13 @@ export default {
     // CORS preflight
     if (method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
+    }
+
+    if (isLegacyAccountApi(path)) {
+      return json({
+        error: 'legacy_account_disabled',
+        message: '통합 계정 전환이 끝날 때까지 기존 매칭 계정 기능은 비활성화되어 있습니다.',
+      }, 410);
     }
 
     try {
