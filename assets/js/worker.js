@@ -1253,6 +1253,74 @@ async function logApiError(env, message, detail, extra) {
   }
 }
 
+function extractFirstBalancedJsonObject(value) {
+  const source = String(value || '');
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (start < 0) {
+      if (char !== '{') continue;
+      start = index;
+      depth = 1;
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+
+  return '';
+}
+
+function repairMissingGeminiJsonCommas(value) {
+  return String(value || '')
+    .replace(/("(?:\\.|[^"\\])*")(\s+)(?="(?:\\.|[^"\\])*"\s*:)/g, '$1,$2')
+    .replace(/((?:-?\d+(?:\.\d+)?|true|false|null|}|\]))(\s+)(?="(?:\\.|[^"\\])*"\s*:)/g, '$1,$2');
+}
+
+function parseGeminiJsonResponse(value) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '');
+  const balanced = extractFirstBalancedJsonObject(normalized);
+  const greedy = (normalized.match(/\{[\s\S]*\}/) || [])[0] || '';
+  const candidates = [...new Set([balanced, greedy, normalized].filter(Boolean))];
+  let lastError = null;
+
+  for (const candidate of candidates) {
+    for (const attempt of [candidate, repairMissingGeminiJsonCommas(candidate)]) {
+      try {
+        return JSON.parse(attempt);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  throw lastError || new SyntaxError('Gemini response did not contain valid JSON');
+}
 async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
   const endpoint = _caller || 'unknown';
   const _perfStart = Date.now();
@@ -1332,7 +1400,7 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         return null;
       }
       const normalizedText = allText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-      const jsonMatch = normalizedText.match(/\{[\s\S]*\}/);
+      const jsonMatch = extractFirstBalancedJsonObject(normalizedText) || (normalizedText.match(/\{[\s\S]*\}/) || [])[0];
       if (!jsonMatch) {
         errors.push(`key${i+1}: JSON not found (finishReason: ${finishReason})`);
         if (!isLast) continue;
@@ -1340,7 +1408,7 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         return null;
       }
       try {
-        const _parsed = JSON.parse(jsonMatch[0]);
+        const _parsed = parseGeminiJsonResponse(jsonMatch);
         const _um = data.usageMetadata || {};
         logPerfStats(_env, _ctx, {
           app: `karma:${endpoint}`,
@@ -1362,7 +1430,7 @@ async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
         await logApiError(
           _env,
           `[${endpoint}] Gemini JSON 파싱 실패`,
-          `${errors.join('\n')}\n응답: ${jsonMatch[0].slice(0, 300)}`,
+          `${errors.join('\n')}\n응답: ${jsonMatch.slice(0, 300)}`,
           { endpoint, promptPreview, keyCount: apiKeys.length }
         );
         return null;
@@ -1669,9 +1737,9 @@ async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
         console.error('Gemini Vision: empty response, candidates:', JSON.stringify(data.candidates));
         return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
       }
-      const jsonMatch = allText.match(/\{[\s\S]*\}/);
+      const jsonMatch = extractFirstBalancedJsonObject(allText) || (allText.match(/\{[\s\S]*\}/) || [])[0];
       if (!jsonMatch) return { _apiError: 'AI 응답 형식 오류' };
-      try { return JSON.parse(jsonMatch[0]); } catch { return { _apiError: 'AI 응답 파싱 실패' }; }
+      try { return parseGeminiJsonResponse(jsonMatch); } catch { return { _apiError: 'AI 응답 파싱 실패' }; }
     } catch (e) {
       errors.push(`key${i+1}: ${e.message || e}`);
       if (isLast) {
