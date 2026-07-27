@@ -21,5 +21,11 @@ binding = "OPENROUTER_MEDIA"
 service = "openrouter-api"
 entrypoint = "OpenRouterMediaEntrypoint"
 
+[[services]]
+binding = "OFFICIAL_DEEPSEEK"
+service = "openrouter-api"
+entrypoint = "OfficialDeepSeekEntrypoint"
+
 [vars]
 CORS_ORIGIN = "*"
+R2_PUBLIC_URL = "https://pub-54cf8dbbbe6645cd9d493700dcedb706.r2.dev"

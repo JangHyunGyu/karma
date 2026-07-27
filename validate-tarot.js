@@ -69,9 +69,9 @@ if (/buildTarotPrompt[\s\S]*?"cards"[\s\S]*?"overall"[\s\S]*?"advice"[\s\S]*?"ke
   fail('타로 프롬프트에 JSON 응답 형식 누락');
 }
 
-// callGemini 호출 확인
-if (/callGemini\(apiKeys,\s*prompt,\s*'tarot'/.test(workerSrc)) pass("callGemini 호출 시 caller='tarot' 전달");
-else fail('callGemini 호출 패턴 불일치');
+// 공식 DeepSeek 호출 확인
+if (/callOfficialDeepSeek\(prompt,\s*'tarot',\s*env/.test(workerSrc)) pass("callOfficialDeepSeek 호출 시 caller='tarot' 전달");
+else fail('callOfficialDeepSeek 호출 패턴 불일치');
 
 // 카드 검증 (3장 필수)
 if (/selectedCards\.length\s*!==\s*3/.test(workerSrc)) pass('카드 3장 검증 로직 존재');

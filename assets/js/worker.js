@@ -5,113 +5,7 @@
 // CORS & Response Helpers
 // ============================================================
 
-const GEMINI_MODEL = 'gemini-3.1-flash-lite';
-const CF_ACCOUNT_ID = 'f5ced3498c8b7674581b5c9987f31585';
-const CF_GATEWAY_NAME = 'archer-gateway';
-const GEMINI_URL = `https://gateway.ai.cloudflare.com/v1/${CF_ACCOUNT_ID}/${CF_GATEWAY_NAME}/google-ai-studio/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-// ============================================================
-// Gemini Context Caching
-// ============================================================
-let _cacheTableReady = false;
 let _perfStatsTableReady = false;
-
-function stableHash(value) {
-  let hash = 2166136261;
-  const text = String(value || '');
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-}
-
-function getGeminiCacheScope(apiKey) {
-  return stableHash(apiKey);
-}
-
-async function createGeminiCache(apiKey, staticContent, model, ttl = '600s') {
-  try {
-    const res = await fetch(`${GEMINI_API_BASE}/cachedContents?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: `models/${model}`,
-        systemInstruction: { parts: [{ text: staticContent }] },
-        contents: [],
-        ttl
-      })
-    });
-    if (!res.ok) {
-      console.error('[GeminiCache] Create failed:', res.status, await res.text().catch(() => ''));
-      return null;
-    }
-    const data = await res.json();
-    return data.name;
-  } catch (e) {
-    console.error('[GeminiCache] Create error:', e.message);
-    return null;
-  }
-}
-
-async function updateGeminiCacheTTL(apiKey, cacheName, ttl = '600s') {
-  try {
-    const res = await fetch(`${GEMINI_API_BASE}/${cacheName}?key=${apiKey}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ttl })
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function getOrCreateCache(env, cacheKey, staticContent, model, apiKey) {
-  if (!env?.DB) return null;
-  if (!_cacheTableReady) {
-    try {
-      await env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS gemini_cache (
-          cache_key TEXT PRIMARY KEY,
-          cache_name TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (datetime('now')),
-          expires_at TEXT NOT NULL
-        )
-      `).run();
-      _cacheTableReady = true;
-    } catch (e) {
-      console.error('[GeminiCache] Table create failed:', e.message);
-      return null;
-    }
-  }
-  const existing = await env.DB.prepare(
-    'SELECT cache_name, expires_at FROM gemini_cache WHERE cache_key = ?'
-  ).bind(cacheKey).first();
-  if (existing) {
-    const expiresAt = new Date(existing.expires_at + 'Z');
-    if (expiresAt > new Date()) {
-      updateGeminiCacheTTL(apiKey, existing.cache_name).then(ok => {
-        if (ok && env.DB) {
-          env.DB.prepare(
-            "UPDATE gemini_cache SET expires_at = datetime('now', '+10 minutes') WHERE cache_key = ?"
-          ).bind(cacheKey).run().catch(() => {});
-        }
-      });
-      return { name: existing.cache_name, hit: true };
-    }
-    await env.DB.prepare('DELETE FROM gemini_cache WHERE cache_key = ?').bind(cacheKey).run();
-  }
-  const cacheName = await createGeminiCache(apiKey, staticContent, model);
-  if (cacheName) {
-    await env.DB.prepare(
-      "INSERT OR REPLACE INTO gemini_cache (cache_key, cache_name, expires_at) VALUES (?, ?, datetime('now', '+10 minutes'))"
-    ).bind(cacheKey, cacheName).run();
-    return { name: cacheName, hit: false };
-  }
-  return null;
-}
 
 // 요청당 perf_stats 1행 기록 (fire-and-forget). harem/chatbot-api와 동일 스키마 공유.
 async function logPerfStats(env, ctx, row) {
@@ -1223,19 +1117,10 @@ function ohangCompatibility(saju1, saju2) {
 }
 
 // ============================================================
-// AI — Gemini API (from ai.js)
+// AI — official DeepSeek text API
 // ============================================================
 
-// 유료키 우선 → 무료키는 폴백 (응답 속도 우선, 캐싱/가드 적용 후)
-function getGeminiKeys(env) {
-  return [
-    env.GEMINI_API_KEY,
-    env.GOLF_GEMINI_API_KEY_FREE,
-    env.LATIN_GEMINI_API_KEY_FREE,
-  ].filter(Boolean);
-}
-
-// Gemini API 실패 시 D1에 에러 기록 (자세한 디버깅 정보 포함)
+// AI API 실패 시 D1에 에러 기록 (자세한 디버깅 정보 포함)
 async function logApiError(env, message, detail, extra) {
   try {
     if (!env?.DB) return;
@@ -1246,7 +1131,7 @@ async function logApiError(env, message, detail, extra) {
     ).bind(
       (message || '').slice(0, 500),
       fullStack.slice(0, 2000),
-      (extra?.endpoint || 'worker/gemini').slice(0, 500)
+      (extra?.endpoint || 'worker/ai').slice(0, 500)
     ).run();
   } catch (e) {
     console.error('[logApiError] DB write failed:', e.message);
@@ -1293,13 +1178,13 @@ function extractFirstBalancedJsonObject(value) {
   return '';
 }
 
-function repairMissingGeminiJsonCommas(value) {
+function repairMissingAiJsonCommas(value) {
   return String(value || '')
     .replace(/("(?:\\.|[^"\\])*")(\s+)(?="(?:\\.|[^"\\])*"\s*:)/g, '$1,$2')
     .replace(/((?:-?\d+(?:\.\d+)?|true|false|null|}|\]))(\s+)(?="(?:\\.|[^"\\])*"\s*:)/g, '$1,$2');
 }
 
-function parseGeminiJsonResponse(value) {
+function parseAiJsonResponse(value) {
   const normalized = String(value || '')
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
@@ -1310,7 +1195,7 @@ function parseGeminiJsonResponse(value) {
   let lastError = null;
 
   for (const candidate of candidates) {
-    for (const attempt of [candidate, repairMissingGeminiJsonCommas(candidate)]) {
+    for (const attempt of [candidate, repairMissingAiJsonCommas(candidate)]) {
       try {
         return JSON.parse(attempt);
       } catch (error) {
@@ -1319,131 +1204,62 @@ function parseGeminiJsonResponse(value) {
     }
   }
 
-  throw lastError || new SyntaxError('Gemini response did not contain valid JSON');
+  throw lastError || new SyntaxError('AI response did not contain valid JSON');
 }
-async function callGemini(apiKeys, prompt, _caller, _env, _ctx) {
+
+async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
   const endpoint = _caller || 'unknown';
   const _perfStart = Date.now();
-  // prompt가 { system, user } 객체이면 분리, 아니면 기존 방식
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
-  const promptText = isStructured ? prompt.user : prompt;
+  const promptText = String(isStructured ? prompt.user : prompt || '');
   const promptPreview = promptText.slice(0, 100);
-  const staticPromptHash = isStructured ? stableHash(prompt.system || '') : '';
-  const cacheKey = isStructured ? `karma:${_caller}:${(prompt.lang || 'ko')}:sys${staticPromptHash}` : null;
   const _sysSize = isStructured ? (prompt.system || '').length : 0;
   const _contentsSize = promptText.length;
 
-  // 캐싱 시도
-  const errors = [];
-  for (let i = 0; i < apiKeys.length; i++) {
-    const isLast = i === apiKeys.length - 1;
-    try {
-      let cachedContentName = null;
-      let cacheHit = false;
-      let scopedCacheKey = cacheKey;
-
-      if (isStructured && _env?.DB) {
-        try {
-          scopedCacheKey = `${cacheKey}:kh${getGeminiCacheScope(apiKeys[i])}`;
-          const cacheResult = await getOrCreateCache(_env, scopedCacheKey, prompt.system, GEMINI_MODEL, apiKeys[i]);
-          if (cacheResult?.name) {
-            cachedContentName = cacheResult.name;
-            cacheHit = !!cacheResult.hit;
-          }
-        } catch (e) {
-          console.warn('[GeminiCache] Error:', e.message);
-        }
-      }
-
-      const payload = {
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: {
-          temperature: 0.5,
-          maxOutputTokens: 16384,
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingLevel: "high" },
-        },
-      };
-      if (cachedContentName) {
-        payload.cachedContent = cachedContentName;
-      } else if (isStructured) {
-        payload.systemInstruction = { parts: [{ text: prompt.system }] };
-      }
-      const body = JSON.stringify(payload);
-      const resp = await fetch(`${GEMINI_URL}?key=${apiKeys[i]}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-      if (!resp.ok && !isLast) { errors.push(`key${i+1}: HTTP ${resp.status}`); continue; }
-      if (!resp.ok && isLast) {
-        const errText = await resp.text().catch(() => '');
-        errors.push(`key${i+1}: HTTP ${resp.status} - ${errText.slice(0, 200)}`);
-        await logApiError(_env, `[${endpoint}] Gemini API 전체 실패 (HTTP ${resp.status})`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
-        return null;
-      }
-      const data = await resp.json();
-      if (data.error) {
-        errors.push(`key${i+1}: ${data.error?.message || data.error?.code || JSON.stringify(data.error).slice(0, 200)}`);
-        if (!isLast) continue;
-        await logApiError(_env, `[${endpoint}] Gemini API 전체 실패`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
-        return null;
-      }
-      const candidate = data.candidates?.[0] || {};
-      const finishReason = candidate.finishReason || 'N/A';
-      const parts = candidate.content?.parts || [];
-      const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
-      if (!allText) {
-        errors.push(`key${i+1}: empty response (finishReason: ${finishReason})`);
-        if (!isLast) continue;
-        await logApiError(_env, `[${endpoint}] Gemini 빈 응답`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
-        return null;
-      }
-      const normalizedText = allText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-      const jsonMatch = extractFirstBalancedJsonObject(normalizedText) || (normalizedText.match(/\{[\s\S]*\}/) || [])[0];
-      if (!jsonMatch) {
-        errors.push(`key${i+1}: JSON not found (finishReason: ${finishReason})`);
-        if (!isLast) continue;
-        await logApiError(_env, `[${endpoint}] Gemini JSON 미발견`, `${errors.join('\n')}\n응답: ${allText.slice(0, 300)}`, { endpoint, promptPreview, keyCount: apiKeys.length });
-        return null;
-      }
-      try {
-        const _parsed = parseGeminiJsonResponse(jsonMatch);
-        const _um = data.usageMetadata || {};
-        logPerfStats(_env, _ctx, {
-          app: `karma:${endpoint}`,
-          cache_key: scopedCacheKey,
-          cache_hit: cacheHit ? 1 : 0,
-          prompt_tokens: _um.promptTokenCount || 0,
-          cached_tokens: _um.cachedContentTokenCount || 0,
-          output_tokens: _um.candidatesTokenCount || 0,
-          thought_tokens: _um.thoughtsTokenCount || 0,
-          sys_chars: _sysSize,
-          hist_chars: _contentsSize,
-          used_key_idx: i,
-          elapsed_ms: Date.now() - _perfStart,
-        });
-        return _parsed;
-      } catch (e2) {
-        errors.push(`key${i+1}: ${e2.message} (finishReason: ${finishReason})`);
-        if (!isLast) continue;
-        await logApiError(
-          _env,
-          `[${endpoint}] Gemini JSON 파싱 실패`,
-          `${errors.join('\n')}\n응답: ${jsonMatch.slice(0, 300)}`,
-          { endpoint, promptPreview, keyCount: apiKeys.length }
-        );
-        return null;
-      }
-    } catch (e) {
-      errors.push(`key${i+1}: ${e.message || e}`);
-      if (isLast) {
-        await logApiError(_env, `[${endpoint}] Gemini 네트워크 오류`, errors.join('\n'), { endpoint, promptPreview, keyCount: apiKeys.length });
-        return null;
-      }
-    }
+  if (!_env?.OFFICIAL_DEEPSEEK?.complete) {
+    await logApiError(_env, `[${endpoint}] official DeepSeek service missing`, '', { endpoint, promptPreview });
+    return null;
   }
-  return null;
+
+  try {
+    const messages = isStructured
+      ? [
+        { role: 'system', content: String(prompt.system) },
+        { role: 'user', content: promptText },
+      ]
+      : [{ role: 'user', content: promptText }];
+    const result = await _env.OFFICIAL_DEEPSEEK.complete({
+      appId: 'karma',
+      messages,
+      responseFormat: 'json_object',
+      temperature: 0.5,
+      maxTokens: 16384,
+    });
+    const parsed = parseAiJsonResponse(result?.text || '');
+    const usage = result?.usage || {};
+    logPerfStats(_env, _ctx, {
+      app: `karma:${endpoint}`,
+      cache_key: null,
+      cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
+      prompt_tokens: usage.prompt_tokens || 0,
+      cached_tokens: usage.prompt_cache_hit_tokens || 0,
+      output_tokens: usage.completion_tokens || 0,
+      thought_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
+      sys_chars: _sysSize,
+      hist_chars: _contentsSize,
+      used_key_idx: 0,
+      elapsed_ms: Date.now() - _perfStart,
+    });
+    return parsed;
+  } catch (error) {
+    await logApiError(
+      _env,
+      `[${endpoint}] official DeepSeek request failed`,
+      error?.stack || error?.message || String(error),
+      { endpoint, promptPreview }
+    );
+    return null;
+  }
 }
 
 // ============================================================
@@ -1664,13 +1480,12 @@ async function handleTarotReading(request, env) {
       return json({ error: 'Invalid card IDs' }, 400);
     }
 
-    const apiKeys = getGeminiKeys(env);
-    if (!apiKeys.length) {
+    if (!env?.OFFICIAL_DEEPSEEK?.complete) {
       return json({ error: 'AI service unavailable' }, 503);
     }
 
     const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
-    const ai = await callGemini(apiKeys, prompt, 'tarot', env);
+    const ai = await callOfficialDeepSeek(prompt, 'tarot', env);
 
     if (!ai) {
       return json({ error: 'AI interpretation failed' }, 500);
@@ -1694,7 +1509,7 @@ async function handleTarotReading(request, env) {
   }
 }
 
-async function callOpenRouterMiMoVision(prompt, imageBase64, mimeType, env) {
+async function callOpenRouterMiMoVision(prompt, imageUrl, env) {
   if (!env?.OPENROUTER_MEDIA?.analyze) {
     return { _apiError: 'AI 미디어 분석 서비스가 연결되지 않았습니다.' };
   }
@@ -1705,13 +1520,13 @@ async function callOpenRouterMiMoVision(prompt, imageBase64, mimeType, env) {
       prompt,
       media: [{
         type: 'image',
-        url: `data:${mimeType || 'image/jpeg'};base64,${String(imageBase64 || '').replace(/\s+/g, '')}`,
+        url: String(imageUrl || ''),
       }],
       temperature: 0.2,
       maxTokens: 8000,
     });
     if (!result?.text) return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
-    return parseGeminiJsonResponse(result.text);
+    return parseAiJsonResponse(result.text);
   } catch (error) {
     await logApiError(env, 'OpenRouter MiMo photo analysis failed', error?.stack || error?.message || String(error), {
       endpoint: 'worker/openrouter-mimo-media',
@@ -1727,11 +1542,21 @@ async function saveImageToR2(env, image, mimeType, type) {
     const key = `karma/${type}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const buf = Uint8Array.from(atob(image), c => c.charCodeAt(0));
     await env.R2_BUCKET.put(key, buf, { httpMetadata: { contentType: mimeType } });
-    return key;
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+    return {
+      key,
+      url: `${env.R2_PUBLIC_URL || 'https://pub-54cf8dbbbe6645cd9d493700dcedb706.r2.dev'}/${encodedKey}`,
+    };
   } catch (e) {
     console.error('R2 save failed:', e.message);
     return null;
   }
+}
+
+function base64ByteLength(value) {
+  const encoded = String(value || '').replace(/\s+/g, '');
+  const padding = encoded.endsWith('==') ? 2 : (encoded.endsWith('=') ? 1 : 0);
+  return Math.max(0, Math.floor(encoded.length * 3 / 4) - padding);
 }
 
 function inferHandSide(value) {
@@ -1812,12 +1637,15 @@ function palmExpertRubric() {
 
 async function handleFaceReading(request, env) {
   const { image, mimeType, gender, age, lang } = await request.json();
+  if (base64ByteLength(image) > 50 * 1024 * 1024) {
+    return json({ error: 'Image exceeds the 50 MB upload limit.' }, 413);
+  }
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
   if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
   // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
-  const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
+  const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
 
   const prompt = `당신은 사진에서 관찰 가능한 얼굴 특징과 전통 관상 해석을 명확히 구분하는 관상 해설가입니다. 관상은 오락·자기성찰용 전통 해석이며 실제 성격, 능력, 건강, 재산, 가족관계, 미래를 판정하지 않습니다.
 
@@ -1878,20 +1706,24 @@ ${faceExpertRubric()}
   "celebrity_resemblance": ""
 }` + langInstruction(lang);
 
-  const result = await callOpenRouterMiMoVision(prompt, image, mimeType || 'image/jpeg', env);
+  const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
   if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
-  return json({ ...result, r2_key: r2Key });
+  return json({ ...result, r2_key: r2Object?.key || null });
 }
 
 async function handlePalmReading(request, env) {
   const { image, mimeType, hand, dominant, gender, lang } = await request.json();
+  if (base64ByteLength(image) > 50 * 1024 * 1024) {
+    return json({ error: 'Image exceeds the 50 MB upload limit.' }, 413);
+  }
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
   if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
+  const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
   const handContext = buildPalmHandContext(hand, dominant, lang);
 
   const prompt = `당신은 사진에서 관찰 가능한 손바닥 특징과 전통 수상학 해석을 명확히 구분하는 손금 해설가입니다. 손금은 오락·자기성찰용 전통 해석이며 실제 성격, 건강, 수명, 재산, 관계, 미래 사건을 판정하지 않습니다.
@@ -1957,11 +1789,12 @@ ${palmExpertRubric()}
   "advice": "(손금 기반 조언 3~4문장. 격언 금지. 관찰된 손금 특징에 연결해 이번 달/올해 실천할 행동을 구체적으로)"
 }` + langInstruction(lang);
 
-  const result = await callOpenRouterMiMoVision(prompt, image, mimeType || 'image/jpeg', env);
+  const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
   if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
-  return json({ ...result, r2_key: r2Key });
+  return json({ ...result, r2_key: r2Object?.key || null });
 }
 
 function getOhangRelations(ohangA, ohangB) {
@@ -2689,8 +2522,9 @@ async function handleSajuAnalysis(request, env) {
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env) : null;
+  const ai = env?.OFFICIAL_DEEPSEEK?.complete
+    ? await callOfficialDeepSeek(buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env)
+    : null;
 
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ ...out, ai });
@@ -2708,8 +2542,9 @@ async function handleCompatQuick(request, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  const apiKeys = getGeminiKeys(env);
-  const ai = apiKeys.length ? await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env) : null;
+  const ai = env?.OFFICIAL_DEEPSEEK?.complete
+    ? await callOfficialDeepSeek(buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env)
+    : null;
 
   const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
   const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
@@ -2728,10 +2563,9 @@ async function handleFortune(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
-  const apiKeys = getGeminiKeys(env);
-  if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKeys, buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
+  const ai = await callOfficialDeepSeek(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
@@ -2749,10 +2583,9 @@ async function handleDaily(request, env) {
     todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   }
 
-  const apiKeys = getGeminiKeys(env);
-  if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callGemini(apiKeys, buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
+  const ai = await callOfficialDeepSeek(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
@@ -2830,10 +2663,9 @@ async function handleMatchDetail(idA, idB, env, lang) {
     } : relations,
   };
 
-  const apiKeys = getGeminiKeys(env);
-  if (!apiKeys.length) return json({ ...baseResult, ai: null });
+  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ ...baseResult, ai: null });
 
-  const ai = await callGemini(apiKeys, buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
+  const ai = await callOfficialDeepSeek(buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
   return json({ ...baseResult, ai });
 }
 

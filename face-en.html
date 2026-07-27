@@ -304,8 +304,8 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
-  if (file.size > 15 * 1024 * 1024) {
-    alert('Image size exceeds 15MB. Please use a smaller photo.');
+  if (file.size > 50 * 1024 * 1024) {
+    alert('Image size exceeds 50MB. Please use a smaller photo.');
     return;
   }
   const url = URL.createObjectURL(file);

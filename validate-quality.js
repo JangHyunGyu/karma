@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseGeminiJsonResponse };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse };`;
 
 const context = {
   console,
@@ -68,12 +68,12 @@ for (const page of ['saju', 'daily', 'fortune', 'compat', 'tarot', 'face', 'palm
 
 console.log('\n🧭 사주 프롬프트 근거·변별력');
 check(workerSource.includes("'Content-Type': 'application/json; charset=utf-8'"), 'API JSON 응답에 UTF-8 문자셋 명시');
-const firstJsonOnly = api.parseGeminiJsonResponse('{"value":1}\n{"ignored":2}');
-check(firstJsonOnly.value === 1 && firstJsonOnly.ignored === undefined, 'Gemini parser keeps the first complete JSON object');
-const repairedComma = api.parseGeminiJsonResponse('{"first":"one"\n"second":"two"}');
-check(repairedComma.first === 'one' && repairedComma.second === 'two', 'Gemini parser repairs a missing property comma');
-const braceInString = api.parseGeminiJsonResponse('{"text":"brace } stays in text","ok":true} trailing');
-check(braceInString.ok === true, 'Gemini parser ignores braces inside strings');
+const firstJsonOnly = api.parseAiJsonResponse('{"value":1}\n{"ignored":2}');
+check(firstJsonOnly.value === 1 && firstJsonOnly.ignored === undefined, 'AI parser keeps the first complete JSON object');
+const repairedComma = api.parseAiJsonResponse('{"first":"one"\n"second":"two"}');
+check(repairedComma.first === 'one' && repairedComma.second === 'two', 'AI parser repairs a missing property comma');
+const braceInString = api.parseAiJsonResponse('{"text":"brace } stays in text","ok":true} trailing');
+check(braceInString.ok === true, 'AI parser ignores braces inside strings');
 const samples = [
   { birth: '1991-02-03', time: '07:30', gender: 'female' },
   { birth: '1991-08-19', time: '21:10', gender: 'female' },
