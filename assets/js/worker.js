@@ -6,6 +6,7 @@
 // ============================================================
 
 let _perfStatsTableReady = false;
+let _karmaImageAnalysesTableReady = false;
 
 // 요청당 perf_stats 1행 기록 (fire-and-forget). harem/chatbot-api와 동일 스키마 공유.
 async function logPerfStats(env, ctx, row) {
@@ -1553,6 +1554,77 @@ async function saveImageToR2(env, image, mimeType, type) {
   }
 }
 
+async function ensureKarmaImageAnalysesTable(db) {
+  if (_karmaImageAnalysesTableReady) return;
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS karma_image_analyses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id TEXT NOT NULL UNIQUE,
+      r2_key TEXT NOT NULL UNIQUE,
+      analysis_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'success',
+      input_json TEXT NOT NULL DEFAULT '{}',
+      result_json TEXT NOT NULL DEFAULT '{}',
+      error_message TEXT NOT NULL DEFAULT '',
+      ai_service TEXT NOT NULL DEFAULT 'OPENROUTER_MEDIA',
+      created_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours'))
+    )
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_karma_image_analyses_type_time
+    ON karma_image_analyses(analysis_type, created_at DESC, id DESC)
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_karma_image_analyses_status_time
+    ON karma_image_analyses(status, created_at DESC, id DESC)
+  `).run();
+  _karmaImageAnalysesTableReady = true;
+}
+
+async function recordKarmaImageAnalysis(env, {
+  r2Key,
+  analysisType,
+  status,
+  input,
+  result,
+  errorMessage,
+}) {
+  if (!env?.DB || !r2Key) return;
+  try {
+    await ensureKarmaImageAnalysesTable(env.DB);
+    await env.DB.prepare(`
+      INSERT INTO karma_image_analyses (
+        request_id, r2_key, analysis_type, status, input_json,
+        result_json, error_message, ai_service
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPENROUTER_MEDIA')
+      ON CONFLICT(r2_key) DO UPDATE SET
+        request_id = excluded.request_id,
+        analysis_type = excluded.analysis_type,
+        status = excluded.status,
+        input_json = excluded.input_json,
+        result_json = excluded.result_json,
+        error_message = excluded.error_message,
+        ai_service = excluded.ai_service,
+        updated_at = datetime('now', '+9 hours')
+    `).bind(
+      crypto.randomUUID(),
+      String(r2Key),
+      analysisType === 'palm' ? 'palm' : 'face',
+      ['success', 'rejected', 'error'].includes(status) ? status : 'error',
+      JSON.stringify(input || {}),
+      JSON.stringify(result || {}),
+      String(errorMessage || '').slice(0, 2000),
+    ).run();
+  } catch (error) {
+    console.error('[KarmaAnalysis] D1 write failed:', error?.message || error);
+    await logApiError(env, 'Karma image analysis log failed', error?.stack || error?.message || String(error), {
+      endpoint: `worker/${analysisType || 'image'}-analysis-log`,
+      r2Key: String(r2Key).slice(0, 500),
+    });
+  }
+}
+
 function base64ByteLength(value) {
   const encoded = String(value || '').replace(/\s+/g, '');
   const padding = encoded.endsWith('==') ? 2 : (encoded.endsWith('=') ? 1 : 0);
@@ -1708,9 +1780,49 @@ ${faceExpertRubric()}
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
   const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
-  if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
-  if (result._apiError) return json({ error: result._apiError }, 500);
-  if (result.error) return json({ error: result.error }, 400);
+  const analysisInput = { gender: gender || '', age: age || '', lang: lang === 'en' ? 'en' : 'ko' };
+  if (!result) {
+    const errorMessage = 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.';
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 500);
+  }
+  if (result._apiError) {
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: { error: result._apiError },
+      errorMessage: result._apiError,
+    });
+    return json({ error: result._apiError }, 500);
+  }
+  if (result.error) {
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'face',
+      status: 'rejected',
+      input: analysisInput,
+      result,
+      errorMessage: result.error,
+    });
+    return json({ error: result.error }, 400);
+  }
+  await recordKarmaImageAnalysis(env, {
+    r2Key: r2Object?.key,
+    analysisType: 'face',
+    status: 'success',
+    input: analysisInput,
+    result,
+    errorMessage: '',
+  });
   return json({ ...result, r2_key: r2Object?.key || null });
 }
 
@@ -1791,9 +1903,54 @@ ${palmExpertRubric()}
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
   const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
-  if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
-  if (result._apiError) return json({ error: result._apiError }, 500);
-  if (result.error) return json({ error: result.error }, 400);
+  const analysisInput = {
+    hand: hand || '',
+    dominant: dominant || '',
+    gender: gender || '',
+    lang: lang === 'en' ? 'en' : 'ko',
+  };
+  if (!result) {
+    const errorMessage = 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.';
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 500);
+  }
+  if (result._apiError) {
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: result._apiError },
+      errorMessage: result._apiError,
+    });
+    return json({ error: result._apiError }, 500);
+  }
+  if (result.error) {
+    await recordKarmaImageAnalysis(env, {
+      r2Key: r2Object?.key,
+      analysisType: 'palm',
+      status: 'rejected',
+      input: analysisInput,
+      result,
+      errorMessage: result.error,
+    });
+    return json({ error: result.error }, 400);
+  }
+  await recordKarmaImageAnalysis(env, {
+    r2Key: r2Object?.key,
+    analysisType: 'palm',
+    status: 'success',
+    input: analysisInput,
+    result,
+    errorMessage: '',
+  });
   return json({ ...result, r2_key: r2Object?.key || null });
 }
 
@@ -2915,6 +3072,16 @@ async function handleR2Delete(request, env) {
   if (!key) return json({ error: 'key required' }, 400);
 
   await env.R2_BUCKET.delete(key);
+  if (env?.DB) {
+    try {
+      await ensureKarmaImageAnalysesTable(env.DB);
+      await env.DB.prepare(
+        'DELETE FROM karma_image_analyses WHERE r2_key = ?'
+      ).bind(String(key)).run();
+    } catch (error) {
+      console.error('[KarmaAnalysis] D1 delete failed:', error?.message || error);
+    }
+  }
   return json({ ok: true, deleted: key });
 }
 
