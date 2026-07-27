@@ -1694,61 +1694,30 @@ async function handleTarotReading(request, env) {
   }
 }
 
-async function callGeminiVision(apiKeys, prompt, imageBase64, mimeType, _env) {
-  const body = JSON.stringify({
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inline_data: { mime_type: mimeType, data: imageBase64 } },
-      ],
-    }],
-    generationConfig: { temperature: 0.6, thinkingConfig: { thinkingLevel: "high" } },
-  });
-  const errors = [];
-  for (let i = 0; i < apiKeys.length; i++) {
-    const isLast = i === apiKeys.length - 1;
-    try {
-      const resp = await fetch(`${GEMINI_URL}?key=${apiKeys[i]}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-      if (!resp.ok && !isLast) { errors.push(`key${i+1}: HTTP ${resp.status}`); continue; }
-      if (!resp.ok && isLast) {
-        const errText = await resp.text().catch(() => '');
-        errors.push(`key${i+1}: HTTP ${resp.status} - ${errText.slice(0, 200)}`);
-        await logApiError(_env, 'Gemini Vision API 전체 실패', errors.join('\n'));
-        return { _apiError: 'AI 서비스가 일시적으로 불가합니다. 잠시 후 다시 시도해주세요.' };
-      }
-      const data = await resp.json();
-      if (data.error) {
-        errors.push(`key${i+1}: ${data.error?.message || JSON.stringify(data.error)}`);
-        if (!isLast) continue;
-        await logApiError(_env, 'Gemini Vision error (all keys failed)', errors.join('\n'));
-        return { _apiError: data.error.message || JSON.stringify(data.error) };
-      }
-      const candidate = data.candidates?.[0];
-      if (candidate?.finishReason === 'SAFETY') {
-        return { _apiError: '이미지가 안전 필터에 의해 차단되었습니다. 다른 사진을 시도해주세요.' };
-      }
-      const parts = candidate?.content?.parts || [];
-      const allText = parts.filter(p => !p.thought).map(p => p.text || '').join('');
-      if (!allText) {
-        console.error('Gemini Vision: empty response, candidates:', JSON.stringify(data.candidates));
-        return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
-      }
-      const jsonMatch = extractFirstBalancedJsonObject(allText) || (allText.match(/\{[\s\S]*\}/) || [])[0];
-      if (!jsonMatch) return { _apiError: 'AI 응답 형식 오류' };
-      try { return parseGeminiJsonResponse(jsonMatch); } catch { return { _apiError: 'AI 응답 파싱 실패' }; }
-    } catch (e) {
-      errors.push(`key${i+1}: ${e.message || e}`);
-      if (isLast) {
-        await logApiError(_env, 'Gemini Vision call failed (all keys)', errors.join(' | '));
-        return { _apiError: 'Gemini API 호출 실패: ' + (e.message || '') };
-      }
-    }
+async function callOpenRouterMiMoVision(prompt, imageBase64, mimeType, env) {
+  if (!env?.OPENROUTER_MEDIA?.analyze) {
+    return { _apiError: 'AI 미디어 분석 서비스가 연결되지 않았습니다.' };
   }
-  return { _apiError: 'API 키가 설정되지 않았습니다' };
+
+  try {
+    const result = await env.OPENROUTER_MEDIA.analyze({
+      appId: 'Karma Photo Analysis',
+      prompt,
+      media: [{
+        type: 'image',
+        url: `data:${mimeType || 'image/jpeg'};base64,${String(imageBase64 || '').replace(/\s+/g, '')}`,
+      }],
+      temperature: 0.2,
+      maxTokens: 8000,
+    });
+    if (!result?.text) return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
+    return parseGeminiJsonResponse(result.text);
+  } catch (error) {
+    await logApiError(env, 'OpenRouter MiMo photo analysis failed', error?.stack || error?.message || String(error), {
+      endpoint: 'worker/openrouter-mimo-media',
+    });
+    return { _apiError: `사진 분석 호출에 실패했습니다: ${error?.message || '알 수 없는 오류'}` };
+  }
 }
 
 async function saveImageToR2(env, image, mimeType, type) {
@@ -1845,8 +1814,7 @@ async function handleFaceReading(request, env) {
   const { image, mimeType, gender, age, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
-  const apiKeys = getGeminiKeys(env);
-  if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
   // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
   const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
@@ -1910,7 +1878,7 @@ ${faceExpertRubric()}
   "celebrity_resemblance": ""
 }` + langInstruction(lang);
 
-  const result = await callGeminiVision(apiKeys, prompt, image, mimeType || 'image/jpeg', env);
+  const result = await callOpenRouterMiMoVision(prompt, image, mimeType || 'image/jpeg', env);
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.' }, 500);
   if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
@@ -1921,8 +1889,7 @@ async function handlePalmReading(request, env) {
   const { image, mimeType, hand, dominant, gender, lang } = await request.json();
   if (!image) return json({ error: '이미지가 필요합니다' }, 400);
 
-  const apiKeys = getGeminiKeys(env);
-  if (!apiKeys.length) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
   const r2Key = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
   const handContext = buildPalmHandContext(hand, dominant, lang);
@@ -1990,7 +1957,7 @@ ${palmExpertRubric()}
   "advice": "(손금 기반 조언 3~4문장. 격언 금지. 관찰된 손금 특징에 연결해 이번 달/올해 실천할 행동을 구체적으로)"
 }` + langInstruction(lang);
 
-  const result = await callGeminiVision(apiKeys, prompt, image, mimeType || 'image/jpeg', env);
+  const result = await callOpenRouterMiMoVision(prompt, image, mimeType || 'image/jpeg', env);
   if (!result) return json({ error: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.' }, 500);
   if (result._apiError) return json({ error: result._apiError }, 500);
   if (result.error) return json({ error: result.error }, 400);
