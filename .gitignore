@@ -1,3 +1,4 @@
 node_modules/
+.wrangler/
 tmp-server-*.log
 npm-debug.log*
