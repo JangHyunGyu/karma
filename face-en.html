@@ -353,9 +353,8 @@ analyzeBtn.addEventListener('click', async () => {
         ...faceInput,
       }),
     });
-    if (!resp.ok) throw new Error('A server error occurred. Please try again later.');
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || 'A server error occurred. Please try again later.');
     window._faceInput = faceInput;
     window._faceResult = data;
     renderResult(data);

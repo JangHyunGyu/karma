@@ -1510,9 +1510,44 @@ async function handleTarotReading(request, env) {
   }
 }
 
-async function callOpenRouterMiMoVision(prompt, imageUrl, env) {
+const PHOTO_ANALYSIS_MESSAGES = {
+  ko: {
+    imageTooLarge: '이미지 크기가 50MB를 초과합니다. 더 작은 사진을 사용해주세요.',
+    imageRequired: '이미지가 필요합니다.',
+    serviceUnavailable: 'AI 분석 서비스를 사용할 수 없습니다.',
+    mediaNotConnected: 'AI 미디어 분석 서비스가 연결되지 않았습니다.',
+    emptyResponse: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.',
+    callFailed: '사진 분석 요청에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    faceAnalysisFailed: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.',
+    palmAnalysisFailed: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.',
+    faceRejected: '분석할 수 있는 얼굴 사진이 아닙니다. 사람의 정면 얼굴이 선명하게 보이는 사진을 업로드해주세요.',
+    palmRejected: '분석할 수 있는 손바닥 사진이 아닙니다. 손을 펴고 손금이 선명하게 보이는 사진을 업로드해주세요.',
+  },
+  en: {
+    imageTooLarge: 'The image exceeds the 50 MB upload limit. Please use a smaller photo.',
+    imageRequired: 'An image is required.',
+    serviceUnavailable: 'The AI analysis service is unavailable.',
+    mediaNotConnected: 'The AI media analysis service is not connected.',
+    emptyResponse: 'The AI returned an empty response. Please try a different photo.',
+    callFailed: 'The photo analysis request failed. Please try again later.',
+    faceAnalysisFailed: 'AI analysis failed. Please use a clear, front-facing photo where the face is visible.',
+    palmAnalysisFailed: 'AI analysis failed. Please use a clear photo where the palm is visible.',
+    faceRejected: 'This is not a usable face photo. Please upload a clear, front-facing photo of a person.',
+    palmRejected: 'This is not a usable palm photo. Please upload a photo with your hand open and the palm lines clearly visible.',
+  },
+};
+
+function normalizePhotoAnalysisLang(lang) {
+  return lang === 'en' ? 'en' : 'ko';
+}
+
+function getPhotoAnalysisMessage(lang, key) {
+  return PHOTO_ANALYSIS_MESSAGES[normalizePhotoAnalysisLang(lang)][key];
+}
+
+async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko') {
   if (!env?.OPENROUTER_MEDIA?.analyze) {
-    return { _apiError: 'AI 미디어 분석 서비스가 연결되지 않았습니다.' };
+    return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
 
   try {
@@ -1526,13 +1561,13 @@ async function callOpenRouterMiMoVision(prompt, imageUrl, env) {
       temperature: 0.2,
       maxTokens: 8000,
     });
-    if (!result?.text) return { _apiError: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.' };
+    if (!result?.text) return { _apiError: getPhotoAnalysisMessage(lang, 'emptyResponse') };
     return parseAiJsonResponse(result.text);
   } catch (error) {
     await logApiError(env, 'OpenRouter MiMo photo analysis failed', error?.stack || error?.message || String(error), {
       endpoint: 'worker/openrouter-mimo-media',
     });
-    return { _apiError: `사진 분석 호출에 실패했습니다: ${error?.message || '알 수 없는 오류'}` };
+    return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
   }
 }
 
@@ -1709,20 +1744,22 @@ function palmExpertRubric() {
 
 async function handleFaceReading(request, env) {
   const { image, mimeType, gender, age, lang } = await request.json();
+  const analysisLang = normalizePhotoAnalysisLang(lang);
   if (base64ByteLength(image) > 50 * 1024 * 1024) {
-    return json({ error: 'Image exceeds the 50 MB upload limit.' }, 413);
+    return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageTooLarge') }, 413);
   }
-  if (!image) return json({ error: '이미지가 필요합니다' }, 400);
+  if (!image) return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageRequired') }, 400);
 
-  if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OPENROUTER_MEDIA) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
 
   // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
   const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
 
+  const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'faceRejected');
   const prompt = `당신은 사진에서 관찰 가능한 얼굴 특징과 전통 관상 해석을 명확히 구분하는 관상 해설가입니다. 관상은 오락·자기성찰용 전통 해석이며 실제 성격, 능력, 건강, 재산, 가족관계, 미래를 판정하지 않습니다.
 
 중요: 먼저 사진에 사람의 얼굴이 있는지 확인하세요. 얼굴이 없거나 사람이 아닌 사진이면 반드시 다음 JSON만 반환:
-{"error": "얼굴 사진이 아닙니다. 사람의 정면 얼굴이 보이는 사진을 업로드해주세요."}
+{"error": ${JSON.stringify(rejectionMessage)}}
 
 얼굴이 확인되면 관상 감정 진행.
 ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
@@ -1776,13 +1813,13 @@ ${faceExpertRubric()}
   },
   "advice": "(관상 기반 조언 3~4문장. 격언 금지. '이 상은 ~을 반드시 피하라, ~부터 ~을 준비해라' 식 구체 지시)",
   "celebrity_resemblance": ""
-}` + langInstruction(lang);
+}` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
-  const analysisInput = { gender: gender || '', age: age || '', lang: lang === 'en' ? 'en' : 'ko' };
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang);
+  const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
   if (!result) {
-    const errorMessage = 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.';
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
       r2Key: r2Object?.key,
       analysisType: 'face',
@@ -1805,15 +1842,16 @@ ${faceExpertRubric()}
     return json({ error: result._apiError }, 500);
   }
   if (result.error) {
+    const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
       r2Key: r2Object?.key,
       analysisType: 'face',
       status: 'rejected',
       input: analysisInput,
-      result,
-      errorMessage: result.error,
+      result: localizedResult,
+      errorMessage: rejectionMessage,
     });
-    return json({ error: result.error }, 400);
+    return json({ error: rejectionMessage }, 400);
   }
   await recordKarmaImageAnalysis(env, {
     r2Key: r2Object?.key,
@@ -1828,20 +1866,22 @@ ${faceExpertRubric()}
 
 async function handlePalmReading(request, env) {
   const { image, mimeType, hand, dominant, gender, lang } = await request.json();
+  const analysisLang = normalizePhotoAnalysisLang(lang);
   if (base64ByteLength(image) > 50 * 1024 * 1024) {
-    return json({ error: 'Image exceeds the 50 MB upload limit.' }, 413);
+    return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageTooLarge') }, 413);
   }
-  if (!image) return json({ error: '이미지가 필요합니다' }, 400);
+  if (!image) return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageRequired') }, 400);
 
-  if (!env?.OPENROUTER_MEDIA) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.OPENROUTER_MEDIA) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
 
   const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
-  const handContext = buildPalmHandContext(hand, dominant, lang);
+  const handContext = buildPalmHandContext(hand, dominant, analysisLang);
 
+  const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'palmRejected');
   const prompt = `당신은 사진에서 관찰 가능한 손바닥 특징과 전통 수상학 해석을 명확히 구분하는 손금 해설가입니다. 손금은 오락·자기성찰용 전통 해석이며 실제 성격, 건강, 수명, 재산, 관계, 미래 사건을 판정하지 않습니다.
 
 중요: 먼저 사진에 사람의 손바닥이 있는지 확인하세요. 손바닥이 없거나 손금이 보이지 않는 사진이면 반드시 다음 JSON만 반환:
-{"error": "손바닥 사진이 아닙니다. 손금이 잘 보이도록 손을 펴서 촬영한 사진을 업로드해주세요."}
+{"error": ${JSON.stringify(rejectionMessage)}}
 
 손바닥이 확인되면 손금 감정 진행.
 ${handContext}${gender ? `\n성별: ${gender}` : ''}
@@ -1899,18 +1939,18 @@ ${palmExpertRubric()}
     "health": "(건강운 3~4문장. 손의 긴장도·선명도·생활 리듬 기반 주의. 특정 질병 확정, 사고 시기 단정 금지. 필요 시 일반적 검진 권장)"
   },
   "advice": "(손금 기반 조언 3~4문장. 격언 금지. 관찰된 손금 특징에 연결해 이번 달/올해 실천할 행동을 구체적으로)"
-}` + langInstruction(lang);
+}` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env);
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang);
   const analysisInput = {
     hand: hand || '',
     dominant: dominant || '',
     gender: gender || '',
-    lang: lang === 'en' ? 'en' : 'ko',
+    lang: analysisLang,
   };
   if (!result) {
-    const errorMessage = 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.';
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
       r2Key: r2Object?.key,
       analysisType: 'palm',
@@ -1933,15 +1973,16 @@ ${palmExpertRubric()}
     return json({ error: result._apiError }, 500);
   }
   if (result.error) {
+    const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
       r2Key: r2Object?.key,
       analysisType: 'palm',
       status: 'rejected',
       input: analysisInput,
-      result,
-      errorMessage: result.error,
+      result: localizedResult,
+      errorMessage: rejectionMessage,
     });
-    return json({ error: result.error }, 400);
+    return json({ error: rejectionMessage }, 400);
   }
   await recordKarmaImageAnalysis(env, {
     r2Key: r2Object?.key,

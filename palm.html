@@ -409,9 +409,8 @@ analyzeBtn.addEventListener('click', async () => {
         lang: palmInput.lang,
       }),
     });
-    if (!resp.ok) throw new Error(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
     window._palmInput = palmInput;
     window._palmResult = data;
     renderResult(data);

@@ -377,9 +377,8 @@ analyzeBtn.addEventListener('click', async () => {
         lang: palmInput.lang,
       }),
     });
-    if (!resp.ok) throw new Error('A server error occurred. Please try again later.');
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) throw new Error(data.error || 'A server error occurred. Please try again later.');
     window._palmInput = palmInput;
     window._palmResult = data;
     renderResult(data);
