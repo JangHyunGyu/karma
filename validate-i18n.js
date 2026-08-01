@@ -19,7 +19,9 @@ const PAIRS = [
   'saju', 'tarot',
 ];
 
-const ORPHANS = ['mbti-saju'];
+const LOCALIZED_EXCEPTIONS = {
+  'mbti-saju': 'The MBTI/Saju landing page is intentionally Korean-only.'
+};
 
 const ROOT = __dirname;
 
@@ -37,6 +39,22 @@ function countMatches(html, re) {
 function extract(html, re) {
   const m = html.match(re);
   return m ? m[1].trim() : null;
+}
+
+function extractInteractiveContract(html) {
+  const body = extract(html, /<body[^>]*>([\s\S]*?)<\/body>/i) || html;
+  const markup = body
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  const controls = [...markup.matchAll(/<(button|input|select|textarea|form)\b([^>]*)>/gi)]
+    .map((match) => {
+      const attrs = match[2];
+      const value = (name) => extract(attrs, new RegExp(`\\b${name}="([^"]*)"`, 'i')) || '';
+      return [match[1].toLowerCase(), value('id'), value('name'), value('type')].join(':');
+    });
+  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/gi)]
+    .map((match) => match[1].replace(/([?&])v=[^&]+/, ''));
+  return { controls, scripts };
 }
 
 const STRUCT_RULES = [
@@ -128,14 +146,19 @@ function checkPair(base) {
     }
   }
 
-  // 7. 라인수 편차
-  const koLines = ko.split('\n').length;
-  const enLines = en.split('\n').length;
-  const diff = Math.abs(koLines - enLines);
-  const ratio = diff / Math.max(koLines, enLines);
-  if (ratio > 0.10) fail(`라인수 편차 >10%: KO=${koLines}, EN=${enLines} (Δ${diff})`);
-  else if (ratio > 0.03) warn(`라인수 편차 >3%: KO=${koLines}, EN=${enLines} (Δ${diff})`);
-  else pass(`라인수 근접 (KO=${koLines}, EN=${enLines})`);
+  // 7. 번역 문장 길이가 아니라 실제 조작 요소와 런타임 의존성의 순서를 비교한다.
+  const koContract = extractInteractiveContract(ko);
+  const enContract = extractInteractiveContract(en);
+  if (JSON.stringify(koContract.controls) === JSON.stringify(enContract.controls)) {
+    pass(`인터랙션 계약 일치 (${koContract.controls.length} controls)`);
+  } else {
+    fail('인터랙션 계약 불일치', `KO=${koContract.controls.join('|')}\nEN=${enContract.controls.join('|')}`);
+  }
+  if (JSON.stringify(koContract.scripts) === JSON.stringify(enContract.scripts)) {
+    pass(`런타임 스크립트 순서 일치 (${koContract.scripts.length})`);
+  } else {
+    fail('런타임 스크립트 순서 불일치', `KO=${koContract.scripts.join('|')}\nEN=${enContract.scripts.join('|')}`);
+  }
 
   // 8. data-ko / data-en 쌍 확인 (KO 파일 기준)
   const koDataKoAttrs = countMatches(ko, /\bdata-ko="/g);
@@ -192,11 +215,10 @@ for (const p of PAIRS) checkPair(p);
 checkKoreanLeak();
 
 // Orphan 체크
-console.log(`\n🔸 [Orphan] EN 페어 없는 페이지`);
-for (const o of ORPHANS) {
-  if (fs.existsSync(path.join(ROOT, `${o}.html`))) {
-    warn(`${o}.html — EN 페어 없음 (필요 여부 검토)`);
-  }
+console.log(`\n🔸 [Localized exceptions] 의도된 단일 언어 페이지`);
+for (const [name, reason] of Object.entries(LOCALIZED_EXCEPTIONS)) {
+  if (fs.existsSync(path.join(ROOT, `${name}.html`))) pass(`${name}.html — ${reason}`);
+  else fail(`${name}.html 예외 등록 파일 없음`);
 }
 
 // Summary
