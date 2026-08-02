@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, koreanResponseStyleGuide };`;
 
 const context = {
   console,
@@ -73,6 +73,10 @@ check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'faceRejected')), '영
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'palmRejected')), '영문 손금 거절 사유에 한글 없음');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'faceRejected')), '한글 관상 거절 사유 제공');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'palmRejected')), '한글 손금 거절 사유 제공');
+check(api.koreanResponseStyleGuide('en') === '', '영문 AI 응답에는 한국어 문체 가드를 추가하지 않음');
+check(api.koreanResponseStyleGuide('ko').includes('처음부터 한국어로 쓴 글'), '한국어 AI 응답에 원문체 가드 제공');
+check(api.koreanResponseStyleGuide('ko').includes('JSON 키·구조·고정값'), '한국어 문체 가드가 구조화 응답 계약을 보존');
+check(workerSource.includes('prompt: modelPrompt'), '사진 분석에도 한국어 원문체 가드를 전달');
 for (const page of ['face', 'face-en', 'palm', 'palm-en']) {
   const html = fs.readFileSync(path.join(root, `${page}.html`), 'utf8');
   check(html.indexOf('await resp.json()') < html.indexOf('!resp.ok'), `${page} 오류 응답 본문을 상태 코드보다 먼저 해석`);

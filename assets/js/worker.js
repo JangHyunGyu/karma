@@ -1208,13 +1208,27 @@ function parseAiJsonResponse(value) {
   throw lastError || new SyntaxError('AI response did not contain valid JSON');
 }
 
+const KOREAN_NATIVE_PROSE_GUARD = `[한국어 원문체]
+- 사용자에게 보이는 모든 문장은 번역문이 아니라 처음부터 한국어로 쓴 글처럼 자연스럽게 씁니다.
+- 입력의 사실·고유명사·수치·단위·전문 용어와 요구된 JSON 키·구조·고정값은 바꾸지 않습니다.
+- 영어·일본어 직역 어순, 불필요한 피동·명사화·이중 완곡, 상담원이나 보고서 같은 상투어를 피하고 뜻이 분명한 능동 동사로 바로 씁니다.
+- 문맥상 분명한 주어와 대명사는 자연스럽게 생략합니다. 같은 문장 시작·접속사·종결어미와 기계적인 열거를 반복하지 않고 문장 길이와 호흡을 내용에 맞게 조절합니다.
+- 입력이나 작업 과정을 메타적으로 요약하지 말고, 요청된 장르와 출력 형식에 맞는 결과만 제시합니다.`;
+
+function koreanResponseStyleGuide(lang = 'ko') {
+  return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
+}
+
 async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
   const endpoint = _caller || 'unknown';
   const _perfStart = Date.now();
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = String(isStructured ? prompt.user : prompt || '');
   const promptPreview = promptText.slice(0, 100);
-  const _sysSize = isStructured ? (prompt.system || '').length : 0;
+  const baseSystem = isStructured ? String(prompt.system || '') : '';
+  const proseGuard = koreanResponseStyleGuide(isStructured ? prompt.lang : 'ko');
+  const systemText = [baseSystem, proseGuard].filter(Boolean).join('\n\n');
+  const _sysSize = systemText.length;
   const _contentsSize = promptText.length;
 
   if (!_env?.OFFICIAL_DEEPSEEK?.complete) {
@@ -1223,9 +1237,9 @@ async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
   }
 
   try {
-    const messages = isStructured
+    const messages = systemText
       ? [
-        { role: 'system', content: String(prompt.system) },
+        { role: 'system', content: systemText },
         { role: 'user', content: promptText },
       ]
       : [{ role: 'user', content: promptText }];
@@ -1551,9 +1565,11 @@ async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko') {
   }
 
   try {
+    const proseGuard = koreanResponseStyleGuide(normalizePhotoAnalysisLang(lang));
+    const modelPrompt = [String(prompt || ''), proseGuard].filter(Boolean).join('\n\n');
     const result = await env.OPENROUTER_MEDIA.analyze({
       appId: 'Karma Photo Analysis',
-      prompt,
+      prompt: modelPrompt,
       media: [{
         type: 'image',
         url: String(imageUrl || ''),
