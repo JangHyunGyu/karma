@@ -65,7 +65,7 @@ async function logPerfStats(env, ctx, row) {
     }
   };
   if (ctx?.waitUntil) ctx.waitUntil(doWrite());
-  else doWrite().catch(() => {});
+  else await doWrite();
 }
 
 const CORS_HEADERS = {
@@ -1266,7 +1266,7 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx) {
     });
     const parsed = parseAiJsonResponse(result?.text || '');
     const usage = result?.usage || {};
-    logPerfStats(_env, _ctx, {
+    await logPerfStats(_env, _ctx, {
       app: `karma:${endpoint}`,
       cache_key: null,
       cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
