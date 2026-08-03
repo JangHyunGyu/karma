@@ -8,6 +8,14 @@
 let _perfStatsTableReady = false;
 let _karmaImageAnalysesTableReady = false;
 
+async function ensurePerfStatsColumn(env, name, type) {
+  try {
+    await env.DB.prepare(`ALTER TABLE perf_stats ADD COLUMN ${name} ${type}`).run();
+  } catch (error) {
+    if (!/duplicate column|already exists/i.test(String(error?.message || error))) throw error;
+  }
+}
+
 // 요청당 perf_stats 1행 기록 (fire-and-forget). harem/chatbot-api와 동일 스키마 공유.
 async function logPerfStats(env, ctx, row) {
   if (!env?.DB) return;
@@ -19,10 +27,13 @@ async function logPerfStats(env, ctx, row) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts TEXT NOT NULL DEFAULT (datetime('now')),
             app TEXT,
+            model TEXT,
+            provider_route TEXT,
             cache_key TEXT,
             cache_hit INTEGER,
             prompt_tokens INTEGER,
             cached_tokens INTEGER,
+            cache_write_tokens INTEGER,
             output_tokens INTEGER,
             thought_tokens INTEGER,
             sys_chars INTEGER,
@@ -31,6 +42,9 @@ async function logPerfStats(env, ctx, row) {
             elapsed_ms INTEGER
           )
         `).run();
+        await ensurePerfStatsColumn(env, 'model', 'TEXT');
+        await ensurePerfStatsColumn(env, 'provider_route', 'TEXT');
+        await ensurePerfStatsColumn(env, 'cache_write_tokens', 'INTEGER');
         await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_perf_stats_ts_app ON perf_stats(ts, app)').run();
         _perfStatsTableReady = true;
       } catch (e) {
@@ -40,10 +54,10 @@ async function logPerfStats(env, ctx, row) {
     }
     try {
       await env.DB.prepare(
-        'INSERT INTO perf_stats (app, cache_key, cache_hit, prompt_tokens, cached_tokens, output_tokens, thought_tokens, sys_chars, hist_chars, used_key_idx, elapsed_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO perf_stats (app, model, provider_route, cache_key, cache_hit, prompt_tokens, cached_tokens, cache_write_tokens, output_tokens, thought_tokens, sys_chars, hist_chars, used_key_idx, elapsed_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       ).bind(
-        row.app, row.cache_key, row.cache_hit,
-        row.prompt_tokens, row.cached_tokens, row.output_tokens, row.thought_tokens,
+        row.app, row.model || null, row.provider_route || null, row.cache_key, row.cache_hit,
+        row.prompt_tokens, row.cached_tokens, row.cache_write_tokens || 0, row.output_tokens, row.thought_tokens,
         row.sys_chars, row.hist_chars, row.used_key_idx, row.elapsed_ms
       ).run();
     } catch (e) {
@@ -1219,7 +1233,7 @@ function koreanResponseStyleGuide(lang = 'ko') {
   return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
 }
 
-async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
+async function callDeepSeekText(prompt, _caller, _env, _ctx) {
   const endpoint = _caller || 'unknown';
   const _perfStart = Date.now();
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
@@ -1231,8 +1245,8 @@ async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
   const _sysSize = systemText.length;
   const _contentsSize = promptText.length;
 
-  if (!_env?.OFFICIAL_DEEPSEEK?.complete) {
-    await logApiError(_env, `[${endpoint}] official DeepSeek service missing`, '', { endpoint, promptPreview });
+  if (!_env?.DEEPSEEK_TEXT?.complete) {
+    await logApiError(_env, `[${endpoint}] DeepSeek text service missing`, '', { endpoint, promptPreview });
     return null;
   }
 
@@ -1243,7 +1257,7 @@ async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
         { role: 'user', content: promptText },
       ]
       : [{ role: 'user', content: promptText }];
-    const result = await _env.OFFICIAL_DEEPSEEK.complete({
+    const result = await _env.DEEPSEEK_TEXT.complete({
       appId: 'karma',
       messages,
       responseFormat: 'json_object',
@@ -1258,18 +1272,21 @@ async function callOfficialDeepSeek(prompt, _caller, _env, _ctx) {
       cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
       prompt_tokens: usage.prompt_tokens || 0,
       cached_tokens: usage.prompt_cache_hit_tokens || 0,
+      cache_write_tokens: usage.prompt_cache_write_tokens || usage.prompt_tokens_details?.cache_write_tokens || 0,
       output_tokens: usage.completion_tokens || 0,
       thought_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
       sys_chars: _sysSize,
       hist_chars: _contentsSize,
       used_key_idx: 0,
       elapsed_ms: Date.now() - _perfStart,
+      model: result?.model || null,
+      provider_route: result?.provider || null,
     });
     return parsed;
   } catch (error) {
     await logApiError(
       _env,
-      `[${endpoint}] official DeepSeek request failed`,
+      `[${endpoint}] DeepSeek text request failed`,
       error?.stack || error?.message || String(error),
       { endpoint, promptPreview }
     );
@@ -1495,12 +1512,12 @@ async function handleTarotReading(request, env) {
       return json({ error: 'Invalid card IDs' }, 400);
     }
 
-    if (!env?.OFFICIAL_DEEPSEEK?.complete) {
+    if (!env?.DEEPSEEK_TEXT?.complete) {
       return json({ error: 'AI service unavailable' }, 503);
     }
 
     const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
-    const ai = await callOfficialDeepSeek(prompt, 'tarot', env);
+    const ai = await callDeepSeekText(prompt, 'tarot', env);
 
     if (!ai) {
       return json({ error: 'AI interpretation failed' }, 500);
@@ -2736,8 +2753,8 @@ async function handleSajuAnalysis(request, env) {
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  const ai = env?.OFFICIAL_DEEPSEEK?.complete
-    ? await callOfficialDeepSeek(buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env)
+  const ai = env?.DEEPSEEK_TEXT?.complete
+    ? await callDeepSeekText(buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env)
     : null;
 
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
@@ -2756,8 +2773,8 @@ async function handleCompatQuick(request, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  const ai = env?.OFFICIAL_DEEPSEEK?.complete
-    ? await callOfficialDeepSeek(buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env)
+  const ai = env?.DEEPSEEK_TEXT?.complete
+    ? await callDeepSeekText(buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env)
     : null;
 
   const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
@@ -2777,9 +2794,9 @@ async function handleFortune(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
-  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callOfficialDeepSeek(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
+  const ai = await callDeepSeekText(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
@@ -2797,9 +2814,9 @@ async function handleDaily(request, env) {
     todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   }
 
-  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callOfficialDeepSeek(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
+  const ai = await callDeepSeekText(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
@@ -2877,9 +2894,9 @@ async function handleMatchDetail(idA, idB, env, lang) {
     } : relations,
   };
 
-  if (!env?.OFFICIAL_DEEPSEEK?.complete) return json({ ...baseResult, ai: null });
+  if (!env?.DEEPSEEK_TEXT?.complete) return json({ ...baseResult, ai: null });
 
-  const ai = await callOfficialDeepSeek(buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
+  const ai = await callDeepSeekText(buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
   return json({ ...baseResult, ai });
 }
 

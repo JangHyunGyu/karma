@@ -22,9 +22,9 @@ service = "openrouter-api"
 entrypoint = "OpenRouterMediaEntrypoint"
 
 [[services]]
-binding = "OFFICIAL_DEEPSEEK"
+binding = "DEEPSEEK_TEXT"
 service = "openrouter-api"
-entrypoint = "OfficialDeepSeekEntrypoint"
+entrypoint = "DeepSeekTextEntrypoint"
 
 [vars]
 CORS_ORIGIN = "*"
