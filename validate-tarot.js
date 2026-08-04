@@ -69,15 +69,15 @@ if (/buildTarotPrompt[\s\S]*?"cards"[\s\S]*?"overall"[\s\S]*?"advice"[\s\S]*?"ke
   fail('타로 프롬프트에 JSON 응답 형식 누락');
 }
 
-// OpenRouter DeepInfra 우선 + 공식 DeepSeek fallback 호출 확인
+// 공유 OpenRouter Worker의 텍스트 모델 체인 호출 확인
 if (/callDeepSeekText\(prompt,\s*'tarot',\s*env/.test(workerSrc)) pass("callDeepSeekText 호출 시 caller='tarot' 전달");
 else fail('callDeepSeekText 호출 패턴 불일치');
 
 const wranglerSrc = fs.readFileSync(path.join(__dirname, 'wrangler.toml'), 'utf8');
 if (/binding\s*=\s*"DEEPSEEK_TEXT"[\s\S]*?entrypoint\s*=\s*"DeepSeekTextEntrypoint"/.test(wranglerSrc)) {
-  pass('텍스트 AI가 OpenRouter 우선·공식 DeepSeek fallback RPC에 연결됨');
+  pass('텍스트 AI가 공유 모델 체인 RPC에 연결됨');
 } else {
-  fail('DEEPSEEK_TEXT 서비스 바인딩 또는 DeepSeekTextEntrypoint 누락');
+  fail('호환 DEEPSEEK_TEXT 서비스 바인딩 또는 DeepSeekTextEntrypoint 누락');
 }
 if (/provider_route/.test(workerSrc) && /model:\s*result\?\.model/.test(workerSrc)) {
   pass('AI 성능 로그에 실제 provider/model 기록');
