@@ -228,10 +228,50 @@ async function testPersistentContractFailure() {
   check(result === null, '타로 불완전 응답을 성공값으로 반환하지 않음');
 }
 
+async function testContractPatchRetry(type, partial, patch, contractContext, verify) {
+  let calls = 0;
+  let retrySystem = '';
+  const env = {
+    DEEPSEEK_TEXT: {
+      async complete(input) {
+        calls++;
+        if (calls === 2) retrySystem = input.messages?.[0]?.content || '';
+        return {
+          text: JSON.stringify(calls === 1 ? partial : patch),
+          usage: {},
+          model: 'test-model',
+          provider: 'test',
+        };
+      },
+    },
+  };
+  const result = await api.callDeepSeekText(
+    { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
+    type, env, null, type, contractContext
+  );
+  check(calls === 2, `${type} 재시도가 누락 필드 패치를 요청`);
+  check(retrySystem.includes('ONLY the missing or invalid fields'), `${type} 재시도가 전체 응답을 반복하지 않음`);
+  check(verify(result), `${type} 기존 필드와 재시도 패치를 병합`);
+}
+
 Promise.resolve()
   .then(() => testContractRetry('fortune', { year_summary: text }, fortune))
   .then(() => testContractRetry('saju', { pillar_reading: text }, saju, { hasTime: true, daeunCount: 8 }))
   .then(() => testContractRetry('tarot', { cards: [] }, tarot))
+  .then(() => testContractPatchRetry(
+    'saju',
+    { pillar_reading: saju.pillar_reading, personality: text, strengths: saju.strengths, cautions: saju.cautions },
+    { love_style: text, career: text, daeun_reading: saju.daeun_reading, advice: text },
+    { hasTime: true, daeunCount: 8 },
+    result => api.validateKarmaAiContract('saju', result, { hasTime: true, daeunCount: 8 }).ok
+  ))
+  .then(() => testContractPatchRetry(
+    'tarot',
+    { cards: tarot.cards.slice(0, 1), overall: text },
+    { cards: tarot.cards, advice: text, keywords: tarot.keywords },
+    {},
+    result => api.validateKarmaAiContract('tarot', result).ok && result.overall === text
+  ))
   .then(() => testPersistentContractFailure())
   .then(() => {
   console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);

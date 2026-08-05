@@ -1419,8 +1419,31 @@ function validateKarmaAiContract(contractType, value, context = {}) {
   }
 }
 
+function mergeAiContractPatch(base, patch) {
+  if (!isPlainAiObject(patch)) return isPlainAiObject(base) ? base : patch;
+  if (!isPlainAiObject(base)) return { ...patch };
+  const merged = { ...base };
+  for (const [key, patchValue] of Object.entries(patch)) {
+    const baseValue = merged[key];
+    if (isPlainAiObject(baseValue) && isPlainAiObject(patchValue)) {
+      merged[key] = mergeAiContractPatch(baseValue, patchValue);
+    } else if (Array.isArray(patchValue)) {
+      if (patchValue.length > 0 || !Array.isArray(baseValue)) merged[key] = patchValue;
+    } else if (typeof patchValue === 'string') {
+      if (patchValue.trim() || typeof baseValue !== 'string') merged[key] = patchValue;
+    } else if (patchValue != null) {
+      merged[key] = patchValue;
+    }
+  }
+  return merged;
+}
+
+function aiContractCompletenessInstruction(contractType) {
+  return `MANDATORY JSON COMPLETENESS (${contractType}): Every key in the requested response schema is required. Finishing one complete valid JSON object is more important than prose length. If needed, shorten narrative strings to 1-2 concise sentences and array items to 1 concise sentence; never omit later fields.`;
+}
+
 function aiContractRetryInstruction(contractType, errors) {
-  return `CRITICAL JSON CONTRACT RETRY (${contractType}): The previous generation was incomplete or used wrong types (${errors.slice(0, 12).join(', ')}). Return one complete JSON object matching every key, nesting level, type, and array length in the original response schema. Do not omit later fields or return a shortened object.`;
+  return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.`;
 }
 
 function incompleteAiResponseMessage(lang) {
@@ -1447,7 +1470,8 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
   const promptPreview = promptText.slice(0, 100);
   const baseSystem = isStructured ? String(prompt.system || '') : '';
   const proseGuard = koreanResponseStyleGuide(isStructured ? prompt.lang : 'ko');
-  const systemText = [baseSystem, proseGuard].filter(Boolean).join('\n\n');
+  const completenessGuard = contractType ? aiContractCompletenessInstruction(contractType) : '';
+  const systemText = [baseSystem, proseGuard, completenessGuard].filter(Boolean).join('\n\n');
   const _contentsSize = promptText.length;
 
   if (!_env?.DEEPSEEK_TEXT?.complete) {
@@ -1458,6 +1482,7 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
   try {
     const maxAttempts = contractType ? 2 : 1;
     let contractErrors = [];
+    let accumulated = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const attemptSystem = [
         systemText,
@@ -1495,8 +1520,9 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
         model: result?.model || null,
         provider_route: result?.provider || null,
       });
-      const contract = validateKarmaAiContract(contractType, parsed, contractContext);
-      if (contract.ok) return parsed;
+      accumulated = mergeAiContractPatch(accumulated, parsed);
+      const contract = validateKarmaAiContract(contractType, accumulated, contractContext);
+      if (contract.ok) return accumulated;
       contractErrors = contract.errors;
     }
     await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, contractErrors.join(', '), {
