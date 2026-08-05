@@ -224,7 +224,7 @@ async function testPersistentContractFailure() {
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     'tarot', env, null, 'tarot'
   );
-  check(calls === 2, '타로 계약 불일치가 계속되면 두 번만 시도');
+  check(calls === 3, '타로 계약 불일치가 계속되면 세 번만 시도');
   check(result === null, '타로 불완전 응답을 성공값으로 반환하지 않음');
 }
 

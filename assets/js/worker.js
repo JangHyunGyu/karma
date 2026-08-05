@@ -1442,8 +1442,42 @@ function aiContractCompletenessInstruction(contractType) {
   return `MANDATORY JSON COMPLETENESS (${contractType}): Every key in the requested response schema is required. Finishing one complete valid JSON object is more important than prose length. If needed, shorten narrative strings to 1-2 concise sentences and array items to 1 concise sentence; never omit later fields.`;
 }
 
-function aiContractRetryInstruction(contractType, errors) {
-  return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.`;
+function aiContractPatchShape(contractType, errors, context = {}) {
+  const roots = new Set(errors.map(error => String(error).split(':')[0].split(/[.[]/)[0]));
+  const shape = {};
+  const addText = key => { if (roots.has(key)) shape[key] = '1-2 concise sentences'; };
+  const addArray = (key, length) => {
+    if (roots.has(key)) shape[key] = Array.from({ length }, () => '1 concise sentence');
+  };
+
+  if (contractType === 'saju') {
+    if (roots.has('pillar_reading')) {
+      shape.pillar_reading = {
+        year: '1 concise sentence', month: '1 concise sentence', day: '1 concise sentence',
+        hour: context.hasTime ? '1 concise sentence' : '',
+      };
+    }
+    ['personality', 'love_style', 'career', 'advice'].forEach(addText);
+    addArray('strengths', 3);
+    addArray('cautions', 3);
+    addArray('daeun_reading', Number.isInteger(context.daeunCount) ? context.daeunCount : 8);
+  } else if (contractType === 'tarot') {
+    if (roots.has('cards')) {
+      shape.cards = Array.from({ length: 3 }, (_, index) => ({
+        position: ['Past', 'Present', 'Future'][index],
+        interpretation: '1-2 concise sentences',
+      }));
+    }
+    ['overall', 'advice'].forEach(addText);
+    addArray('keywords', 5);
+  }
+  return shape;
+}
+
+function aiContractRetryInstruction(contractType, errors, context = {}) {
+  const patchShape = aiContractPatchShape(contractType, errors, context);
+  const exactShape = Object.keys(patchShape).length ? ` Match this exact patch shape: ${JSON.stringify(patchShape)}` : '';
+  return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.${exactShape}`;
 }
 
 function incompleteAiResponseMessage(lang) {
@@ -1480,20 +1514,26 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
   }
 
   try {
-    const maxAttempts = contractType ? 2 : 1;
+    const targetedPatchRetry = contractType === 'saju' || contractType === 'tarot';
+    const maxAttempts = targetedPatchRetry ? 3 : (contractType ? 2 : 1);
     let contractErrors = [];
     let accumulated = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const attemptSystem = [
-        systemText,
-        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors) : '',
-      ].filter(Boolean).join('\n\n');
+      const retryInstruction = attempt > 0
+        ? aiContractRetryInstruction(contractType, contractErrors, contractContext)
+        : '';
+      const attemptSystem = targetedPatchRetry && attempt > 0
+        ? [proseGuard, retryInstruction].filter(Boolean).join('\n\n')
+        : [systemText, retryInstruction].filter(Boolean).join('\n\n');
+      const attemptPrompt = targetedPatchRetry && attempt > 0
+        ? `Use the following original request only as factual reference. Ignore any full response schema in it and return exactly the JSON patch required by the system message.\n\n${promptText}`
+        : promptText;
       const messages = attemptSystem
         ? [
           { role: 'system', content: attemptSystem },
-          { role: 'user', content: promptText },
+          { role: 'user', content: attemptPrompt },
         ]
-        : [{ role: 'user', content: promptText }];
+        : [{ role: 'user', content: attemptPrompt }];
       const attemptStart = Date.now();
       const result = await _env.DEEPSEEK_TEXT.complete({
         appId: 'karma',
