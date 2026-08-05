@@ -70,6 +70,22 @@ const compat = {
   cautions: [text, text, text],
   advice: text,
 };
+const saju = {
+  pillar_reading: { year: text, month: text, day: text, hour: text },
+  personality: text,
+  strengths: [text, text, text],
+  cautions: [text, text, text],
+  love_style: text,
+  career: text,
+  daeun_reading: Array(8).fill(text),
+  advice: text,
+};
+const tarot = {
+  cards: Array.from({ length: 3 }, (_, index) => ({ position: `위치 ${index + 1}`, interpretation: text })),
+  overall: text,
+  advice: text,
+  keywords: ['하나', '둘', '셋', '넷', '다섯'],
+};
 const face = {
   overall_score: 82,
   overall_grade: 'B+',
@@ -93,7 +109,7 @@ const palm = {
   advice: text,
 };
 
-const fixtures = { fortune, daily, compat, face, palm };
+const fixtures = { saju, tarot, fortune, daily, compat, face, palm };
 
 console.log('\n🧩 AI 응답 계약 완전성');
 for (const [type, fixture] of Object.entries(fixtures)) {
@@ -106,6 +122,11 @@ for (const [type, fixture] of Object.entries(fixtures)) {
 }
 
 const nestedFailures = [
+  ['saju.pillar_reading.year', 'saju', saju, value => delete value.pillar_reading.year],
+  ['saju.daeun_reading length', 'saju', saju, value => value.daeun_reading.pop()],
+  ['tarot.cards length', 'tarot', tarot, value => value.cards.pop()],
+  ['tarot.cards[0].interpretation', 'tarot', tarot, value => delete value.cards[0].interpretation],
+  ['tarot.keywords length', 'tarot', tarot, value => value.keywords.pop()],
   ['fortune.lucky.month', 'fortune', fortune, value => delete value.lucky.month],
   ['daily.lucky.number', 'daily', daily, value => delete value.lucky.number],
   ['compat.categories.timing.desc', 'compat', compat, value => delete value.categories.timing.desc],
@@ -123,11 +144,17 @@ for (const [label, type, fixture, mutate] of nestedFailures) {
   mutate(broken);
   check(!api.validateKarmaAiContract(type, broken).ok, `${label} 누락·길이 오류 거부`);
 }
+const noTimeSaju = clone(saju);
+noTimeSaju.pillar_reading.hour = '';
+check(api.validateKarmaAiContract('saju', noTimeSaju, { hasTime: false, daeunCount: 8 }).ok, '출생시간 없는 사주의 빈 hour 허용');
+check(!api.validateKarmaAiContract('saju', noTimeSaju, { hasTime: true, daeunCount: 8 }).ok, '출생시간 있는 사주의 빈 hour 거부');
 check(api.validateKarmaAiContract('face', { error: '얼굴 사진이 아닙니다.' }).ok, '관상 사진 거절 JSON 허용');
 check(api.validateKarmaAiContract('palm', { error: '손바닥 사진이 아닙니다.' }).ok, '손금 사진 거절 JSON 허용');
 
 console.log('\n🔗 프롬프트 ↔ 화면 필드 매칭');
 const pageContracts = {
+  saju: ['d.ai.pillar_reading', 'd.ai.personality', 'd.ai.strengths', 'd.ai.cautions', 'd.ai.love_style', 'd.ai.career', 'd.ai?.daeun_reading', 'd.ai.advice'],
+  tarot: ['card.interpretation', 'data.overall', 'data.advice', 'data.keywords'],
   fortune: ['f.year_summary', 'f.love', 'f.money', 'f.health', 'f.career', 'f.lucky.color', 'f.lucky.number', 'f.lucky.direction', 'f.lucky.month', 'f.advice'],
   daily: ['f.overall', 'f.love', 'f.money', 'f.career', 'f.study', 'f.social', 'f.health', 'f.lucky.color', 'f.lucky.number', 'f.advice'],
   compat: ['d.ai.summary', 'd.ai.categories', 'cat.score', 'cat.desc', 'd.ai.strengths', 'd.ai.cautions', 'd.ai.advice'],
@@ -148,6 +175,8 @@ for (const localePage of ['match.html', 'match-en.html']) {
 
 console.log('\n📝 프롬프트 응답 키 계약');
 const promptKeys = {
+  saju: ['pillar_reading', 'year', 'month', 'day', 'hour', 'personality', 'strengths', 'cautions', 'love_style', 'career', 'daeun_reading', 'advice'],
+  tarot: ['cards', 'position', 'interpretation', 'overall', 'advice', 'keywords'],
   fortune: ['year_summary', 'love', 'money', 'health', 'career', 'lucky', 'color', 'number', 'direction', 'month', 'advice'],
   daily: ['overall', 'love', 'money', 'career', 'study', 'social', 'health', 'lucky', 'color', 'number', 'advice'],
   compat: ['summary', 'categories', 'personality', 'intimacy', 'finance', 'timing', 'strengths', 'cautions', 'advice'],
@@ -158,14 +187,14 @@ for (const [type, keys] of Object.entries(promptKeys)) {
   for (const key of keys) check(workerSource.includes(`"${key}"`), `${type} 프롬프트에 ${key} 키 명시`);
 }
 
-async function testContractRetry() {
+async function testContractRetry(type, partial, complete, contractContext = {}) {
   let calls = 0;
   const env = {
     DEEPSEEK_TEXT: {
       async complete() {
         calls++;
         return {
-          text: JSON.stringify(calls === 1 ? { year_summary: text } : fortune),
+          text: JSON.stringify(calls === 1 ? partial : complete),
           usage: {},
           model: 'test-model',
           provider: 'test',
@@ -175,13 +204,36 @@ async function testContractRetry() {
   };
   const result = await api.callDeepSeekText(
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
-    'fortune', env, null, 'fortune'
+    type, env, null, type, contractContext
   );
-  check(calls === 2, '불완전한 텍스트 응답을 한 번 재시도');
-  check(result?.advice === text, '재시도 후 완전한 응답만 반환');
+  check(calls === 2, `${type} 불완전 응답을 한 번 재시도`);
+  check(result?.advice === text, `${type} 재시도 후 완전한 응답만 반환`);
 }
 
-testContractRetry().then(() => {
+async function testPersistentContractFailure() {
+  let calls = 0;
+  const env = {
+    DEEPSEEK_TEXT: {
+      async complete() {
+        calls++;
+        return { text: '{}', usage: {}, model: 'test-model', provider: 'test' };
+      },
+    },
+  };
+  const result = await api.callDeepSeekText(
+    { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
+    'tarot', env, null, 'tarot'
+  );
+  check(calls === 2, '타로 계약 불일치가 계속되면 두 번만 시도');
+  check(result === null, '타로 불완전 응답을 성공값으로 반환하지 않음');
+}
+
+Promise.resolve()
+  .then(() => testContractRetry('fortune', { year_summary: text }, fortune))
+  .then(() => testContractRetry('saju', { pillar_reading: text }, saju, { hasTime: true, daeunCount: 8 }))
+  .then(() => testContractRetry('tarot', { cards: [] }, tarot))
+  .then(() => testPersistentContractFailure())
+  .then(() => {
   console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);
   if (failures.length) process.exit(1);
 }).catch(error => {

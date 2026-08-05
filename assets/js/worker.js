@@ -1251,6 +1251,12 @@ function addAiStringArrayError(value, errors, path, minimumLength) {
   }
 }
 
+function addAiExactStringArrayError(value, errors, path, expectedLength) {
+  if (!Array.isArray(value) || value.length !== expectedLength || value.some(item => !isNonEmptyAiText(item))) {
+    errors.push(`${path}:string_array_length_${expectedLength}`);
+  }
+}
+
 function addFortuneObjectErrors(value, errors, prefix) {
   if (!isPlainAiObject(value)) {
     errors.push(`${prefix}:object`);
@@ -1307,6 +1313,46 @@ function validateCompatAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
+function validateSajuAiResponse(value, context = {}) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  if (!isPlainAiObject(value.pillar_reading)) {
+    errors.push('pillar_reading:object');
+  } else {
+    addRequiredAiTextErrors(value.pillar_reading, ['year', 'month', 'day'], errors, 'pillar_reading.');
+    if (typeof value.pillar_reading.hour !== 'string') {
+      errors.push('pillar_reading.hour:string');
+    } else if (context.hasTime && !isNonEmptyAiText(value.pillar_reading.hour)) {
+      errors.push('pillar_reading.hour:non_empty_string');
+    }
+  }
+  addRequiredAiTextErrors(value, ['personality', 'love_style', 'career', 'advice'], errors);
+  addAiStringArrayError(value.strengths, errors, 'strengths', 3);
+  addAiStringArrayError(value.cautions, errors, 'cautions', 3);
+  const daeunCount = Number.isInteger(context.daeunCount) ? context.daeunCount : 8;
+  addAiExactStringArrayError(value.daeun_reading, errors, 'daeun_reading', daeunCount);
+  return { ok: errors.length === 0, errors };
+}
+
+function validateTarotAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  if (!Array.isArray(value.cards) || value.cards.length !== 3) {
+    errors.push('cards:array_length_3');
+  } else {
+    value.cards.forEach((card, index) => {
+      if (!isPlainAiObject(card)) {
+        errors.push(`cards[${index}]:object`);
+        return;
+      }
+      addRequiredAiTextErrors(card, ['position', 'interpretation'], errors, `cards[${index}].`);
+    });
+  }
+  addRequiredAiTextErrors(value, ['overall', 'advice'], errors);
+  addAiExactStringArrayError(value.keywords, errors, 'keywords', 5);
+  return { ok: errors.length === 0, errors };
+}
+
 function validateFaceAiResponse(value) {
   const errors = [];
   if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
@@ -1360,8 +1406,10 @@ function validatePalmAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
-function validateKarmaAiContract(contractType, value) {
+function validateKarmaAiContract(contractType, value, context = {}) {
   switch (contractType) {
+    case 'saju': return validateSajuAiResponse(value, context);
+    case 'tarot': return validateTarotAiResponse(value);
     case 'fortune': return validateFortuneAiResponse(value);
     case 'daily': return validateDailyAiResponse(value);
     case 'compat': return validateCompatAiResponse(value);
@@ -1392,7 +1440,7 @@ function koreanResponseStyleGuide(lang = 'ko') {
   return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
 }
 
-async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '') {
+async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', contractContext = {}) {
   const endpoint = _caller || 'unknown';
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = String(isStructured ? prompt.user : prompt || '');
@@ -1447,7 +1495,7 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '') 
         model: result?.model || null,
         provider_route: result?.provider || null,
       });
-      const contract = validateKarmaAiContract(contractType, parsed);
+      const contract = validateKarmaAiContract(contractType, parsed, contractContext);
       if (contract.ok) return parsed;
       contractErrors = contract.errors;
     }
@@ -1691,10 +1739,10 @@ async function handleTarotReading(request, env) {
     }
 
     const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
-    const ai = await callDeepSeekText(prompt, 'tarot', env);
+    const ai = await callDeepSeekText(prompt, 'tarot', env, null, 'tarot');
 
     if (!ai) {
-      return json({ error: 'AI interpretation failed' }, 500);
+      return json({ error: incompleteAiResponseMessage(lang || 'ko') }, 502);
     }
 
     return json({
@@ -3134,9 +3182,15 @@ async function handleSajuAnalysis(request, env) {
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  const ai = env?.DEEPSEEK_TEXT?.complete
-    ? await callDeepSeekText(buildSajuPrompt(saju, gender, lang, birth_date), 'saju', env)
-    : null;
+  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  const ai = await callDeepSeekText(
+    buildSajuPrompt(saju, gender, lang, birth_date),
+    'saju', env, null, 'saju', {
+      hasTime: saju.hasTime,
+      daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
+    }
+  );
+  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
 
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ ...out, ai });
