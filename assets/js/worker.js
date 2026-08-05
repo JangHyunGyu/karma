@@ -7,6 +7,7 @@
 
 let _perfStatsTableReady = false;
 let _karmaImageAnalysesTableReady = false;
+let _karmaAnalysesTableReady = false;
 
 async function ensurePerfStatsColumn(env, name, type) {
   try {
@@ -1650,7 +1651,174 @@ async function ensureKarmaImageAnalysesTable(db) {
   _karmaImageAnalysesTableReady = true;
 }
 
+async function ensureKarmaAnalysesTable(db) {
+  if (_karmaAnalysesTableReady) return;
+  await ensureKarmaImageAnalysesTable(db);
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS karma_analyses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id TEXT NOT NULL UNIQUE,
+      analysis_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'success',
+      http_status INTEGER NOT NULL DEFAULT 200,
+      input_json TEXT NOT NULL DEFAULT '{}',
+      result_json TEXT NOT NULL DEFAULT '{}',
+      error_message TEXT NOT NULL DEFAULT '',
+      ai_service TEXT NOT NULL DEFAULT '',
+      r2_key TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours'))
+    )
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_karma_analyses_type_time
+    ON karma_analyses(analysis_type, created_at DESC, id DESC)
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_karma_analyses_status_time
+    ON karma_analyses(status, created_at DESC, id DESC)
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_karma_analyses_r2_key
+    ON karma_analyses(r2_key)
+    WHERE r2_key != ''
+  `).run();
+  await db.prepare(`
+    INSERT OR IGNORE INTO karma_analyses (
+      request_id, analysis_type, status, http_status, input_json,
+      result_json, error_message, ai_service, r2_key, created_at, updated_at
+    )
+    SELECT
+      request_id,
+      analysis_type,
+      status,
+      CASE status WHEN 'success' THEN 200 WHEN 'rejected' THEN 400 ELSE 500 END,
+      input_json,
+      result_json,
+      error_message,
+      ai_service,
+      r2_key,
+      created_at,
+      updated_at
+    FROM karma_image_analyses
+  `).run();
+  _karmaAnalysesTableReady = true;
+}
+
+function sanitizeKarmaAnalysisInput(value, key = '') {
+  if (value == null) return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeKarmaAnalysisInput(item));
+  }
+  if (typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([name, item]) => [
+      name,
+      sanitizeKarmaAnalysisInput(item, name),
+    ]));
+  }
+  if (typeof value !== 'string') return value;
+
+  const normalizedKey = String(key || '').toLowerCase();
+  if (normalizedKey === 'image' || normalizedKey === 'imagedata' || normalizedKey === 'image_data') {
+    return `[image omitted: ${base64ByteLength(value)} bytes]`;
+  }
+  if (/^data:image\//i.test(value)) {
+    return `[image omitted: ${base64ByteLength(value.split(',').pop() || '')} bytes]`;
+  }
+  return value;
+}
+
+async function recordKarmaAnalysis(env, {
+  requestId,
+  analysisType,
+  status,
+  httpStatus,
+  input,
+  result,
+  errorMessage,
+  aiService,
+  r2Key,
+}) {
+  if (!env?.DB) return;
+  try {
+    await ensureKarmaAnalysesTable(env.DB);
+    await env.DB.prepare(`
+      INSERT INTO karma_analyses (
+        request_id, analysis_type, status, http_status, input_json,
+        result_json, error_message, ai_service, r2_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(request_id) DO UPDATE SET
+        analysis_type = excluded.analysis_type,
+        status = excluded.status,
+        http_status = excluded.http_status,
+        input_json = CASE
+          WHEN excluded.input_json != '{}' THEN excluded.input_json
+          ELSE karma_analyses.input_json
+        END,
+        result_json = excluded.result_json,
+        error_message = excluded.error_message,
+        ai_service = excluded.ai_service,
+        r2_key = CASE
+          WHEN excluded.r2_key != '' THEN excluded.r2_key
+          ELSE karma_analyses.r2_key
+        END,
+        updated_at = datetime('now', '+9 hours')
+    `).bind(
+      String(requestId || crypto.randomUUID()),
+      String(analysisType || 'unknown').slice(0, 40),
+      ['success', 'rejected', 'error'].includes(status) ? status : 'error',
+      Number.isInteger(httpStatus) ? httpStatus : 500,
+      JSON.stringify(sanitizeKarmaAnalysisInput(input || {})),
+      JSON.stringify(result || {}),
+      String(errorMessage || '').slice(0, 2000),
+      String(aiService || '').slice(0, 80),
+      String(r2Key || '').slice(0, 1000),
+    ).run();
+  } catch (error) {
+    console.error('[KarmaAnalysis] unified D1 write failed:', error?.message || error);
+    await logApiError(env, 'Karma analysis log failed', error?.stack || error?.message || String(error), {
+      endpoint: `worker/${analysisType || 'unknown'}-analysis-log`,
+    });
+  }
+}
+
+async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'DEEPSEEK_TEXT') {
+  const requestForLog = ['face', 'palm'].includes(analysisType) ? null : request.clone();
+  const requestId = crypto.randomUUID();
+  let response;
+  try {
+    response = await handler(request, env, requestId);
+  } catch (error) {
+    response = json({ error: error?.message || 'Server error' }, 500);
+  }
+  const responseForLog = response.clone();
+  const persist = async () => {
+    let input = {};
+    let result = {};
+    if (requestForLog) {
+      try { input = await requestForLog.json(); } catch (_) {}
+    }
+    try { result = await responseForLog.json(); } catch (_) {}
+    const errorMessage = response.ok ? '' : String(result?.error || `HTTP ${response.status}`);
+    await recordKarmaAnalysis(env, {
+      requestId,
+      analysisType,
+      status: response.ok ? 'success' : (response.status === 400 && result?.r2_key ? 'rejected' : 'error'),
+      httpStatus: response.status,
+      input,
+      result,
+      errorMessage,
+      aiService,
+      r2Key: result?.r2_key || '',
+    });
+  };
+  if (ctx?.waitUntil) ctx.waitUntil(persist());
+  else await persist();
+  return response;
+}
+
 async function recordKarmaImageAnalysis(env, {
+  requestId,
   r2Key,
   analysisType,
   status,
@@ -1658,32 +1826,46 @@ async function recordKarmaImageAnalysis(env, {
   result,
   errorMessage,
 }) {
-  if (!env?.DB || !r2Key) return;
+  if (!env?.DB) return;
   try {
-    await ensureKarmaImageAnalysesTable(env.DB);
-    await env.DB.prepare(`
-      INSERT INTO karma_image_analyses (
-        request_id, r2_key, analysis_type, status, input_json,
-        result_json, error_message, ai_service
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPENROUTER_MEDIA')
-      ON CONFLICT(r2_key) DO UPDATE SET
-        request_id = excluded.request_id,
-        analysis_type = excluded.analysis_type,
-        status = excluded.status,
-        input_json = excluded.input_json,
-        result_json = excluded.result_json,
-        error_message = excluded.error_message,
-        ai_service = excluded.ai_service,
-        updated_at = datetime('now', '+9 hours')
-    `).bind(
-      crypto.randomUUID(),
-      String(r2Key),
-      analysisType === 'palm' ? 'palm' : 'face',
-      ['success', 'rejected', 'error'].includes(status) ? status : 'error',
-      JSON.stringify(input || {}),
-      JSON.stringify(result || {}),
-      String(errorMessage || '').slice(0, 2000),
-    ).run();
+    const resolvedRequestId = requestId || crypto.randomUUID();
+    if (r2Key) {
+      await ensureKarmaImageAnalysesTable(env.DB);
+      await env.DB.prepare(`
+        INSERT INTO karma_image_analyses (
+          request_id, r2_key, analysis_type, status, input_json,
+          result_json, error_message, ai_service
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPENROUTER_MEDIA')
+        ON CONFLICT(r2_key) DO UPDATE SET
+          request_id = excluded.request_id,
+          analysis_type = excluded.analysis_type,
+          status = excluded.status,
+          input_json = excluded.input_json,
+          result_json = excluded.result_json,
+          error_message = excluded.error_message,
+          ai_service = excluded.ai_service,
+          updated_at = datetime('now', '+9 hours')
+      `).bind(
+        resolvedRequestId,
+        String(r2Key),
+        analysisType === 'palm' ? 'palm' : 'face',
+        ['success', 'rejected', 'error'].includes(status) ? status : 'error',
+        JSON.stringify(input || {}),
+        JSON.stringify(result || {}),
+        String(errorMessage || '').slice(0, 2000),
+      ).run();
+    }
+    await recordKarmaAnalysis(env, {
+      requestId: resolvedRequestId,
+      analysisType: analysisType === 'palm' ? 'palm' : 'face',
+      status,
+      httpStatus: status === 'success' ? 200 : status === 'rejected' ? 400 : 500,
+      input,
+      result,
+      errorMessage,
+      aiService: 'OPENROUTER_MEDIA',
+      r2Key,
+    });
   } catch (error) {
     console.error('[KarmaAnalysis] D1 write failed:', error?.message || error);
     await logApiError(env, 'Karma image analysis log failed', error?.stack || error?.message || String(error), {
@@ -1775,7 +1957,7 @@ function palmExpertRubric() {
 9. 관찰→전통 해석→현실 조언 순서로 쓰세요. 건강은 의학적 진단처럼 쓰지 말고 생활관리 주의와 검진 권장 정도로만 표현하세요. 특정 질병 확정, 사고 시기 단정은 금지.`;
 }
 
-async function handleFaceReading(request, env) {
+async function handleFaceReading(request, env, requestId = '') {
   const { image, mimeType, gender, age, lang } = await request.json();
   const analysisLang = normalizePhotoAnalysisLang(lang);
   if (base64ByteLength(image) > 50 * 1024 * 1024) {
@@ -1854,6 +2036,7 @@ ${faceExpertRubric()}
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'face',
       status: 'error',
@@ -1865,6 +2048,7 @@ ${faceExpertRubric()}
   }
   if (result._apiError) {
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'face',
       status: 'error',
@@ -1877,6 +2061,7 @@ ${faceExpertRubric()}
   if (result.error) {
     const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'face',
       status: 'rejected',
@@ -1884,9 +2069,10 @@ ${faceExpertRubric()}
       result: localizedResult,
       errorMessage: rejectionMessage,
     });
-    return json({ error: rejectionMessage }, 400);
+    return json({ error: rejectionMessage, r2_key: r2Object?.key || null }, 400);
   }
   await recordKarmaImageAnalysis(env, {
+    requestId,
     r2Key: r2Object?.key,
     analysisType: 'face',
     status: 'success',
@@ -1897,7 +2083,7 @@ ${faceExpertRubric()}
   return json({ ...result, r2_key: r2Object?.key || null });
 }
 
-async function handlePalmReading(request, env) {
+async function handlePalmReading(request, env, requestId = '') {
   const { image, mimeType, hand, dominant, gender, lang } = await request.json();
   const analysisLang = normalizePhotoAnalysisLang(lang);
   if (base64ByteLength(image) > 50 * 1024 * 1024) {
@@ -1985,6 +2171,7 @@ ${palmExpertRubric()}
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'palm',
       status: 'error',
@@ -1996,6 +2183,7 @@ ${palmExpertRubric()}
   }
   if (result._apiError) {
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'palm',
       status: 'error',
@@ -2008,6 +2196,7 @@ ${palmExpertRubric()}
   if (result.error) {
     const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
+      requestId,
       r2Key: r2Object?.key,
       analysisType: 'palm',
       status: 'rejected',
@@ -2015,9 +2204,10 @@ ${palmExpertRubric()}
       result: localizedResult,
       errorMessage: rejectionMessage,
     });
-    return json({ error: rejectionMessage }, 400);
+    return json({ error: rejectionMessage, r2_key: r2Object?.key || null }, 400);
   }
   await recordKarmaImageAnalysis(env, {
+    requestId,
     r2Key: r2Object?.key,
     analysisType: 'palm',
     status: 'success',
@@ -3152,6 +3342,10 @@ async function handleR2Delete(request, env) {
       await env.DB.prepare(
         'DELETE FROM karma_image_analyses WHERE r2_key = ?'
       ).bind(String(key)).run();
+      await ensureKarmaAnalysesTable(env.DB);
+      await env.DB.prepare(
+        'DELETE FROM karma_analyses WHERE r2_key = ?'
+      ).bind(String(key)).run();
     } catch (error) {
       console.error('[KarmaAnalysis] D1 delete failed:', error?.message || error);
     }
@@ -3261,28 +3455,28 @@ export default {
 
       // ---- Saju Routes ----
       if (path === '/api/saju' && method === 'POST') {
-        return handleSajuAnalysis(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'saju', handleSajuAnalysis);
       }
       if (path === '/api/compat-quick' && method === 'POST') {
-        return handleCompatQuick(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'compat', handleCompatQuick);
       }
       if (path === '/api/fortune' && method === 'POST') {
-        return handleFortune(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'fortune', handleFortune);
       }
       if (path === '/api/daily' && method === 'POST') {
-        return handleDaily(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'daily', handleDaily);
       }
       if (path === '/api/quick-saju' && method === 'POST') {
-        return handleQuickSaju(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'compat', handleQuickSaju, 'LOCAL');
       }
       if (path === '/api/tarot' && method === 'POST') {
-        return handleTarotReading(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'tarot', handleTarotReading);
       }
       if (path === '/api/face-reading' && method === 'POST') {
-        return handleFaceReading(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'face', handleFaceReading, 'OPENROUTER_MEDIA');
       }
       if (path === '/api/palm-reading' && method === 'POST') {
-        return handlePalmReading(request, env);
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'palm', handlePalmReading, 'OPENROUTER_MEDIA');
       }
 
       // ---- Match Routes ----

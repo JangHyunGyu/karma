@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, koreanResponseStyleGuide };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, koreanResponseStyleGuide, sanitizeKarmaAnalysisInput };`;
 
 const context = {
   console,
@@ -144,6 +144,20 @@ check(workerSource.includes('celebrity_resemblance는 항상 빈 문자열'), '�
 check(workerSource.includes('손금은 오락·자기성찰용 전통 해석'), '손금 결과의 전통 해석 한계 명시');
 check(!workerSource.includes('수위 제한 없음'), '궁합의 무근거 성행동 추정 지시 제거');
 check(!workerSource.includes('몇 살 즈음 특히 조심해야'), '사주의 무근거 발병 시기 지시 제거');
+
+console.log('\n🗄️ D1 분석 기록');
+for (const type of ['saju', 'fortune', 'daily', 'tarot', 'compat', 'face', 'palm']) {
+  check(workerSource.includes(`ctx, '${type}',`), `${type} API 응답이 공통 D1 기록 경로에 연결됨`);
+}
+check(workerSource.includes('CREATE TABLE IF NOT EXISTS karma_analyses'), '통합 Karma 분석 테이블 생성 계약 존재');
+check(workerSource.includes('INSERT OR IGNORE INTO karma_analyses'), '기존 관상·손금 기록 자동 편입 계약 존재');
+const sanitizedImageInput = api.sanitizeKarmaAnalysisInput({
+  image: 'aGVsbG8=',
+  nested: { image_data: 'd29ybGQ=', note: 'keep this' },
+});
+check(/^\[image omitted:/.test(sanitizedImageInput.image), '원본 이미지 base64를 D1 입력 JSON에서 제거');
+check(/^\[image omitted:/.test(sanitizedImageInput.nested.image_data), '중첩 이미지 base64도 D1 입력 JSON에서 제거');
+check(sanitizedImageInput.nested.note === 'keep this', '이미지가 아닌 입력 데이터는 D1 기록에 보존');
 
 console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);
 if (failures.length) process.exit(1);
