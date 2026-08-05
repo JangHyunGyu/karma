@@ -1223,6 +1223,164 @@ function parseAiJsonResponse(value) {
   throw lastError || new SyntaxError('AI response did not contain valid JSON');
 }
 
+function isPlainAiObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonEmptyAiText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isAiScalar(value) {
+  return isNonEmptyAiText(value) || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function addRequiredAiTextErrors(value, keys, errors, prefix = '') {
+  for (const key of keys) {
+    if (!isNonEmptyAiText(value?.[key])) errors.push(`${prefix}${key}:non_empty_string`);
+  }
+}
+
+function addAiScoreError(value, errors, path) {
+  if (!Number.isInteger(value) || value < 0 || value > 100) errors.push(`${path}:integer_0_100`);
+}
+
+function addAiStringArrayError(value, errors, path, minimumLength) {
+  if (!Array.isArray(value) || value.length < minimumLength || value.some(item => !isNonEmptyAiText(item))) {
+    errors.push(`${path}:string_array_min_${minimumLength}`);
+  }
+}
+
+function addFortuneObjectErrors(value, errors, prefix) {
+  if (!isPlainAiObject(value)) {
+    errors.push(`${prefix}:object`);
+    return;
+  }
+  addRequiredAiTextErrors(value, ['wealth', 'career', 'love', 'health'], errors, `${prefix}.`);
+}
+
+function addLuckyObjectErrors(value, errors, prefix, keys) {
+  if (!isPlainAiObject(value)) {
+    errors.push(`${prefix}:object`);
+    return;
+  }
+  for (const key of keys) {
+    if (!isAiScalar(value[key])) errors.push(`${prefix}.${key}:non_empty_scalar`);
+  }
+}
+
+function validateFortuneAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  addRequiredAiTextErrors(value, ['year_summary', 'love', 'money', 'health', 'career', 'advice'], errors);
+  addLuckyObjectErrors(value.lucky, errors, 'lucky', ['color', 'number', 'direction', 'month']);
+  return { ok: errors.length === 0, errors };
+}
+
+function validateDailyAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  addRequiredAiTextErrors(value, ['overall', 'love', 'money', 'career', 'study', 'social', 'health', 'advice'], errors);
+  addLuckyObjectErrors(value.lucky, errors, 'lucky', ['color', 'number']);
+  return { ok: errors.length === 0, errors };
+}
+
+function validateCompatAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  addRequiredAiTextErrors(value, ['summary', 'advice'], errors);
+  if (!isPlainAiObject(value.categories)) {
+    errors.push('categories:object');
+  } else {
+    for (const key of ['personality', 'intimacy', 'finance', 'timing']) {
+      const category = value.categories[key];
+      if (!isPlainAiObject(category)) {
+        errors.push(`categories.${key}:object`);
+        continue;
+      }
+      addAiScoreError(category.score, errors, `categories.${key}.score`);
+      if (!isNonEmptyAiText(category.desc)) errors.push(`categories.${key}.desc:non_empty_string`);
+    }
+  }
+  addAiStringArrayError(value.strengths, errors, 'strengths', 3);
+  addAiStringArrayError(value.cautions, errors, 'cautions', 3);
+  return { ok: errors.length === 0, errors };
+}
+
+function validateFaceAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  if (isNonEmptyAiText(value.error)) return { ok: true, errors: [] };
+  addAiScoreError(value.overall_score, errors, 'overall_score');
+  addRequiredAiTextErrors(value, ['overall_grade', 'quality_assessment', 'summary', 'advice'], errors);
+  addAiStringArrayError(value.visual_evidence, errors, 'visual_evidence', 8);
+  if (!Array.isArray(value.categories) || value.categories.length !== 6) {
+    errors.push('categories:array_length_6');
+  } else {
+    value.categories.forEach((category, index) => {
+      if (!isPlainAiObject(category)) {
+        errors.push(`categories[${index}]:object`);
+        return;
+      }
+      if (!isNonEmptyAiText(category.name)) errors.push(`categories[${index}].name:non_empty_string`);
+      addAiScoreError(category.score, errors, `categories[${index}].score`);
+      if (!isNonEmptyAiText(category.desc)) errors.push(`categories[${index}].desc:non_empty_string`);
+    });
+  }
+  addFortuneObjectErrors(value.fortune, errors, 'fortune');
+  if (typeof value.celebrity_resemblance !== 'string') errors.push('celebrity_resemblance:string');
+  return { ok: errors.length === 0, errors };
+}
+
+function validatePalmAiResponse(value) {
+  const errors = [];
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  if (isNonEmptyAiText(value.error)) return { ok: true, errors: [] };
+  addAiScoreError(value.overall_score, errors, 'overall_score');
+  addRequiredAiTextErrors(value, ['overall_grade', 'quality_assessment', 'summary', 'advice'], errors);
+  addAiStringArrayError(value.visual_evidence, errors, 'visual_evidence', 8);
+  if (!Array.isArray(value.lines) || value.lines.length !== 6) {
+    errors.push('lines:array_length_6');
+  } else {
+    value.lines.forEach((line, index) => {
+      if (!isPlainAiObject(line)) {
+        errors.push(`lines[${index}]:object`);
+        return;
+      }
+      addRequiredAiTextErrors(line, ['name', 'length', 'desc'], errors, `lines[${index}].`);
+      addAiScoreError(line.score, errors, `lines[${index}].score`);
+    });
+  }
+  if (!isPlainAiObject(value.hand_shape)) {
+    errors.push('hand_shape:object');
+  } else {
+    addRequiredAiTextErrors(value.hand_shape, ['type', 'desc'], errors, 'hand_shape.');
+  }
+  addFortuneObjectErrors(value.fortune, errors, 'fortune');
+  return { ok: errors.length === 0, errors };
+}
+
+function validateKarmaAiContract(contractType, value) {
+  switch (contractType) {
+    case 'fortune': return validateFortuneAiResponse(value);
+    case 'daily': return validateDailyAiResponse(value);
+    case 'compat': return validateCompatAiResponse(value);
+    case 'face': return validateFaceAiResponse(value);
+    case 'palm': return validatePalmAiResponse(value);
+    default: return { ok: true, errors: [] };
+  }
+}
+
+function aiContractRetryInstruction(contractType, errors) {
+  return `CRITICAL JSON CONTRACT RETRY (${contractType}): The previous generation was incomplete or used wrong types (${errors.slice(0, 12).join(', ')}). Return one complete JSON object matching every key, nesting level, type, and array length in the original response schema. Do not omit later fields or return a shortened object.`;
+}
+
+function incompleteAiResponseMessage(lang) {
+  return lang === 'en'
+    ? 'The AI response was incomplete. Please try again.'
+    : 'AI 응답 항목이 완전하지 않습니다. 잠시 후 다시 시도해주세요.';
+}
+
 const KOREAN_NATIVE_PROSE_GUARD = `[한국어 원문체]
 - 사용자에게 보이는 모든 문장은 번역문이 아니라 처음부터 한국어로 쓴 글처럼 자연스럽게 씁니다.
 - 입력의 사실·고유명사·수치·단위·전문 용어와 요구된 JSON 키·구조·고정값은 바꾸지 않습니다.
@@ -1234,16 +1392,14 @@ function koreanResponseStyleGuide(lang = 'ko') {
   return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
 }
 
-async function callDeepSeekText(prompt, _caller, _env, _ctx) {
+async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '') {
   const endpoint = _caller || 'unknown';
-  const _perfStart = Date.now();
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = String(isStructured ? prompt.user : prompt || '');
   const promptPreview = promptText.slice(0, 100);
   const baseSystem = isStructured ? String(prompt.system || '') : '';
   const proseGuard = koreanResponseStyleGuide(isStructured ? prompt.lang : 'ko');
   const systemText = [baseSystem, proseGuard].filter(Boolean).join('\n\n');
-  const _sysSize = systemText.length;
   const _contentsSize = promptText.length;
 
   if (!_env?.DEEPSEEK_TEXT?.complete) {
@@ -1252,38 +1408,55 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx) {
   }
 
   try {
-    const messages = systemText
-      ? [
-        { role: 'system', content: systemText },
-        { role: 'user', content: promptText },
-      ]
-      : [{ role: 'user', content: promptText }];
-    const result = await _env.DEEPSEEK_TEXT.complete({
-      appId: 'karma',
-      messages,
-      responseFormat: 'json_object',
-      temperature: 0.5,
-      maxTokens: 16384,
+    const maxAttempts = contractType ? 2 : 1;
+    let contractErrors = [];
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const attemptSystem = [
+        systemText,
+        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors) : '',
+      ].filter(Boolean).join('\n\n');
+      const messages = attemptSystem
+        ? [
+          { role: 'system', content: attemptSystem },
+          { role: 'user', content: promptText },
+        ]
+        : [{ role: 'user', content: promptText }];
+      const attemptStart = Date.now();
+      const result = await _env.DEEPSEEK_TEXT.complete({
+        appId: 'karma',
+        messages,
+        responseFormat: 'json_object',
+        temperature: attempt > 0 ? 0.2 : 0.5,
+        maxTokens: 16384,
+      });
+      const parsed = parseAiJsonResponse(result?.text || '');
+      const usage = result?.usage || {};
+      await logPerfStats(_env, _ctx, {
+        app: `karma:${endpoint}`,
+        cache_key: null,
+        cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
+        prompt_tokens: usage.prompt_tokens || 0,
+        cached_tokens: usage.prompt_cache_hit_tokens || 0,
+        cache_write_tokens: usage.prompt_cache_write_tokens || usage.prompt_tokens_details?.cache_write_tokens || 0,
+        output_tokens: usage.completion_tokens || 0,
+        thought_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
+        sys_chars: attemptSystem.length,
+        hist_chars: _contentsSize,
+        used_key_idx: attempt,
+        elapsed_ms: Date.now() - attemptStart,
+        model: result?.model || null,
+        provider_route: result?.provider || null,
+      });
+      const contract = validateKarmaAiContract(contractType, parsed);
+      if (contract.ok) return parsed;
+      contractErrors = contract.errors;
+    }
+    await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, contractErrors.join(', '), {
+      endpoint,
+      contractType,
+      promptPreview,
     });
-    const parsed = parseAiJsonResponse(result?.text || '');
-    const usage = result?.usage || {};
-    await logPerfStats(_env, _ctx, {
-      app: `karma:${endpoint}`,
-      cache_key: null,
-      cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
-      prompt_tokens: usage.prompt_tokens || 0,
-      cached_tokens: usage.prompt_cache_hit_tokens || 0,
-      cache_write_tokens: usage.prompt_cache_write_tokens || usage.prompt_tokens_details?.cache_write_tokens || 0,
-      output_tokens: usage.completion_tokens || 0,
-      thought_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
-      sys_chars: _sysSize,
-      hist_chars: _contentsSize,
-      used_key_idx: 0,
-      elapsed_ms: Date.now() - _perfStart,
-      model: result?.model || null,
-      provider_route: result?.provider || null,
-    });
-    return parsed;
+    return null;
   } catch (error) {
     await logApiError(
       _env,
@@ -1577,32 +1750,50 @@ function getPhotoAnalysisMessage(lang, key) {
   return PHOTO_ANALYSIS_MESSAGES[normalizePhotoAnalysisLang(lang)][key];
 }
 
-async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko') {
+async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko', contractType = '') {
   if (!env?.OPENROUTER_MEDIA?.analyze) {
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
 
-  try {
-    const proseGuard = koreanResponseStyleGuide(normalizePhotoAnalysisLang(lang));
-    const modelPrompt = [String(prompt || ''), proseGuard].filter(Boolean).join('\n\n');
-    const result = await env.OPENROUTER_MEDIA.analyze({
-      appId: 'Karma Photo Analysis',
-      prompt: modelPrompt,
-      media: [{
-        type: 'image',
-        url: String(imageUrl || ''),
-      }],
-      temperature: 0.2,
-      maxTokens: 8000,
-    });
-    if (!result?.text) return { _apiError: getPhotoAnalysisMessage(lang, 'emptyResponse') };
-    return parseAiJsonResponse(result.text);
-  } catch (error) {
-    await logApiError(env, 'OpenRouter MiMo photo analysis failed', error?.stack || error?.message || String(error), {
-      endpoint: 'worker/openrouter-mimo-media',
-    });
-    return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
+  const proseGuard = koreanResponseStyleGuide(normalizePhotoAnalysisLang(lang));
+  const basePrompt = [String(prompt || ''), proseGuard].filter(Boolean).join('\n\n');
+  const maxAttempts = contractType ? 2 : 1;
+  let contractErrors = [];
+  let lastError = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const modelPrompt = [
+        basePrompt,
+        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors) : '',
+      ].filter(Boolean).join('\n\n');
+      const result = await env.OPENROUTER_MEDIA.analyze({
+        appId: 'Karma Photo Analysis',
+        prompt: modelPrompt,
+        media: [{
+          type: 'image',
+          url: String(imageUrl || ''),
+        }],
+        temperature: attempt > 0 ? 0.1 : 0.2,
+        maxTokens: 8000,
+      });
+      if (!result?.text) {
+        lastError = new Error(getPhotoAnalysisMessage(lang, 'emptyResponse'));
+        continue;
+      }
+      const parsed = parseAiJsonResponse(result.text);
+      const contract = validateKarmaAiContract(contractType, parsed);
+      if (contract.ok) return parsed;
+      contractErrors = contract.errors;
+      lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
+    } catch (error) {
+      lastError = error;
+    }
   }
+  await logApiError(env, 'OpenRouter MiMo photo analysis failed', lastError?.stack || lastError?.message || String(lastError || ''), {
+    endpoint: 'worker/openrouter-mimo-media',
+    contractType,
+  });
+  return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
 }
 
 async function saveImageToR2(env, image, mimeType, type) {
@@ -2031,7 +2222,7 @@ ${faceExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang);
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang, 'face');
   const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
@@ -2161,7 +2352,7 @@ ${palmExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang);
+  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang, 'palm');
   const analysisInput = {
     hand: hand || '',
     dominant: dominant || '',
@@ -2963,9 +3154,12 @@ async function handleCompatQuick(request, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  const ai = env?.DEEPSEEK_TEXT?.complete
-    ? await callDeepSeekText(buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date), 'compat', env)
-    : null;
+  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  const ai = await callDeepSeekText(
+    buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date),
+    'compat', env, null, 'compat'
+  );
+  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
 
   const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
   const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
@@ -2986,7 +3180,8 @@ async function handleFortune(request, env) {
 
   if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callDeepSeekText(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env);
+  const ai = await callDeepSeekText(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env, null, 'fortune');
+  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
@@ -3006,7 +3201,8 @@ async function handleDaily(request, env) {
 
   if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callDeepSeekText(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env);
+  const ai = await callDeepSeekText(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env, null, 'daily');
+  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
@@ -3086,7 +3282,10 @@ async function handleMatchDetail(idA, idB, env, lang) {
 
   if (!env?.DEEPSEEK_TEXT?.complete) return json({ ...baseResult, ai: null });
 
-  const ai = await callDeepSeekText(buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date), 'match-detail', env);
+  const ai = await callDeepSeekText(
+    buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date),
+    'match-detail', env, null, 'compat'
+  );
   return json({ ...baseResult, ai });
 }
 
