@@ -70,14 +70,20 @@ if (/buildTarotPrompt[\s\S]*?"cards"[\s\S]*?"overall"[\s\S]*?"advice"[\s\S]*?"ke
 }
 
 // 공유 OpenRouter Worker의 텍스트 모델 체인 호출 확인
-if (/callDeepSeekText\(prompt,\s*'tarot',\s*env/.test(workerSrc)) pass("callDeepSeekText 호출 시 caller='tarot' 전달");
-else fail('callDeepSeekText 호출 패턴 불일치');
+if (/callKarmaTextAi\(prompt,\s*'tarot',\s*env/.test(workerSrc)) pass("callKarmaTextAi 호출 시 caller='tarot' 전달");
+else fail('callKarmaTextAi 호출 패턴 불일치');
 
 const wranglerSrc = fs.readFileSync(path.join(__dirname, 'wrangler.toml'), 'utf8');
-if (/binding\s*=\s*"DEEPSEEK_TEXT"[\s\S]*?entrypoint\s*=\s*"DeepSeekTextEntrypoint"/.test(wranglerSrc)) {
-  pass('텍스트 AI가 공유 모델 체인 RPC에 연결됨');
+if (/binding\s*=\s*"AI"[\s\S]*?entrypoint\s*=\s*"KarmaAiEntrypoint"/.test(wranglerSrc)) {
+  pass('모든 Karma AI가 전용 공유 모델 라우터 RPC에 연결됨');
 } else {
-  fail('호환 DEEPSEEK_TEXT 서비스 바인딩 또는 DeepSeekTextEntrypoint 누락');
+  fail('AI 서비스 바인딩 또는 KarmaAiEntrypoint 누락');
+}
+if ((wranglerSrc.match(/\[\[services\]\]/g) || []).length === 1
+    && !/DEEPSEEK_TEXT|OPENROUTER_MEDIA/.test(wranglerSrc + workerSrc)) {
+  pass('Karma AI 공급자 전환 지점이 단일 바인딩으로 통합됨');
+} else {
+  fail('레거시 공급자별 바인딩이 남아 있거나 서비스 바인딩이 분산됨');
 }
 if (/provider_route/.test(workerSrc) && /model:\s*result\?\.model/.test(workerSrc)) {
   pass('AI 성능 로그에 실제 provider/model 기록');

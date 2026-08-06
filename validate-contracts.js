@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callDeepSeekText };`;
+workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callKarmaTextAi, callKarmaVisionAi };`;
 
 const context = {
   console,
@@ -190,7 +190,7 @@ for (const [type, keys] of Object.entries(promptKeys)) {
 async function testContractRetry(type, partial, complete, contractContext = {}) {
   let calls = 0;
   const env = {
-    DEEPSEEK_TEXT: {
+    AI: {
       async complete() {
         calls++;
         return {
@@ -202,7 +202,7 @@ async function testContractRetry(type, partial, complete, contractContext = {}) 
       },
     },
   };
-  const result = await api.callDeepSeekText(
+  const result = await api.callKarmaTextAi(
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     type, env, null, type, contractContext
   );
@@ -213,14 +213,14 @@ async function testContractRetry(type, partial, complete, contractContext = {}) 
 async function testPersistentContractFailure() {
   let calls = 0;
   const env = {
-    DEEPSEEK_TEXT: {
+    AI: {
       async complete() {
         calls++;
         return { text: '{}', usage: {}, model: 'test-model', provider: 'test' };
       },
     },
   };
-  const result = await api.callDeepSeekText(
+  const result = await api.callKarmaTextAi(
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     'tarot', env, null, 'tarot'
   );
@@ -228,11 +228,33 @@ async function testPersistentContractFailure() {
   check(result === null, '타로 불완전 응답을 성공값으로 반환하지 않음');
 }
 
+async function testUnifiedVisionRoute() {
+  let request = null;
+  const env = {
+    AI: {
+      async analyze(input) {
+        request = input;
+        return { text: JSON.stringify(face), model: 'openai/gpt-5.6-luna', provider: 'openrouter' };
+      },
+    },
+  };
+  const result = await api.callKarmaVisionAi(
+    'Analyze this face.',
+    'https://example.com/face.jpg',
+    env,
+    'en',
+    'face'
+  );
+  check(request?.appId === 'karma', '관상·손금 요청이 Karma 전용 모델 범위를 사용');
+  check(request?.media?.[0]?.type === 'image', '관상·손금 요청이 이미지 입력을 전달');
+  check(result?.overall_score === face.overall_score, '관상·손금 응답이 공통 계약 검증을 통과');
+}
+
 async function testContractPatchRetry(type, partial, patch, contractContext, verify) {
   let calls = 0;
   let retrySystem = '';
   const env = {
-    DEEPSEEK_TEXT: {
+    AI: {
       async complete(input) {
         calls++;
         if (calls === 2) retrySystem = input.messages?.[0]?.content || '';
@@ -245,7 +267,7 @@ async function testContractPatchRetry(type, partial, patch, contractContext, ver
       },
     },
   };
-  const result = await api.callDeepSeekText(
+  const result = await api.callKarmaTextAi(
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     type, env, null, type, contractContext
   );
@@ -273,6 +295,7 @@ Promise.resolve()
     result => api.validateKarmaAiContract('tarot', result).ok && result.overall === text
   ))
   .then(() => testPersistentContractFailure())
+  .then(() => testUnifiedVisionRoute())
   .then(() => {
   console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);
   if (failures.length) process.exit(1);

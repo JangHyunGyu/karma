@@ -1497,7 +1497,7 @@ function koreanResponseStyleGuide(lang = 'ko') {
   return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
 }
 
-async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', contractContext = {}) {
+async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', contractContext = {}) {
   const endpoint = _caller || 'unknown';
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = String(isStructured ? prompt.user : prompt || '');
@@ -1508,8 +1508,8 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
   const systemText = [baseSystem, proseGuard, completenessGuard].filter(Boolean).join('\n\n');
   const _contentsSize = promptText.length;
 
-  if (!_env?.DEEPSEEK_TEXT?.complete) {
-    await logApiError(_env, `[${endpoint}] DeepSeek text service missing`, '', { endpoint, promptPreview });
+  if (!_env?.AI?.complete) {
+    await logApiError(_env, `[${endpoint}] Karma AI text service missing`, '', { endpoint, promptPreview });
     return null;
   }
 
@@ -1535,7 +1535,7 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
         ]
         : [{ role: 'user', content: attemptPrompt }];
       const attemptStart = Date.now();
-      const result = await _env.DEEPSEEK_TEXT.complete({
+      const result = await _env.AI.complete({
         appId: 'karma',
         messages,
         responseFormat: 'json_object',
@@ -1574,7 +1574,7 @@ async function callDeepSeekText(prompt, _caller, _env, _ctx, contractType = '', 
   } catch (error) {
     await logApiError(
       _env,
-      `[${endpoint}] DeepSeek text request failed`,
+      `[${endpoint}] Karma AI text request failed`,
       error?.stack || error?.message || String(error),
       { endpoint, promptPreview }
     );
@@ -1800,12 +1800,12 @@ async function handleTarotReading(request, env) {
       return json({ error: 'Invalid card IDs' }, 400);
     }
 
-    if (!env?.DEEPSEEK_TEXT?.complete) {
+    if (!env?.AI?.complete) {
       return json({ error: 'AI service unavailable' }, 503);
     }
 
     const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
-    const ai = await callDeepSeekText(prompt, 'tarot', env, null, 'tarot');
+    const ai = await callKarmaTextAi(prompt, 'tarot', env, null, 'tarot');
 
     if (!ai) {
       return json({ error: incompleteAiResponseMessage(lang || 'ko') }, 502);
@@ -1864,8 +1864,8 @@ function getPhotoAnalysisMessage(lang, key) {
   return PHOTO_ANALYSIS_MESSAGES[normalizePhotoAnalysisLang(lang)][key];
 }
 
-async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko', contractType = '') {
-  if (!env?.OPENROUTER_MEDIA?.analyze) {
+async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '') {
+  if (!env?.AI?.analyze) {
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
 
@@ -1880,8 +1880,8 @@ async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko', cont
         basePrompt,
         attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors) : '',
       ].filter(Boolean).join('\n\n');
-      const result = await env.OPENROUTER_MEDIA.analyze({
-        appId: 'Karma Photo Analysis',
+      const result = await env.AI.analyze({
+        appId: 'karma',
         prompt: modelPrompt,
         media: [{
           type: 'image',
@@ -1903,8 +1903,8 @@ async function callOpenRouterMiMoVision(prompt, imageUrl, env, lang = 'ko', cont
       lastError = error;
     }
   }
-  await logApiError(env, 'OpenRouter MiMo photo analysis failed', lastError?.stack || lastError?.message || String(lastError || ''), {
-    endpoint: 'worker/openrouter-mimo-media',
+  await logApiError(env, 'Karma AI photo analysis failed', lastError?.stack || lastError?.message || String(lastError || ''), {
+    endpoint: 'worker/karma-ai-media',
     contractType,
   });
   return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
@@ -1940,7 +1940,7 @@ async function ensureKarmaImageAnalysesTable(db) {
       input_json TEXT NOT NULL DEFAULT '{}',
       result_json TEXT NOT NULL DEFAULT '{}',
       error_message TEXT NOT NULL DEFAULT '',
-      ai_service TEXT NOT NULL DEFAULT 'OPENROUTER_MEDIA',
+      ai_service TEXT NOT NULL DEFAULT 'KARMA_AI',
       created_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours'))
     )
@@ -2087,7 +2087,7 @@ async function recordKarmaAnalysis(env, {
   }
 }
 
-async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'DEEPSEEK_TEXT') {
+async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'KARMA_AI') {
   const requestForLog = ['face', 'palm'].includes(analysisType) ? null : request.clone();
   const requestId = crypto.randomUUID();
   let response;
@@ -2140,7 +2140,7 @@ async function recordKarmaImageAnalysis(env, {
         INSERT INTO karma_image_analyses (
           request_id, r2_key, analysis_type, status, input_json,
           result_json, error_message, ai_service
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPENROUTER_MEDIA')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'KARMA_AI')
         ON CONFLICT(r2_key) DO UPDATE SET
           request_id = excluded.request_id,
           analysis_type = excluded.analysis_type,
@@ -2168,7 +2168,7 @@ async function recordKarmaImageAnalysis(env, {
       input,
       result,
       errorMessage,
-      aiService: 'OPENROUTER_MEDIA',
+      aiService: 'KARMA_AI',
       r2Key,
     });
   } catch (error) {
@@ -2270,7 +2270,7 @@ async function handleFaceReading(request, env, requestId = '') {
   }
   if (!image) return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageRequired') }, 400);
 
-  if (!env?.OPENROUTER_MEDIA) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
+  if (!env?.AI?.analyze) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
 
   // R2에 이미지 저장 (비동기, 분석 결과에 영향 없음)
   const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'face');
@@ -2336,7 +2336,7 @@ ${faceExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang, 'face');
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face');
   const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
@@ -2396,7 +2396,7 @@ async function handlePalmReading(request, env, requestId = '') {
   }
   if (!image) return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageRequired') }, 400);
 
-  if (!env?.OPENROUTER_MEDIA) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
+  if (!env?.AI?.analyze) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
 
   const r2Object = await saveImageToR2(env, image, mimeType || 'image/jpeg', 'palm');
   const handContext = buildPalmHandContext(hand, dominant, analysisLang);
@@ -2466,7 +2466,7 @@ ${palmExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = r2Object?.url || `data:${mimeType || 'image/jpeg'};base64,${String(image || '').replace(/\s+/g, '')}`;
-  const result = await callOpenRouterMiMoVision(prompt, imageUrl, env, analysisLang, 'palm');
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm');
   const analysisInput = {
     hand: hand || '',
     dominant: dominant || '',
@@ -3248,8 +3248,8 @@ async function handleSajuAnalysis(request, env) {
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
-  const ai = await callDeepSeekText(
+  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  const ai = await callKarmaTextAi(
     buildSajuPrompt(saju, gender, lang, birth_date),
     'saju', env, null, 'saju', {
       hasTime: saju.hasTime,
@@ -3274,8 +3274,8 @@ async function handleCompatQuick(request, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
-  const ai = await callDeepSeekText(
+  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  const ai = await callKarmaTextAi(
     buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date),
     'compat', env, null, 'compat'
   );
@@ -3298,9 +3298,9 @@ async function handleFortune(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
-  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.AI?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callDeepSeekText(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env, null, 'fortune');
+  const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env, null, 'fortune');
   if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
@@ -3319,9 +3319,9 @@ async function handleDaily(request, env) {
     todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   }
 
-  if (!env?.DEEPSEEK_TEXT?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.AI?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
 
-  const ai = await callDeepSeekText(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env, null, 'daily');
+  const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env, null, 'daily');
   if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
   const out = lang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
@@ -3400,9 +3400,9 @@ async function handleMatchDetail(idA, idB, env, lang) {
     } : relations,
   };
 
-  if (!env?.DEEPSEEK_TEXT?.complete) return json({ ...baseResult, ai: null });
+  if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
 
-  const ai = await callDeepSeekText(
+  const ai = await callKarmaTextAi(
     buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date),
     'match-detail', env, null, 'compat'
   );
@@ -3792,10 +3792,10 @@ export default {
         return handleLoggedKarmaAnalysis(request, env, ctx, 'tarot', handleTarotReading);
       }
       if (path === '/api/face-reading' && method === 'POST') {
-        return handleLoggedKarmaAnalysis(request, env, ctx, 'face', handleFaceReading, 'OPENROUTER_MEDIA');
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'face', handleFaceReading);
       }
       if (path === '/api/palm-reading' && method === 'POST') {
-        return handleLoggedKarmaAnalysis(request, env, ctx, 'palm', handlePalmReading, 'OPENROUTER_MEDIA');
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'palm', handlePalmReading);
       }
 
       // ---- Match Routes ----

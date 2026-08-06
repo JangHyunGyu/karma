@@ -17,14 +17,9 @@ binding = "KARMA_SHARE"
 id = "36de9b5fcee54d40964bcc124d8a4ad4"
 
 [[services]]
-binding = "OPENROUTER_MEDIA"
+binding = "AI"
 service = "openrouter-api"
-entrypoint = "OpenRouterMediaEntrypoint"
-
-[[services]]
-binding = "DEEPSEEK_TEXT"
-service = "openrouter-api"
-entrypoint = "DeepSeekTextEntrypoint"
+entrypoint = "KarmaAiEntrypoint"
 
 [vars]
 CORS_ORIGIN = "*"
