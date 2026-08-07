@@ -234,7 +234,7 @@ async function testUnifiedVisionRoute() {
     AI: {
       async analyze(input) {
         request = input;
-        return { text: JSON.stringify(face), model: 'openai/gpt-5.6-luna', provider: 'openrouter' };
+        return { text: JSON.stringify(face), model: 'google/gemma-4-31b-it', provider: 'openrouter' };
       },
     },
   };

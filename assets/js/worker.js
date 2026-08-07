@@ -1182,7 +1182,7 @@ function ohangCompatibility(saju1, saju2) {
 }
 
 // ============================================================
-// AI — shared OpenRouter Worker using free Nemotron 3 Ultra
+// AI - shared OpenRouter Worker using Gemma 4 31B through Venice
 // ============================================================
 
 // AI API 실패 시 D1에 에러 기록 (자세한 디버깅 정보 포함)
