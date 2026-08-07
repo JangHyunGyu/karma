@@ -23,4 +23,6 @@ entrypoint = "KarmaAiEntrypoint"
 
 [vars]
 CORS_ORIGIN = "*"
-R2_PUBLIC_URL = "https://pub-54cf8dbbbe6645cd9d493700dcedb706.r2.dev"
+
+# Optional management access. Configure with:
+# npx wrangler secret put KARMA_ADMIN_TOKEN
