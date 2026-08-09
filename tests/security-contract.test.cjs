@@ -16,7 +16,9 @@ globalThis.__karmaSecurity = {
   validatePhotoImageInput,
   getKarmaAdminAuthError,
   getKarmaRateLimitPolicy,
-  saveKarmaAnalysisImageToR2
+  saveKarmaAnalysisImageToR2,
+  handleFaceReading,
+  handlePalmReading
 };`;
 const context = {
   console: { log() {}, warn() {}, error() {} },
@@ -53,7 +55,7 @@ test('management routes fail closed unless the configured admin token matches', 
   }
 });
 
-test('photo uploads are compact, typed, and persisted privately only after analysis', async () => {
+test('valid photo uploads are persisted privately before every analysis outcome', async () => {
   assert.equal(security.PHOTO_MAX_UPLOAD_BYTES, 8 * 1024 * 1024);
   assert.ok(security.PHOTO_MAX_REQUEST_BYTES > security.PHOTO_MAX_UPLOAD_BYTES);
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]).toString('base64');
@@ -66,12 +68,12 @@ test('photo uploads are compact, typed, and persisted privately only after analy
   const faceHandler = workerSource.slice(faceStart, palmStart);
   const palmHandler = workerSource.slice(palmStart, workerSource.indexOf('// ============================================================', palmStart));
   assert.ok(
-    faceHandler.indexOf('callKarmaVisionAi(') < faceHandler.indexOf('saveKarmaAnalysisImageToR2('),
-    'face images must be stored only after AI analysis completes',
+    faceHandler.indexOf('saveKarmaAnalysisImageToR2(') < faceHandler.indexOf('callKarmaVisionAi('),
+    'face images must be stored before AI analysis starts',
   );
   assert.ok(
-    palmHandler.indexOf('callKarmaVisionAi(') < palmHandler.indexOf('saveKarmaAnalysisImageToR2('),
-    'palm images must be stored only after AI analysis completes',
+    palmHandler.indexOf('saveKarmaAnalysisImageToR2(') < palmHandler.indexOf('callKarmaVisionAi('),
+    'palm images must be stored before AI analysis starts',
   );
   assert.doesNotMatch(workerSource, /R2_PUBLIC_URL/);
 
@@ -92,9 +94,61 @@ test('photo uploads are compact, typed, and persisted privately only after analy
   assert.equal(stored.objectKey, key);
   assert.deepEqual(stored.bytes, Array.from(Buffer.from(jpeg, 'base64')));
   assert.equal(stored.options.httpMetadata.contentType, 'image/jpeg');
+
+  const rateLimitedContext = {};
+  const rateLimitedResponse = await security.handleFaceReading(new Request('https://karma-api.example/api/face-reading', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: jpeg, mimeType: 'image/jpeg', lang: 'en' }),
+  }), {
+    KARMA_IMAGE_BUCKET: {
+      async put() {},
+    },
+  }, 'rate-limited-request', jsonResponse({ error: 'Too many requests' }, 429), rateLimitedContext);
+  assert.equal(rateLimitedResponse.status, 429);
+  assert.match(rateLimitedContext.r2Key, /^karma\/face\/\d+-rate-limited-request\.jpg$/);
+
+  const unavailableContext = {};
+  const unavailableResponse = await security.handlePalmReading(new Request('https://karma-api.example/api/palm-reading', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: jpeg, mimeType: 'image/jpeg', lang: 'en' }),
+  }), {
+    KARMA_IMAGE_BUCKET: {
+      async put() {},
+    },
+  }, 'service-unavailable-request', null, unavailableContext);
+  assert.equal(unavailableResponse.status, 503);
+  assert.match(unavailableContext.r2Key, /^karma\/palm\/\d+-service-unavailable-request\.jpg$/);
+
+  let aiCalledWithoutStorage = false;
+  const storageFailureResponse = await security.handleFaceReading(new Request('https://karma-api.example/api/face-reading', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: jpeg, mimeType: 'image/jpeg', lang: 'en' }),
+  }), {
+    KARMA_IMAGE_BUCKET: {
+      async put() { throw new Error('simulated R2 outage'); },
+    },
+    AI: {
+      async analyze() {
+        aiCalledWithoutStorage = true;
+        return { text: '{}' };
+      },
+    },
+  }, 'storage-failure-request', null, {});
+  assert.equal(storageFailureResponse.status, 503);
+  assert.equal(aiCalledWithoutStorage, false);
 });
 
-test('AI analysis budgets distinguish photo and text traffic and run before handlers', () => {
+function jsonResponse(data, status) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+test('AI analysis budgets distinguish photo and text traffic while photo handlers still persist first', () => {
   assert.equal(security.getKarmaRateLimitPolicy('face').bucket, 'photo');
   assert.equal(security.getKarmaRateLimitPolicy('face').limit, 5);
   assert.equal(security.getKarmaRateLimitPolicy('tarot').bucket, 'text');
@@ -104,4 +158,6 @@ test('AI analysis budgets distinguish photo and text traffic and run before hand
     workerSource.indexOf('async function recordKarmaImageAnalysis')
   );
   assert.match(loggedHandler, /await enforceKarmaAnalysisRateLimit\(request, env, analysisType\)/);
+  assert.match(loggedHandler, /rateLimitError && !isPhotoAnalysis/);
+  assert.match(loggedHandler, /handler\(request, env, requestId, rateLimitError, analysisContext\)/);
 });

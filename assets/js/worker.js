@@ -1883,6 +1883,7 @@ const PHOTO_ANALYSIS_MESSAGES = {
     imageTooLarge: '이미지 크기가 8MB를 초과합니다. 더 작은 사진을 사용해주세요.',
     imageRequired: '이미지가 필요합니다.',
     invalidImage: '지원하지 않거나 손상된 이미지입니다. JPEG, PNG 또는 WebP 사진을 사용해주세요.',
+    imageStorageFailed: '사진 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
     serviceUnavailable: 'AI 분석 서비스를 사용할 수 없습니다.',
     mediaNotConnected: 'AI 미디어 분석 서비스가 연결되지 않았습니다.',
     emptyResponse: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.',
@@ -1896,6 +1897,7 @@ const PHOTO_ANALYSIS_MESSAGES = {
     imageTooLarge: 'The image exceeds the 8 MB upload limit. Please use a smaller photo.',
     imageRequired: 'An image is required.',
     invalidImage: 'The image is damaged or unsupported. Please use a JPEG, PNG, or WebP photo.',
+    imageStorageFailed: 'The photo could not be saved. Please try again later.',
     serviceUnavailable: 'The AI analysis service is unavailable.',
     mediaNotConnected: 'The AI media analysis service is not connected.',
     emptyResponse: 'The AI returned an empty response. Please try a different photo.',
@@ -2010,7 +2012,7 @@ async function saveKarmaAnalysisImageToR2(env, {
   analysisType,
   requestId,
 }) {
-  if (!env?.KARMA_IMAGE_BUCKET) return '';
+  if (!env?.KARMA_IMAGE_BUCKET) throw new Error('KARMA_IMAGE_BUCKET is not configured');
 
   const extension = mimeType === 'image/png'
     ? 'png'
@@ -2021,16 +2023,19 @@ async function saveKarmaAnalysisImageToR2(env, {
   const safeRequestId = String(requestId || crypto.randomUUID()).replace(/[^a-zA-Z0-9-]/g, '');
   const key = `karma/${type}/${Date.now()}-${safeRequestId || crypto.randomUUID()}.${extension}`;
 
-  try {
-    const bytes = Uint8Array.from(atob(String(image || '')), character => character.charCodeAt(0));
-    await env.KARMA_IMAGE_BUCKET.put(key, bytes, {
-      httpMetadata: { contentType: mimeType },
-    });
-    return key;
-  } catch (error) {
-    console.error('[KarmaAnalysis] private R2 save failed:', error?.message || error);
-    return '';
+  const bytes = Uint8Array.from(atob(String(image || '')), character => character.charCodeAt(0));
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await env.KARMA_IMAGE_BUCKET.put(key, bytes, {
+        httpMetadata: { contentType: mimeType },
+      });
+      return key;
+    } catch (error) {
+      lastError = error;
+    }
   }
+  throw lastError || new Error('Karma image storage failed');
 }
 
 async function ensureKarmaImageAnalysesTable(db) {
@@ -2193,13 +2198,15 @@ async function recordKarmaAnalysis(env, {
 }
 
 async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'KARMA_AI') {
+  const isPhotoAnalysis = ['face', 'palm'].includes(analysisType);
   const rateLimitError = await enforceKarmaAnalysisRateLimit(request, env, analysisType);
-  if (rateLimitError) return rateLimitError;
-  const requestForLog = ['face', 'palm'].includes(analysisType) ? null : request.clone();
+  if (rateLimitError && !isPhotoAnalysis) return rateLimitError;
+  const requestForLog = isPhotoAnalysis ? null : request.clone();
   const requestId = crypto.randomUUID();
+  const analysisContext = { r2Key: '' };
   let response;
   try {
-    response = await handler(request, env, requestId);
+    response = await handler(request, env, requestId, rateLimitError, analysisContext);
   } catch (error) {
     response = json({ error: error?.message || 'Server error' }, 500);
   }
@@ -2215,13 +2222,13 @@ async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handle
     await recordKarmaAnalysis(env, {
       requestId,
       analysisType,
-      status: response.ok ? 'success' : (response.status === 400 && ['face', 'palm'].includes(analysisType) ? 'rejected' : 'error'),
+      status: response.ok ? 'success' : (response.status === 400 && isPhotoAnalysis ? 'rejected' : 'error'),
       httpStatus: response.status,
       input,
       result,
       errorMessage,
       aiService,
-      r2Key: result?.r2_key || '',
+      r2Key: analysisContext.r2Key || result?.r2_key || '',
     });
   };
   if (ctx?.waitUntil) ctx.waitUntil(persist());
@@ -2414,7 +2421,7 @@ function palmExpertRubric() {
 9. 관찰→전통 해석→현실 조언 순서로 쓰세요. 건강은 의학적 진단처럼 쓰지 말고 생활관리 주의와 검진 권장 정도로만 표현하세요. 특정 질병 확정, 사고 시기 단정은 금지.`;
 }
 
-async function handleFaceReading(request, env, requestId = '') {
+async function handleFaceReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
   const oversizedRequest = getOversizedPhotoRequestError(request);
   if (oversizedRequest) return oversizedRequest;
   const { image, mimeType, gender, age, lang } = await request.json();
@@ -2422,7 +2429,50 @@ async function handleFaceReading(request, env, requestId = '') {
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
 
-  if (!env?.AI?.analyze) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
+  const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
+  let r2Key;
+  try {
+    r2Key = await saveKarmaAnalysisImageToR2(env, {
+      image: photoInput.image,
+      mimeType: photoInput.mimeType,
+      analysisType: 'face',
+      requestId,
+    });
+    analysisContext.r2Key = r2Key;
+  } catch (error) {
+    console.error('[KarmaAnalysis] required face image save failed:', error?.message || error);
+    return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageStorageFailed') }, 503);
+  }
+
+  if (analysisGateError) {
+    let gateResult = {};
+    try { gateResult = await analysisGateError.clone().json(); } catch (_) {}
+    const errorMessage = String(gateResult?.error || `HTTP ${analysisGateError.status}`);
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: gateResult,
+      errorMessage,
+    });
+    return analysisGateError;
+  }
+
+  if (!env?.AI?.analyze) {
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable');
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 503);
+  }
 
   const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'faceRejected');
   const prompt = `당신은 사진에서 관찰 가능한 얼굴 특징과 전통 관상 해석을 명확히 구분하는 관상 해설가입니다. 관상은 오락·자기성찰용 전통 해석이며 실제 성격, 능력, 건강, 재산, 가족관계, 미래를 판정하지 않습니다.
@@ -2486,13 +2536,6 @@ ${faceExpertRubric()}
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
   const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face');
-  const r2Key = await saveKarmaAnalysisImageToR2(env, {
-    image: photoInput.image,
-    mimeType: photoInput.mimeType,
-    analysisType: 'face',
-    requestId,
-  });
-  const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
@@ -2543,7 +2586,7 @@ ${faceExpertRubric()}
   return json(result);
 }
 
-async function handlePalmReading(request, env, requestId = '') {
+async function handlePalmReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
   const oversizedRequest = getOversizedPhotoRequestError(request);
   if (oversizedRequest) return oversizedRequest;
   const { image, mimeType, hand, dominant, gender, lang } = await request.json();
@@ -2551,7 +2594,55 @@ async function handlePalmReading(request, env, requestId = '') {
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
 
-  if (!env?.AI?.analyze) return json({ error: getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable') }, 503);
+  const analysisInput = {
+    hand: hand || '',
+    dominant: dominant || '',
+    gender: gender || '',
+    lang: analysisLang,
+  };
+  let r2Key;
+  try {
+    r2Key = await saveKarmaAnalysisImageToR2(env, {
+      image: photoInput.image,
+      mimeType: photoInput.mimeType,
+      analysisType: 'palm',
+      requestId,
+    });
+    analysisContext.r2Key = r2Key;
+  } catch (error) {
+    console.error('[KarmaAnalysis] required palm image save failed:', error?.message || error);
+    return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageStorageFailed') }, 503);
+  }
+
+  if (analysisGateError) {
+    let gateResult = {};
+    try { gateResult = await analysisGateError.clone().json(); } catch (_) {}
+    const errorMessage = String(gateResult?.error || `HTTP ${analysisGateError.status}`);
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: gateResult,
+      errorMessage,
+    });
+    return analysisGateError;
+  }
+
+  if (!env?.AI?.analyze) {
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable');
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 503);
+  }
   const handContext = buildPalmHandContext(hand, dominant, analysisLang);
 
   const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'palmRejected');
@@ -2620,18 +2711,6 @@ ${palmExpertRubric()}
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
   const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm');
-  const r2Key = await saveKarmaAnalysisImageToR2(env, {
-    image: photoInput.image,
-    mimeType: photoInput.mimeType,
-    analysisType: 'palm',
-    requestId,
-  });
-  const analysisInput = {
-    hand: hand || '',
-    dominant: dominant || '',
-    gender: gender || '',
-    lang: analysisLang,
-  };
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
