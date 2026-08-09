@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, koreanResponseStyleGuide, sanitizeKarmaAnalysisInput };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, koreanResponseStyleGuide, sanitizeKarmaAnalysisInput };`;
 
 const context = {
   console,
@@ -73,6 +73,14 @@ check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'faceRejected')), '영
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'palmRejected')), '영문 손금 거절 사유에 한글 없음');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'faceRejected')), '한글 관상 거절 사유 제공');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'palmRejected')), '한글 손금 거절 사유 제공');
+for (const key of ['incompleteAiResponse', 'tarotCardsRequired', 'invalidCardIds', 'aiUnavailable', 'serverError', 'birthDateRequired', 'bothBirthDatesRequired']) {
+  check(!/[가-힣]/.test(api.getKarmaTextAnalysisMessage('en', key)), `영문 ${key} 오류 응답에 한글 없음`);
+  check(/[가-힣]/.test(api.getKarmaTextAnalysisMessage('ko', key)), `한글 ${key} 오류 응답 제공`);
+}
+check(
+  /keywords:\s*responseLang === 'en' \? \(ai\.keywords\?\.\[i\] \|\| ''\)/.test(workerSource),
+  '영문 타로 카드별 키워드에 한국어 원본을 노출하지 않음',
+);
 check(api.koreanResponseStyleGuide('en') === '', '영문 AI 응답에는 한국어 문체 가드를 추가하지 않음');
 check(api.koreanResponseStyleGuide('ko').includes('처음부터 한국어로 쓴 글'), '한국어 AI 응답에 원문체 가드 제공');
 check(api.koreanResponseStyleGuide('ko').includes('JSON 키·구조·고정값'), '한국어 문체 가드가 구조화 응답 계약을 보존');

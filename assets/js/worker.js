@@ -1529,10 +1529,34 @@ function aiContractRetryInstruction(contractType, errors, context = {}) {
   return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.${exactShape}`;
 }
 
+const KARMA_TEXT_ANALYSIS_MESSAGES = {
+  ko: {
+    incompleteAiResponse: 'AI 응답 항목이 완전하지 않습니다. 잠시 후 다시 시도해주세요.',
+    tarotCardsRequired: '카드 객체 3개를 선택해야 합니다.',
+    invalidCardIds: '올바르지 않은 카드가 포함되어 있습니다.',
+    aiUnavailable: 'AI 서비스를 사용할 수 없습니다.',
+    serverError: '서버 오류가 발생했습니다.',
+    birthDateRequired: '생년월일은 필수입니다.',
+    bothBirthDatesRequired: '두 사람의 생년월일은 필수입니다.',
+  },
+  en: {
+    incompleteAiResponse: 'The AI response was incomplete. Please try again.',
+    tarotCardsRequired: 'Please select exactly three card objects.',
+    invalidCardIds: 'One or more selected cards are invalid.',
+    aiUnavailable: 'The AI service is unavailable.',
+    serverError: 'A server error occurred.',
+    birthDateRequired: 'Date of birth is required.',
+    bothBirthDatesRequired: 'Dates of birth are required for both people.',
+  },
+};
+
+function getKarmaTextAnalysisMessage(lang, key) {
+  const locale = lang === 'en' ? 'en' : 'ko';
+  return KARMA_TEXT_ANALYSIS_MESSAGES[locale][key] || KARMA_TEXT_ANALYSIS_MESSAGES[locale].serverError;
+}
+
 function incompleteAiResponseMessage(lang) {
-  return lang === 'en'
-    ? 'The AI response was incomplete. Please try again.'
-    : 'AI 응답 항목이 완전하지 않습니다. 잠시 후 다시 시도해주세요.';
+  return getKarmaTextAnalysisMessage(lang, 'incompleteAiResponse');
 }
 
 const KOREAN_NATIVE_PROSE_GUARD = `[한국어 원문체]
@@ -1830,12 +1854,14 @@ ${hasQuestion ? `\n중요: 모든 해석은 "${question}"이라는 질문과 연
 }
 
 async function handleTarotReading(request, env) {
+  let responseLang = 'ko';
   try {
     const body = await request.json();
     const { cards: selectedCards, question, lang } = body;
+    responseLang = lang === 'en' ? 'en' : 'ko';
 
     if (!selectedCards || !Array.isArray(selectedCards) || selectedCards.length !== 3) {
-      return json({ error: 'cards must be an array of 3 card objects' }, 400);
+      return json({ error: getKarmaTextAnalysisMessage(responseLang, 'tarotCardsRequired') }, 400);
     }
 
     // 카드 정보 매핑
@@ -1846,11 +1872,11 @@ async function handleTarotReading(request, env) {
     }).filter(Boolean);
 
     if (cards.length !== 3) {
-      return json({ error: 'Invalid card IDs' }, 400);
+      return json({ error: getKarmaTextAnalysisMessage(responseLang, 'invalidCardIds') }, 400);
     }
 
     if (!env?.AI?.complete) {
-      return json({ error: 'AI service unavailable' }, 503);
+      return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
     }
 
     const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
@@ -1866,7 +1892,7 @@ async function handleTarotReading(request, env) {
         name: c.name,
         nameKo: c.nameKo,
         reversed: c.reversed,
-        keywords: c.reversed ? c.rev : c.up,
+        keywords: responseLang === 'en' ? (ai.keywords?.[i] || '') : (c.reversed ? c.rev : c.up),
         interpretation: ai.cards?.[i]?.interpretation || '',
       })),
       overall: ai.overall || '',
@@ -1874,7 +1900,7 @@ async function handleTarotReading(request, env) {
       keywords: ai.keywords || [],
     });
   } catch (e) {
-    return json({ error: e.message || 'Server error' }, 500);
+    return json({ error: getKarmaTextAnalysisMessage(responseLang, 'serverError') }, 500);
   }
 }
 
@@ -3482,7 +3508,7 @@ async function handleDeleteProfile(request, env) {
 
 async function handleSajuAnalysis(request, env) {
   const { birth_date, birth_time, gender, lang, yajasi, birth_location } = await request.json();
-  if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
@@ -3503,7 +3529,7 @@ async function handleSajuAnalysis(request, env) {
 async function handleCompatQuick(request, env) {
   const { personA, personB, lang } = await request.json();
   if (!personA?.birth_date || !personB?.birth_date) {
-    return json({ error: '두 사람의 생년월일은 필수입니다' }, 400);
+    return json({ error: getKarmaTextAnalysisMessage(lang, 'bothBirthDatesRequired') }, 400);
   }
 
   const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '', !!personA.yajasi, personA.birth_location || '');
@@ -3531,12 +3557,12 @@ async function handleCompatQuick(request, env) {
 
 async function handleFortune(request, env) {
   const { birth_date, birth_time, gender, year: reqYear, lang, yajasi, birth_location } = await request.json();
-  if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
-  if (!env?.AI?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(lang, 'aiUnavailable') }, 503);
 
   const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env, null, 'fortune');
   if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
@@ -3546,7 +3572,7 @@ async function handleFortune(request, env) {
 
 async function handleDaily(request, env) {
   const { birth_date, birth_time, gender, lang, yajasi, target_date, birth_location } = await request.json();
-  if (!birth_date) return json({ error: '생년월일은 필수입니다' }, 400);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false, birth_location || '');
   let todayStr;
@@ -3557,7 +3583,7 @@ async function handleDaily(request, env) {
     todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   }
 
-  if (!env?.AI?.complete) return json({ error: 'AI 서비스를 사용할 수 없습니다' }, 503);
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(lang, 'aiUnavailable') }, 503);
 
   const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env, null, 'daily');
   if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
