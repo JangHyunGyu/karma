@@ -242,7 +242,7 @@ async function testUnifiedVisionRoute() {
     'Analyze this face.',
     'https://example.com/face.jpg',
     env,
-    'en',
+    'ko',
     'face'
   );
   check(request?.appId === 'karma', '관상·손금 요청이 Karma 전용 모델 범위를 사용');

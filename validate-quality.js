@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, koreanResponseStyleGuide, sanitizeKarmaAnalysisInput };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, koreanResponseStyleGuide, karmaAiLanguageInstruction, validateKarmaAiContract, sanitizeKarmaAnalysisInput };`;
 
 const context = {
   console,
@@ -68,7 +68,7 @@ for (const page of ['saju', 'daily', 'fortune', 'compat', 'tarot', 'face', 'palm
 
 console.log('\n🧭 사주 프롬프트 근거·변별력');
 check(workerSource.includes("'Content-Type': 'application/json; charset=utf-8'"), 'API JSON 응답에 UTF-8 문자셋 명시');
-check(api.normalizePhotoAnalysisLang('en') === 'en' && api.normalizePhotoAnalysisLang('ko') === 'ko', '사진 분석 요청 언어 정규화');
+check(api.normalizePhotoAnalysisLang('en-US') === 'en' && api.normalizePhotoAnalysisLang('ko-KR') === 'ko', '사진 분석 요청 언어 정규화');
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'faceRejected')), '영문 관상 거절 사유에 한글 없음');
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'palmRejected')), '영문 손금 거절 사유에 한글 없음');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'faceRejected')), '한글 관상 거절 사유 제공');
@@ -84,6 +84,50 @@ check(
 check(api.koreanResponseStyleGuide('en') === '', '영문 AI 응답에는 한국어 문체 가드를 추가하지 않음');
 check(api.koreanResponseStyleGuide('ko').includes('처음부터 한국어로 쓴 글'), '한국어 AI 응답에 원문체 가드 제공');
 check(api.koreanResponseStyleGuide('ko').includes('JSON 키·구조·고정값'), '한국어 문체 가드가 구조화 응답 계약을 보존');
+check(api.karmaAiLanguageInstruction('en').includes('Do not output Hangul'), '영문 AI 응답에 한글·한자 금지 지시 제공');
+check(api.karmaAiLanguageInstruction('ko').includes('영문 단어나 로마자 표기'), '한국어 AI 응답에 영문 혼용 금지 지시 제공');
+const languagePureSaju = {
+  pillar_reading: { year: 'Year reading.', month: 'Month reading.', day: 'Day reading.', hour: 'Hour reading.' },
+  personality: 'Personality reading.',
+  strengths: ['Strength one.', 'Strength two.', 'Strength three.'],
+  cautions: ['Caution one.', 'Caution two.', 'Caution three.'],
+  love_style: 'Love reading.',
+  career: 'Career reading.',
+  daeun_reading: ['Cycle reading.'],
+  advice: 'Advice.',
+};
+check(
+  api.validateKarmaAiContract('saju', languagePureSaju, { hasTime: true, daeunCount: 1, lang: 'en' }).ok,
+  '영문 사주 계약은 영문 전용 응답을 허용',
+);
+const mixedEnglishSaju = JSON.parse(JSON.stringify(languagePureSaju));
+mixedEnglishSaju.career = 'Career guidance with 추진력.';
+check(
+  api.validateKarmaAiContract('saju', mixedEnglishSaju, { hasTime: true, daeunCount: 1, lang: 'en' }).errors.includes('career:english_only'),
+  '영문 사주 응답의 한글 혼용을 계약 오류로 거절',
+);
+const mixedKoreanFortune = {
+  year_summary: '올해의 흐름입니다.', love: '관계 흐름입니다.', money: '재물 흐름입니다.',
+  health: '건강 흐름입니다.', career: 'Career advice.', advice: '조언입니다.',
+  lucky: { color: '파랑', number: 7, direction: '동쪽', month: 9 },
+};
+check(
+  api.validateKarmaAiContract('fortune', mixedKoreanFortune, { lang: 'ko' }).errors.includes('career:korean_only'),
+  '한국어 운세 응답의 영문 혼용을 계약 오류로 거절',
+);
+const mixedEnglishPalm = {
+  overall_score: 70, overall_grade: 'B', quality_assessment: 'Clear photo.',
+  visual_evidence: Array.from({ length: 8 }, (_, index) => `Visible detail ${index + 1}.`),
+  summary: 'Summary.', advice: 'Advice.',
+  lines: Array.from({ length: 6 }, (_, index) => ({ name: `Line ${index + 1}`, length: 'Long', score: 70, desc: 'Description.' })),
+  hand_shape: { type: 'Earth Type (흙형)', desc: 'Description.' },
+  fortune: { wealth: 'Wealth.', career: 'Career.', love: 'Love.', health: 'Health.' },
+};
+check(
+  api.validateKarmaAiContract('palm', mixedEnglishPalm, { lang: 'en' }).errors.includes('hand_shape.type:english_only'),
+  '영문 손금 응답의 한글 유형명을 계약 오류로 거절',
+);
+check(workerSource.includes('accumulated = mergeAiContractPatch(accumulated, parsed)'), '사진 분석 재시도도 언어 오류 필드 패치를 병합');
 check(workerSource.includes('prompt: modelPrompt'), '사진 분석에도 한국어 원문체 가드를 전달');
 for (const page of ['face', 'face-en', 'palm', 'palm-en']) {
   const html = fs.readFileSync(path.join(root, `${page}.html`), 'utf8');

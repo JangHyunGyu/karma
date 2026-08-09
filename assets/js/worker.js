@@ -1455,17 +1455,44 @@ function validatePalmAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
-function validateKarmaAiContract(contractType, value, context = {}) {
-  switch (contractType) {
-    case 'saju': return validateSajuAiResponse(value, context);
-    case 'tarot': return validateTarotAiResponse(value);
-    case 'fortune': return validateFortuneAiResponse(value);
-    case 'daily': return validateDailyAiResponse(value);
-    case 'compat': return validateCompatAiResponse(value);
-    case 'face': return validateFaceAiResponse(value);
-    case 'palm': return validatePalmAiResponse(value);
-    default: return { ok: true, errors: [] };
+const KARMA_CJK_TEXT_PATTERN = /[\u3400-\u9fff\uac00-\ud7a3]/;
+const KARMA_LATIN_WORD_PATTERN = /[A-Za-z]{2,}/;
+
+function addKarmaAiLanguageErrors(value, lang, errors, path = '') {
+  if (typeof value === 'string') {
+    const errorPath = path || 'root';
+    if (lang === 'en' && KARMA_CJK_TEXT_PATTERN.test(value)) {
+      errors.push(`${errorPath}:english_only`);
+    } else if (lang === 'ko' && KARMA_LATIN_WORD_PATTERN.test(value)) {
+      errors.push(`${errorPath}:korean_only`);
+    }
+    return;
   }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => addKarmaAiLanguageErrors(item, lang, errors, `${path}[${index}]`));
+    return;
+  }
+  if (!isPlainAiObject(value)) return;
+  for (const [key, item] of Object.entries(value)) {
+    addKarmaAiLanguageErrors(item, lang, errors, path ? `${path}.${key}` : key);
+  }
+}
+
+function validateKarmaAiContract(contractType, value, context = {}) {
+  let contract;
+  switch (contractType) {
+    case 'saju': contract = validateSajuAiResponse(value, context); break;
+    case 'tarot': contract = validateTarotAiResponse(value); break;
+    case 'fortune': contract = validateFortuneAiResponse(value); break;
+    case 'daily': contract = validateDailyAiResponse(value); break;
+    case 'compat': contract = validateCompatAiResponse(value); break;
+    case 'face': contract = validateFaceAiResponse(value); break;
+    case 'palm': contract = validatePalmAiResponse(value); break;
+    default: contract = { ok: true, errors: [] };
+  }
+  const lang = normalizeKarmaTextAnalysisLang(context.lang);
+  if (context.lang != null && value != null) addKarmaAiLanguageErrors(value, lang, contract.errors);
+  return { ok: contract.errors.length === 0, errors: contract.errors };
 }
 
 function mergeAiContractPatch(base, patch) {
@@ -1526,7 +1553,8 @@ function aiContractPatchShape(contractType, errors, context = {}) {
 function aiContractRetryInstruction(contractType, errors, context = {}) {
   const patchShape = aiContractPatchShape(contractType, errors, context);
   const exactShape = Object.keys(patchShape).length ? ` Match this exact patch shape: ${JSON.stringify(patchShape)}` : '';
-  return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.${exactShape}`;
+  const languageRule = karmaAiLanguageInstruction(context.lang);
+  return `CRITICAL JSON PATCH RETRY (${contractType}): Valid fields from the previous generation are already saved. Return one valid JSON object containing ONLY the missing or invalid fields listed here, with their original nesting and exact array lengths: ${errors.slice(0, 20).join(', ')}. Include every listed field. Keep each string to 1-2 concise sentences and each array item to 1 concise sentence. Do not repeat fields that are not listed.${exactShape}${languageRule ? ` ${languageRule}` : ''}`;
 }
 
 const KARMA_TEXT_ANALYSIS_MESSAGES = {
@@ -1550,8 +1578,19 @@ const KARMA_TEXT_ANALYSIS_MESSAGES = {
   },
 };
 
+function normalizeKarmaTextAnalysisLang(lang) {
+  return String(lang || 'ko').trim().toLowerCase().startsWith('en') ? 'en' : 'ko';
+}
+
+function karmaAiLanguageInstruction(lang) {
+  if (lang == null) return '';
+  return normalizeKarmaTextAnalysisLang(lang) === 'en'
+    ? 'LANGUAGE PURITY: Every user-visible string value must use English only. Do not output Hangul, CJK ideographs, or untranslated Korean/Chinese terms; use English names or romanization instead.'
+    : '언어 순수성: 사용자에게 보이는 모든 문자열 값은 한국어로만 작성하세요. 영문 단어나 로마자 표기를 섞지 말고 필요한 용어도 한국어로 풀어 쓰세요.';
+}
+
 function getKarmaTextAnalysisMessage(lang, key) {
-  const locale = lang === 'en' ? 'en' : 'ko';
+  const locale = normalizeKarmaTextAnalysisLang(lang);
   return KARMA_TEXT_ANALYSIS_MESSAGES[locale][key] || KARMA_TEXT_ANALYSIS_MESSAGES[locale].serverError;
 }
 
@@ -1576,9 +1615,12 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
   const promptText = String(isStructured ? prompt.user : prompt || '');
   const promptPreview = promptText.slice(0, 100);
   const baseSystem = isStructured ? String(prompt.system || '') : '';
-  const proseGuard = koreanResponseStyleGuide(isStructured ? prompt.lang : 'ko');
+  const responseLang = isStructured ? normalizeKarmaTextAnalysisLang(prompt.lang) : 'ko';
+  const validationContext = { ...contractContext, lang: responseLang };
+  const proseGuard = koreanResponseStyleGuide(responseLang);
+  const languageGuard = karmaAiLanguageInstruction(responseLang);
   const completenessGuard = contractType ? aiContractCompletenessInstruction(contractType) : '';
-  const systemText = [baseSystem, proseGuard, completenessGuard].filter(Boolean).join('\n\n');
+  const systemText = [baseSystem, proseGuard, languageGuard, completenessGuard].filter(Boolean).join('\n\n');
   const _contentsSize = promptText.length;
 
   if (!_env?.AI?.complete) {
@@ -1588,12 +1630,12 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
 
   try {
     const targetedPatchRetry = contractType === 'saju' || contractType === 'tarot';
-    const maxAttempts = targetedPatchRetry ? 3 : (contractType ? 2 : 1);
+    const maxAttempts = contractType ? 3 : 1;
     let contractErrors = [];
     let accumulated = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const retryInstruction = attempt > 0
-        ? aiContractRetryInstruction(contractType, contractErrors, contractContext)
+        ? aiContractRetryInstruction(contractType, contractErrors, validationContext)
         : '';
       const attemptSystem = targetedPatchRetry && attempt > 0
         ? [proseGuard, retryInstruction].filter(Boolean).join('\n\n')
@@ -1634,7 +1676,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         provider_route: result?.provider || null,
       });
       accumulated = mergeAiContractPatch(accumulated, parsed);
-      const contract = validateKarmaAiContract(contractType, accumulated, contractContext);
+      const contract = validateKarmaAiContract(contractType, accumulated, validationContext);
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
     }
@@ -1751,7 +1793,7 @@ const TAROT_MAJOR_ARCANA = [
 ];
 
 function buildTarotPrompt(cards, question, lang) {
-  const isEn = lang === 'en';
+  const isEn = normalizeKarmaTextAnalysisLang(lang) === 'en';
   const cardDescs = cards.map((c, i) => {
     const keywords = c.reversed ? c.rev : c.up;
     if (isEn) {
@@ -1858,7 +1900,7 @@ async function handleTarotReading(request, env) {
   try {
     const body = await request.json();
     const { cards: selectedCards, question, lang } = body;
-    responseLang = lang === 'en' ? 'en' : 'ko';
+    responseLang = normalizeKarmaTextAnalysisLang(lang);
 
     if (!selectedCards || !Array.isArray(selectedCards) || selectedCards.length !== 3) {
       return json({ error: getKarmaTextAnalysisMessage(responseLang, 'tarotCardsRequired') }, 400);
@@ -1936,7 +1978,7 @@ const PHOTO_ANALYSIS_MESSAGES = {
 };
 
 function normalizePhotoAnalysisLang(lang) {
-  return lang === 'en' ? 'en' : 'ko';
+  return normalizeKarmaTextAnalysisLang(lang);
 }
 
 function getPhotoAnalysisMessage(lang, key) {
@@ -1992,15 +2034,18 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   }
 
   const proseGuard = koreanResponseStyleGuide(normalizePhotoAnalysisLang(lang));
-  const basePrompt = [String(prompt || ''), proseGuard].filter(Boolean).join('\n\n');
-  const maxAttempts = contractType ? 2 : 1;
+  const responseLang = normalizePhotoAnalysisLang(lang);
+  const languageGuard = karmaAiLanguageInstruction(responseLang);
+  const basePrompt = [String(prompt || ''), proseGuard, languageGuard].filter(Boolean).join('\n\n');
+  const maxAttempts = contractType ? 3 : 1;
   let contractErrors = [];
   let lastError = null;
+  let accumulated = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const modelPrompt = [
         basePrompt,
-        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors) : '',
+        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors, { lang: responseLang }) : '',
       ].filter(Boolean).join('\n\n');
       const result = await env.AI.analyze({
         appId: 'karma',
@@ -2017,8 +2062,9 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         continue;
       }
       const parsed = parseAiJsonResponse(result.text);
-      const contract = validateKarmaAiContract(contractType, parsed);
-      if (contract.ok) return parsed;
+      accumulated = mergeAiContractPatch(accumulated, parsed);
+      const contract = validateKarmaAiContract(contractType, accumulated, { lang: responseLang });
+      if (contract.ok) return accumulated;
       contractErrors = contract.errors;
       lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
     } catch (error) {
@@ -2930,7 +2976,7 @@ function buildHourlySignals(saju, dayGan) {
 }
 
 function langInstruction(lang) {
-  if (lang === 'en') return '\n\nIMPORTANT: You MUST respond entirely in English. All text values in the JSON must be in English. Keep Korean Saju terms (like 갑, 을, 목, 화 etc.) but add English translations in parentheses.';
+  if (normalizeKarmaTextAnalysisLang(lang) === 'en') return '\n\nIMPORTANT: You MUST respond entirely in English. Every text value in the JSON must contain English and romanized Saju names only. Never include Hangul, Chinese characters, Korean labels, or untranslated Korean/Chinese terms.';
   return '';
 }
 
@@ -3508,28 +3554,30 @@ async function handleDeleteProfile(request, env) {
 
 async function handleSajuAnalysis(request, env) {
   const { birth_date, birth_time, gender, lang, yajasi, birth_location } = await request.json();
-  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
   const ai = await callKarmaTextAi(
-    buildSajuPrompt(saju, gender, lang, birth_date),
+    buildSajuPrompt(saju, gender, responseLang, birth_date),
     'saju', env, null, 'saju', {
       hasTime: saju.hasTime,
       daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
     }
   );
-  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
 
-  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ ...out, ai });
 }
 
 async function handleCompatQuick(request, env) {
   const { personA, personB, lang } = await request.json();
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
   if (!personA?.birth_date || !personB?.birth_date) {
-    return json({ error: getKarmaTextAnalysisMessage(lang, 'bothBirthDatesRequired') }, 400);
+    return json({ error: getKarmaTextAnalysisMessage(responseLang, 'bothBirthDatesRequired') }, 400);
   }
 
   const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '', !!personA.yajasi, personA.birth_location || '');
@@ -3538,16 +3586,16 @@ async function handleCompatQuick(request, env) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(lang) }, 503);
+  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
   const ai = await callKarmaTextAi(
-    buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, lang, personA.birth_date, personB.birth_date),
+    buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, personA.birth_date, personB.birth_date),
     'compat', env, null, 'compat'
   );
-  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
 
-  const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
-  const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
-  const outRelations = lang === 'en' ? {
+  const outA = responseLang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = responseLang === 'en' ? translateSajuToEn(sajuB) : sajuB;
+  const outRelations = responseLang === 'en' ? {
     sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
     sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
     same: relations.same,
@@ -3557,22 +3605,24 @@ async function handleCompatQuick(request, env) {
 
 async function handleFortune(request, env) {
   const { birth_date, birth_time, gender, year: reqYear, lang, yajasi, birth_location } = await request.json();
-  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
   const year = reqYear || new Date().getFullYear();
 
-  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(lang, 'aiUnavailable') }, 503);
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
-  const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, lang, birth_date), 'fortune', env, null, 'fortune');
-  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
-  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, responseLang, birth_date), 'fortune', env, null, 'fortune');
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
 }
 
 async function handleDaily(request, env) {
   const { birth_date, birth_time, gender, lang, yajasi, target_date, birth_location } = await request.json();
-  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(lang, 'birthDateRequired') }, 400);
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false, birth_location || '');
   let todayStr;
@@ -3583,11 +3633,11 @@ async function handleDaily(request, env) {
     todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   }
 
-  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(lang, 'aiUnavailable') }, 503);
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
-  const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, lang, birth_date), 'daily', env, null, 'daily');
-  if (!ai) return json({ error: incompleteAiResponseMessage(lang) }, 502);
-  const out = lang === 'en' ? translateSajuToEn(saju) : saju;
+  const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, responseLang, birth_date), 'daily', env, null, 'daily');
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
 }
 
@@ -3639,6 +3689,7 @@ async function handleMatchList(userId, env) {
 }
 
 async function handleMatchDetail(idA, idB, env, lang) {
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
   const [userA, userB] = await Promise.all([
     env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idA).first(),
     env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idB).first(),
@@ -3651,13 +3702,13 @@ async function handleMatchDetail(idA, idB, env, lang) {
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
-  const outA = lang === 'en' ? translateSajuToEn(sajuA) : sajuA;
-  const outB = lang === 'en' ? translateSajuToEn(sajuB) : sajuB;
+  const outA = responseLang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = responseLang === 'en' ? translateSajuToEn(sajuB) : sajuB;
   const baseResult = {
-    user_a: { user_id: idA, nickname: userA.nickname, age: calcAge(userA.birth_date), gender: userA.gender, ohang: lang === 'en' ? (OHANG_EN[sajuA.ilganOhang]||sajuA.ilganOhang) : sajuA.ilganOhang },
-    user_b: { user_id: idB, nickname: userB.nickname, age: calcAge(userB.birth_date), gender: userB.gender, ohang: lang === 'en' ? (OHANG_EN[sajuB.ilganOhang]||sajuB.ilganOhang) : sajuB.ilganOhang },
+    user_a: { user_id: idA, nickname: userA.nickname, age: calcAge(userA.birth_date), gender: userA.gender, ohang: responseLang === 'en' ? (OHANG_EN[sajuA.ilganOhang]||sajuA.ilganOhang) : sajuA.ilganOhang },
+    user_b: { user_id: idB, nickname: userB.nickname, age: calcAge(userB.birth_date), gender: userB.gender, ohang: responseLang === 'en' ? (OHANG_EN[sajuB.ilganOhang]||sajuB.ilganOhang) : sajuB.ilganOhang },
     score, grade, saju_a: outA, saju_b: outB,
-    relations: lang === 'en' ? {
+    relations: responseLang === 'en' ? {
       sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
       sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
       same: relations.same,
@@ -3667,7 +3718,7 @@ async function handleMatchDetail(idA, idB, env, lang) {
   if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
 
   const ai = await callKarmaTextAi(
-    buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, lang, userA.birth_date, userB.birth_date),
+    buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date),
     'match-detail', env, null, 'compat'
   );
   return json({ ...baseResult, ai });
@@ -3958,7 +4009,7 @@ async function handleShareSave(request, env) {
 
   const payload = JSON.stringify({
     type,
-    lang: lang === 'en' ? 'en' : 'ko',
+    lang: normalizeKarmaTextAnalysisLang(lang),
     input: input || null,
     result,
     createdAt: new Date().toISOString(),
