@@ -2004,6 +2004,35 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
 }
 
+async function saveKarmaAnalysisImageToR2(env, {
+  image,
+  mimeType,
+  analysisType,
+  requestId,
+}) {
+  if (!env?.KARMA_IMAGE_BUCKET) return '';
+
+  const extension = mimeType === 'image/png'
+    ? 'png'
+    : mimeType === 'image/webp'
+      ? 'webp'
+      : 'jpg';
+  const type = analysisType === 'palm' ? 'palm' : 'face';
+  const safeRequestId = String(requestId || crypto.randomUUID()).replace(/[^a-zA-Z0-9-]/g, '');
+  const key = `karma/${type}/${Date.now()}-${safeRequestId || crypto.randomUUID()}.${extension}`;
+
+  try {
+    const bytes = Uint8Array.from(atob(String(image || '')), character => character.charCodeAt(0));
+    await env.KARMA_IMAGE_BUCKET.put(key, bytes, {
+      httpMetadata: { contentType: mimeType },
+    });
+    return key;
+  } catch (error) {
+    console.error('[KarmaAnalysis] private R2 save failed:', error?.message || error);
+    return '';
+  }
+}
+
 async function ensureKarmaImageAnalysesTable(db) {
   if (_karmaImageAnalysesTableReady) return;
   await db.prepare(`
@@ -2457,12 +2486,18 @@ ${faceExpertRubric()}
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
   const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face');
+  const r2Key = await saveKarmaAnalysisImageToR2(env, {
+    image: photoInput.image,
+    mimeType: photoInput.mimeType,
+    analysisType: 'face',
+    requestId,
+  });
   const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'face',
       status: 'error',
       input: analysisInput,
@@ -2474,7 +2509,7 @@ ${faceExpertRubric()}
   if (result._apiError) {
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'face',
       status: 'error',
       input: analysisInput,
@@ -2487,7 +2522,7 @@ ${faceExpertRubric()}
     const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'face',
       status: 'rejected',
       input: analysisInput,
@@ -2498,7 +2533,7 @@ ${faceExpertRubric()}
   }
   await recordKarmaImageAnalysis(env, {
     requestId,
-    r2Key: '',
+    r2Key,
     analysisType: 'face',
     status: 'success',
     input: analysisInput,
@@ -2585,6 +2620,12 @@ ${palmExpertRubric()}
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
   const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm');
+  const r2Key = await saveKarmaAnalysisImageToR2(env, {
+    image: photoInput.image,
+    mimeType: photoInput.mimeType,
+    analysisType: 'palm',
+    requestId,
+  });
   const analysisInput = {
     hand: hand || '',
     dominant: dominant || '',
@@ -2595,7 +2636,7 @@ ${palmExpertRubric()}
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'palm',
       status: 'error',
       input: analysisInput,
@@ -2607,7 +2648,7 @@ ${palmExpertRubric()}
   if (result._apiError) {
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'palm',
       status: 'error',
       input: analysisInput,
@@ -2620,7 +2661,7 @@ ${palmExpertRubric()}
     const localizedResult = { ...result, error: rejectionMessage };
     await recordKarmaImageAnalysis(env, {
       requestId,
-      r2Key: '',
+      r2Key,
       analysisType: 'palm',
       status: 'rejected',
       input: analysisInput,
@@ -2631,7 +2672,7 @@ ${palmExpertRubric()}
   }
   await recordKarmaImageAnalysis(env, {
     requestId,
-    r2Key: '',
+    r2Key,
     analysisType: 'palm',
     status: 'success',
     input: analysisInput,

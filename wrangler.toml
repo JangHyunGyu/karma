@@ -12,6 +12,10 @@ database_id = "babeec1b-1079-4a44-aefe-e1ffaa01f7ff"
 binding = "R2_BUCKET"
 bucket_name = "archerlab-r2"
 
+[[r2_buckets]]
+binding = "KARMA_IMAGE_BUCKET"
+bucket_name = "archerlab-karma-private"
+
 [[kv_namespaces]]
 binding = "KARMA_SHARE"
 id = "36de9b5fcee54d40964bcc124d8a4ad4"
