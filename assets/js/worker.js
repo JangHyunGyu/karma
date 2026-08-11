@@ -1613,7 +1613,6 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
   const endpoint = _caller || 'unknown';
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
   const promptText = String(isStructured ? prompt.user : prompt || '');
-  const promptPreview = promptText.slice(0, 100);
   const baseSystem = isStructured ? String(prompt.system || '') : '';
   const responseLang = isStructured ? normalizeKarmaTextAnalysisLang(prompt.lang) : 'ko';
   const validationContext = { ...contractContext, lang: responseLang };
@@ -1624,7 +1623,11 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
   const _contentsSize = promptText.length;
 
   if (!_env?.AI?.complete) {
-    await logApiError(_env, `[${endpoint}] Karma AI text service missing`, '', { endpoint, promptPreview });
+    await logApiError(_env, `[${endpoint}] Karma AI text service missing`, '', {
+      endpoint,
+      contractType,
+      promptChars: _contentsSize,
+    });
     return null;
   }
 
@@ -1683,7 +1686,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
     await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, contractErrors.join(', '), {
       endpoint,
       contractType,
-      promptPreview,
+      promptChars: _contentsSize,
     });
     return null;
   } catch (error) {
@@ -1691,7 +1694,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
       _env,
       `[${endpoint}] Karma AI text request failed`,
       error?.stack || error?.message || String(error),
-      { endpoint, promptPreview }
+      { endpoint, contractType, promptChars: _contentsSize }
     );
     return null;
   }

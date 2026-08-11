@@ -203,6 +203,8 @@ for (const type of ['saju', 'fortune', 'daily', 'tarot', 'compat', 'face', 'palm
 }
 check(workerSource.includes('CREATE TABLE IF NOT EXISTS karma_analyses'), '통합 Karma 분석 테이블 생성 계약 존재');
 check(workerSource.includes('INSERT OR IGNORE INTO karma_analyses'), '기존 관상·손금 기록 자동 편입 계약 존재');
+check(!workerSource.includes('promptPreview'), 'AI 오류 로그에 사용자 프롬프트 원문을 저장하지 않음');
+check(workerSource.includes('promptChars: _contentsSize'), 'AI 오류 로그에는 비식별 프롬프트 길이만 저장');
 const sanitizedImageInput = api.sanitizeKarmaAnalysisInput({
   image: 'aGVsbG8=',
   nested: { image_data: 'd29ybGQ=', note: 'keep this' },
