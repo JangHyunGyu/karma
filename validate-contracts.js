@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callKarmaTextAi, callKarmaVisionAi };`;
+workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callKarmaTextAi, callKarmaVisionAi, buildKarmaPromptCacheKey };`;
 
 const context = {
   console,
@@ -247,7 +247,45 @@ async function testUnifiedVisionRoute() {
   );
   check(request?.appId === 'karma', '관상·손금 요청이 Karma 전용 모델 범위를 사용');
   check(request?.media?.[0]?.type === 'image', '관상·손금 요청이 이미지 입력을 전달');
+  check(!Object.prototype.hasOwnProperty.call(request || {}, 'cacheKey'), '고유 이미지 요청에는 텍스트 접두사 캐시 키를 보내지 않음');
   check(result?.overall_score === face.overall_score, '관상·손금 응답이 공통 계약 검증을 통과');
+}
+
+async function testTextPromptCacheAffinity() {
+  const requests = [];
+  const env = {
+    AI: {
+      async complete(input) {
+        requests.push(clone(input));
+        return {
+          text: JSON.stringify(fortune),
+          usage: {},
+          model: 'google/gemma-4-31b-it',
+          provider: 'openrouter',
+          providerName: 'Venice',
+          providerRoute: 'openrouter:venice',
+        };
+      },
+    },
+  };
+
+  await api.callKarmaTextAi(
+    { system: 'Stable fortune contract.', user: 'Private birth input A.', lang: 'ko' },
+    'fortune', env, null, 'fortune'
+  );
+  await api.callKarmaTextAi(
+    { system: 'Stable fortune contract.', user: 'Different private birth input B.', lang: 'ko' },
+    'fortune', env, null, 'fortune'
+  );
+  await api.callKarmaTextAi(
+    { system: 'Changed fortune contract.', user: 'Private birth input A.', lang: 'ko' },
+    'fortune', env, null, 'fortune'
+  );
+
+  check(requests.every(request => request.cacheKey?.startsWith('karma:fortune:fortune:ko:s')), 'Karma 텍스트 요청이 범위가 명시된 안정 캐시 키를 전달');
+  check(requests[0]?.cacheKey === requests[1]?.cacheKey, '개인별 사용자 입력이 달라도 같은 시스템 접두사는 캐시 계보를 공유');
+  check(requests[0]?.cacheKey !== requests[2]?.cacheKey, '시스템 계약이 바뀌면 Karma 캐시 계보를 분리');
+  check(!requests.some(request => request.cacheKey.includes('Private') || request.cacheKey.includes('birth')), '개인 입력은 Karma 캐시 키에 포함하지 않음');
 }
 
 async function testContractPatchRetry(type, partial, patch, contractContext, verify) {
@@ -295,6 +333,7 @@ Promise.resolve()
     result => api.validateKarmaAiContract('tarot', result).ok && result.overall === text
   ))
   .then(() => testPersistentContractFailure())
+  .then(() => testTextPromptCacheAffinity())
   .then(() => testUnifiedVisionRoute())
   .then(() => {
   console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);

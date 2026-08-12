@@ -1609,6 +1609,29 @@ function koreanResponseStyleGuide(lang = 'ko') {
   return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
 }
 
+function hashKarmaPromptCacheText(value) {
+  let hash = 2166136261;
+  for (const character of String(value || '')) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function buildKarmaPromptCacheKey(endpoint, contractType, lang, systemText) {
+  const stableSystem = String(systemText || '');
+  if (!stableSystem.trim()) return '';
+  const safePart = (value, fallback) => String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+  const endpointPart = safePart(endpoint, 'unknown');
+  const contractPart = safePart(contractType, 'text');
+  const languagePart = safePart(normalizeKarmaTextAnalysisLang(lang), 'ko');
+  return `karma:${endpointPart}:${contractPart}:${languagePart}:s${stableSystem.length.toString(36)}_${hashKarmaPromptCacheText(stableSystem)}`;
+}
+
 async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', contractContext = {}) {
   const endpoint = _caller || 'unknown';
   const isStructured = typeof prompt === 'object' && prompt.system && prompt.user;
@@ -1652,10 +1675,12 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
           { role: 'user', content: attemptPrompt },
         ]
         : [{ role: 'user', content: attemptPrompt }];
+      const cacheKey = buildKarmaPromptCacheKey(endpoint, contractType, responseLang, attemptSystem);
       const attemptStart = Date.now();
       const result = await _env.AI.complete({
         appId: 'karma',
         messages,
+        cacheKey,
         responseFormat: 'json_object',
         temperature: attempt > 0 ? 0.2 : 0.5,
         maxTokens: 16384,
@@ -1664,7 +1689,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
       const usage = result?.usage || {};
       await logPerfStats(_env, _ctx, {
         app: `karma:${endpoint}`,
-        cache_key: null,
+        cache_key: cacheKey || null,
         cache_hit: Number(usage.prompt_cache_hit_tokens || 0) > 0 ? 1 : 0,
         prompt_tokens: usage.prompt_tokens || 0,
         cached_tokens: usage.prompt_cache_hit_tokens || 0,
@@ -1676,7 +1701,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         used_key_idx: attempt,
         elapsed_ms: Date.now() - attemptStart,
         model: result?.model || null,
-        provider_route: result?.provider || null,
+        provider_route: result?.providerRoute || result?.providerName || result?.provider || null,
       });
       accumulated = mergeAiContractPatch(accumulated, parsed);
       const contract = validateKarmaAiContract(contractType, accumulated, validationContext);
