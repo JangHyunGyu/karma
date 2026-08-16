@@ -1611,8 +1611,22 @@ const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
 - 문맥상 분명한 주어와 대명사는 자연스럽게 생략합니다. 같은 문장 시작·접속사·종결어미와 기계적인 열거를 반복하지 않고 문장 길이와 호흡을 내용에 맞게 조절합니다.
 - 입력이나 작업 과정을 메타적으로 요약하지 말고, 요청된 장르와 출력 형식에 맞는 결과만 제시합니다.`;
 
-function koreanResponseStyleGuide(lang = 'ko') {
-  return String(lang || 'ko').toLowerCase().startsWith('en') ? '' : KOREAN_NATIVE_PROSE_GUARD;
+const ENGLISH_PLAIN_PROSE_GUARD = `[Clear, plain English]
+- Write every user-visible sentence as natural English, not as a literal translation.
+- Assume the reader knows nothing about Saju, tarot, face reading, or palm reading. Use familiar everyday words that make sense on the first read.
+- State what the reading means in daily life first. Give the reason briefly afterward.
+- Treat specialist terms such as natal chart, day master, luck cycle, annual influence, daily influence, Ten Gods, resource, output, wealth, officer, companion, combination, clash, and Three Zones as internal evidence. Prefer a plain-English explanation in the response. If a term is essential, define it immediately the first time, such as "luck cycle (a ten-year period in the reading)."
+- Do not stack jargon, romanized names, symbols, elemental counts, or raw formulas in one sentence. Preserve input facts, proper nouns, numbers, units, required JSON keys, structure, and fixed values.
+- If an [Evidence: ...] label is required, do not fill it with raw calculations. Use a short explanation anyone can understand, such as "your chart puts more emphasis on turning ideas into action."
+- Keep one main idea per sentence and keep sentences short. Replace abstractions such as "change pressure," "expressive resources," or "relationship tempo" with a concrete situation or action from everyday life.
+- Do not end advice with vague phrases such as "be careful." Say what the reader can do today, this week, or this year.
+- Avoid corporate, academic, mystical, or report-like filler. Use direct active verbs and vary sentence rhythm naturally.
+- Do not describe the input or your writing process. Return only the requested result in the required format.`;
+
+function karmaResponseStyleGuide(lang = 'ko') {
+  return normalizeKarmaTextAnalysisLang(lang) === 'en'
+    ? ENGLISH_PLAIN_PROSE_GUARD
+    : KOREAN_NATIVE_PROSE_GUARD;
 }
 
 function hashKarmaPromptCacheText(value) {
@@ -1645,7 +1659,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
   const baseSystem = isStructured ? String(prompt.system || '') : '';
   const responseLang = isStructured ? normalizeKarmaTextAnalysisLang(prompt.lang) : 'ko';
   const validationContext = { ...contractContext, lang: responseLang };
-  const proseGuard = koreanResponseStyleGuide(responseLang);
+  const proseGuard = karmaResponseStyleGuide(responseLang);
   const languageGuard = karmaAiLanguageInstruction(responseLang);
   const completenessGuard = contractType ? aiContractCompletenessInstruction(contractType) : '';
   const systemText = [baseSystem, proseGuard, languageGuard, completenessGuard].filter(Boolean).join('\n\n');
@@ -2067,7 +2081,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
 
-  const proseGuard = koreanResponseStyleGuide(normalizePhotoAnalysisLang(lang));
+  const proseGuard = karmaResponseStyleGuide(normalizePhotoAnalysisLang(lang));
   const responseLang = normalizePhotoAnalysisLang(lang);
   const languageGuard = karmaAiLanguageInstruction(responseLang);
   const basePrompt = [String(prompt || ''), proseGuard, languageGuard].filter(Boolean).join('\n\n');

@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, koreanResponseStyleGuide, karmaAiLanguageInstruction, validateKarmaAiContract, sanitizeKarmaAnalysisInput };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, karmaResponseStyleGuide, karmaAiLanguageInstruction, validateKarmaAiContract, sanitizeKarmaAnalysisInput };`;
 
 const context = {
   console,
@@ -81,14 +81,20 @@ check(
   /keywords:\s*responseLang === 'en' \? \(ai\.keywords\?\.\[i\] \|\| ''\)/.test(workerSource),
   '영문 타로 카드별 키워드에 한국어 원본을 노출하지 않음',
 );
-check(api.koreanResponseStyleGuide('en') === '', '영문 AI 응답에는 한국어 문체 가드를 추가하지 않음');
-check(api.koreanResponseStyleGuide('ko').includes('처음부터 한국어로 쓴 글'), '한국어 AI 응답에 원문체 가드 제공');
-check(api.koreanResponseStyleGuide('ko').includes('JSON 키·구조·고정값'), '한국어 문체 가드가 구조화 응답 계약을 보존');
-check(api.koreanResponseStyleGuide('ko').includes('처음 접하는 일반인'), '한국어 AI 응답이 비전문 독자를 기준으로 작성됨');
-check(api.koreanResponseStyleGuide('ko').includes('결론부터 말하고'), '한국어 AI 응답이 생활 의미를 먼저 설명함');
-check(api.koreanResponseStyleGuide('ko').includes('전문 용어는 내부 판단 근거로만'), '한국어 AI 응답에서 전문 용어 노출을 줄임');
-check(api.koreanResponseStyleGuide('ko').includes('[근거: ...]'), '한국어 AI 응답의 근거 표기도 쉬운 말로 풀어 씀');
-check(api.koreanResponseStyleGuide('ko').includes('바로 실행할 수 있게'), '한국어 AI 조언이 구체적인 행동으로 이어짐');
+const koreanStyleGuide = api.karmaResponseStyleGuide('ko');
+const englishStyleGuide = api.karmaResponseStyleGuide('en');
+check(koreanStyleGuide.includes('처음부터 한국어로 쓴 글'), '한국어 AI 응답에 원문체 가드 제공');
+check(koreanStyleGuide.includes('JSON 키·구조·고정값'), '한국어 문체 가드가 구조화 응답 계약을 보존');
+check(koreanStyleGuide.includes('처음 접하는 일반인'), '한국어 AI 응답이 비전문 독자를 기준으로 작성됨');
+check(koreanStyleGuide.includes('결론부터 말하고'), '한국어 AI 응답이 생활 의미를 먼저 설명함');
+check(koreanStyleGuide.includes('전문 용어는 내부 판단 근거로만'), '한국어 AI 응답에서 전문 용어 노출을 줄임');
+check(koreanStyleGuide.includes('[근거: ...]'), '한국어 AI 응답의 근거 표기도 쉬운 말로 풀어 씀');
+check(koreanStyleGuide.includes('바로 실행할 수 있게'), '한국어 AI 조언이 구체적인 행동으로 이어짐');
+check(englishStyleGuide.includes('reader knows nothing'), '영문 AI 응답도 비전문 독자를 기준으로 작성됨');
+check(englishStyleGuide.includes('daily life first'), '영문 AI 응답도 생활 의미를 먼저 설명함');
+check(englishStyleGuide.includes('internal evidence'), '영문 AI 응답에서 전문 용어 노출을 줄임');
+check(englishStyleGuide.includes('[Evidence: ...]'), '영문 AI 응답의 근거 표기도 쉬운 말로 풀어 씀');
+check(englishStyleGuide.includes('today, this week, or this year'), '영문 AI 조언도 구체적인 행동으로 이어짐');
 check(api.karmaAiLanguageInstruction('en').includes('Do not output Hangul'), '영문 AI 응답에 한글·한자 금지 지시 제공');
 check(api.karmaAiLanguageInstruction('ko').includes('영문 단어나 로마자 표기'), '한국어 AI 응답에 영문 혼용 금지 지시 제공');
 const languagePureSaju = {
@@ -133,7 +139,8 @@ check(
   '영문 손금 응답의 한글 유형명을 계약 오류로 거절',
 );
 check(workerSource.includes('accumulated = mergeAiContractPatch(accumulated, parsed)'), '사진 분석 재시도도 언어 오류 필드 패치를 병합');
-check(workerSource.includes('prompt: modelPrompt'), '사진 분석에도 한국어 원문체 가드를 전달');
+check(workerSource.includes('const proseGuard = karmaResponseStyleGuide(responseLang);'), '텍스트 분석에 언어별 쉬운 문체 가드를 전달');
+check(workerSource.includes('const proseGuard = karmaResponseStyleGuide(normalizePhotoAnalysisLang(lang));'), '사진 분석에 언어별 쉬운 문체 가드를 전달');
 for (const page of ['face', 'face-en', 'palm', 'palm-en']) {
   const html = fs.readFileSync(path.join(root, `${page}.html`), 'utf8');
   check(html.indexOf('await resp.json()') < html.indexOf('!resp.ok'), `${page} 오류 응답 본문을 상태 코드보다 먼저 해석`);
