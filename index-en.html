@@ -37,7 +37,7 @@
 <link rel="icon" type="image/webp" sizes="32x32" href="/assets/images/favicon-32.webp">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
-<link rel="stylesheet" href="/style.css?v=9">
+<link rel="stylesheet" href="/style.css?v=10">
 <script src="/js/browser-check.js?v=20260708-error-filter"></script>
 <script src="/js/components.js?v=9"></script>
 <script type="application/ld+json">
@@ -90,11 +90,22 @@
 <div class="header-bg"></div>
 <a href="https://archerlab.dev" target="_blank" rel="noopener noreferrer" class="archerlab-link">🏹 ArcherLab</a>
 <div class="lang-select-wrap"><select class="lang-select" data-combo-init="1" id="langSelect" onchange="changeLang(this.value)"><option value="ko">🌐 한국어</option><option value="en" selected>🌐 English</option></select></div>
-<div class="container">
-  <h1>KARMA</h1>
-  <p class="subtitle">Saju & Compatibility Matching Platform</p>
+<main class="container home-container">
+  <header class="home-hero">
+    <p class="home-kicker">PERSONAL FORTUNE GUIDE</p>
+    <h1>KARMA</h1>
+    <p class="subtitle">Personalized Saju, fortune, and compatibility readings</p>
+    <div class="home-benefits" aria-label="Service information">
+      <span>Start without signing up</span>
+      <span>Personalized to your input</span>
+      <span>For reflection and entertainment</span>
+    </div>
+  </header>
 
-  <div class="menu-grid">
+  <section class="home-services" aria-labelledby="servicesTitle">
+    <h2 class="home-section-title" id="servicesTitle">Choose a reading</h2>
+
+    <div class="menu-grid">
     <a class="menu-card" href="/saju-en">
       <div class="menu-icon"><svg viewBox="0 0 60 60" width="60" height="60"><defs><radialGradient id="bg1" cx="50%" cy="35%"><stop offset="0%" stop-color="#2d1b5e"/><stop offset="100%" stop-color="#150d30"/></radialGradient><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5dfa0"/><stop offset="100%" stop-color="#c9a044"/></linearGradient></defs><rect rx="14" width="60" height="60" fill="url(#bg1)" stroke="url(#g1)" stroke-width="1.2" opacity="0.9"/><circle cx="30" cy="30" r="16" fill="none" stroke="url(#g1)" stroke-width="1.5" opacity="0.3"/><path d="M30 14v32M14 30h32" stroke="url(#g1)" stroke-width="0.8" opacity="0.2"/><circle cx="22" cy="22" r="4.5" fill="url(#g1)" opacity="0.85"/><circle cx="38" cy="22" r="4.5" fill="url(#g1)" opacity="0.65"/><circle cx="22" cy="38" r="4.5" fill="url(#g1)" opacity="0.55"/><circle cx="38" cy="38" r="4.5" fill="url(#g1)" opacity="0.75"/><circle cx="30" cy="30" r="2.5" fill="#f5dfa0" opacity="0.9"/></svg></div>
       <div class="menu-title">Saju</div>
@@ -130,22 +141,22 @@
       <div class="menu-title">Palm Reading</div>
       <div class="menu-desc">Palm Photo Analysis</div>
     </a>
-    <div class="menu-card disabled" onclick="document.getElementById('comingSoon').classList.add('show')">
+    <button type="button" class="menu-card disabled" aria-haspopup="dialog" aria-describedby="matchingStatus" onclick="openComingSoon(this)">
       <div class="menu-icon"><svg viewBox="0 0 60 60" width="60" height="60"><defs><radialGradient id="bg8" cx="50%" cy="35%"><stop offset="0%" stop-color="#2d1b5e"/><stop offset="100%" stop-color="#150d30"/></radialGradient></defs><rect rx="14" width="60" height="60" fill="url(#bg8)" stroke="url(#g1)" stroke-width="1.2" opacity="0.9"/><circle cx="22" cy="20" r="8" fill="url(#g1)" opacity="0.7"/><circle cx="38" cy="20" r="8" fill="url(#g1)" opacity="0.5"/><path d="M10 50 Q10 36 22 36 Q27 36 30 38 Q33 36 38 36 Q50 36 50 50" fill="url(#g1)" opacity="0.4"/><circle cx="22" cy="19" r="2" fill="#fff" opacity="0.2"/><circle cx="38" cy="19" r="2" fill="#fff" opacity="0.15"/></svg></div>
       <div class="menu-title">Matching</div>
       <div class="menu-desc">Find Your Match</div>
-      <span class="menu-badge">Soon</span>
+      <span class="menu-badge" id="matchingStatus">Soon</span>
+    </button>
     </div>
-  </div>
+  </section>
+</main>
 
-</div>
-
-<div id="comingSoon" class="coming-soon-modal" onclick="if(event.target===this)this.classList.remove('show')">
-  <div class="coming-soon-inner">
+<div id="comingSoon" class="coming-soon-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="comingSoonTitle" aria-describedby="comingSoonDesc">
+  <div class="coming-soon-inner" tabindex="-1">
     <div class="coming-soon-icon">🚧</div>
-    <div class="coming-soon-title">Coming Soon</div>
-    <p class="coming-soon-desc">Profile matching service is currently under development.<br>Stay tuned for the launch!</p>
-    <button class="coming-soon-btn" onclick="document.getElementById('comingSoon').classList.remove('show')">OK</button>
+    <div class="coming-soon-title" id="comingSoonTitle">Coming Soon</div>
+    <p class="coming-soon-desc" id="comingSoonDesc">Profile matching service is currently under development.<br>Stay tuned for the launch!</p>
+    <button type="button" class="coming-soon-btn" id="comingSoonClose" onclick="closeComingSoon()">OK</button>
   </div>
 </div>
 
@@ -154,7 +165,31 @@
 </nav>
 
 <script>
-// English-only page — no language switcher needed
+function openComingSoon(trigger) {
+  const modal = document.getElementById('comingSoon');
+  modal._returnFocus = trigger || document.activeElement;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('comingSoonClose').focus();
+}
+function closeComingSoon() {
+  const modal = document.getElementById('comingSoon');
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  if (modal._returnFocus) modal._returnFocus.focus();
+}
+document.getElementById('comingSoon').addEventListener('click', function(event) {
+  if (event.target === this) closeComingSoon();
+});
+document.addEventListener('keydown', function(event) {
+  const modal = document.getElementById('comingSoon');
+  if (!modal.classList.contains('show')) return;
+  if (event.key === 'Escape') closeComingSoon();
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    document.getElementById('comingSoonClose').focus();
+  }
+});
 </script>
 </body>
 </html>

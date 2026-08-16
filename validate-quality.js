@@ -66,6 +66,20 @@ for (const page of ['saju', 'daily', 'fortune', 'compat', 'tarot', 'face', 'palm
   check(html.includes('class="seo-content"'), `${page}에 크롤링 가능한 서비스 안내 본문 존재`);
 }
 
+console.log('\n🏠 홈 화면 완성도·접근성');
+for (const page of ['index', 'index-en']) {
+  const html = fs.readFileSync(path.join(root, `${page}.html`), 'utf8');
+  check(html.includes('class="container home-container"'), `${page}에 전용 반응형 홈 레이아웃 적용`);
+  check((html.match(/class="home-benefits"/g) || []).length === 1, `${page}에 서비스 이용 기준 안내`);
+  check(/<button[^>]+class="menu-card disabled"[^>]+aria-haspopup="dialog"/.test(html), `${page} 준비중 카드를 키보드 버튼으로 제공`);
+  check(/role="dialog"[^>]+aria-modal="true"[^>]+aria-hidden="true"/.test(html), `${page} 준비중 안내에 대화상자 의미 제공`);
+  check(html.includes("event.key === 'Escape'"), `${page} 준비중 안내를 Esc 키로 닫을 수 있음`);
+  check(html.includes("event.key === 'Tab'"), `${page} 준비중 안내 안에서 키보드 초점 유지`);
+  check(html.includes("modal._returnFocus.focus()"), `${page} 준비중 안내 종료 후 초점 복귀`);
+}
+check(workerSource.length > 0 && fs.readFileSync(path.join(root, 'style.css'), 'utf8').includes(':focus-visible'), '키보드 초점 표시를 사이트 공통으로 제공');
+check(fs.readFileSync(path.join(root, 'style.css'), 'utf8').includes('repeat(4, minmax(0, 1fr))'), '넓은 화면에서 홈 메뉴를 4열로 표시');
+
 console.log('\n🧭 사주 프롬프트 근거·변별력');
 check(workerSource.includes("'Content-Type': 'application/json; charset=utf-8'"), 'API JSON 응답에 UTF-8 문자셋 명시');
 check(api.normalizePhotoAnalysisLang('en-US') === 'en' && api.normalizePhotoAnalysisLang('ko-KR') === 'ko', '사진 분석 요청 언어 정규화');

@@ -202,6 +202,12 @@ select.lang-select {
 }
 .container.wide { max-width: 640px; }
 
+:where(a, button, input, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid #f5d778;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(201,160,68,0.18);
+}
+
 /* 타이포그래피 */
 h1 {
   text-align: center;
@@ -573,7 +579,39 @@ option { background: #1a1a2e; color: #e0e0e0; }
 .fade-in { animation: fadeIn 0.4s; }
 
 
-/* 메인 2x2 그리드 메뉴 */
+/* 홈 소개와 서비스 메뉴 */
+.home-container { max-width: 1080px; padding-bottom: 12px; }
+.home-hero { max-width: 760px; margin: 0 auto 30px; text-align: center; }
+.home-kicker {
+  margin: 8px 0 2px;
+  color: #d8bc72;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+.home-hero .subtitle { margin-bottom: 18px; }
+.home-benefits {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.home-benefits span {
+  padding: 7px 11px;
+  color: #d8d0c2;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  background: rgba(16,12,30,0.72);
+  border: 1px solid rgba(201,160,68,0.22);
+  border-radius: 999px;
+}
+.home-benefits span::before { content: '✓'; margin-right: 6px; color: #e5c66f; font-weight: 900; }
+.home-section-title {
+  margin: 0 0 16px;
+  color: #f2eadb;
+  font-size: 1.05rem;
+  text-align: center;
+}
 .menu-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -598,6 +636,9 @@ option { background: #1a1a2e; color: #e0e0e0; }
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  width: 100%;
+  font: inherit;
+  appearance: none;
 }
 .menu-card::before {
   content: '';
@@ -698,6 +739,11 @@ option { background: #1a1a2e; color: #e0e0e0; }
   .container { padding: 20px 16px; padding-top: 52px; }
   h1 { font-size: 1.6rem; margin-top: 12px; }
   .subtitle { font-size: 0.8rem; margin-bottom: 20px; }
+  .home-hero { margin-bottom: 24px; }
+  .home-hero .subtitle { margin-bottom: 14px; }
+  .home-benefits { gap: 6px; }
+  .home-benefits span { padding: 6px 9px; font-size: 0.65rem; }
+  .home-section-title { font-size: 0.95rem; margin-bottom: 12px; }
   .card { padding: 16px; border-radius: 14px; margin-bottom: 12px; }
   .btn { padding: 13px; font-size: 0.95rem; }
   .menu-grid { gap: 10px; }
@@ -733,6 +779,8 @@ option { background: #1a1a2e; color: #e0e0e0; }
   .container.wide { max-width: 1000px; }
   .archerlab-link { top: 18px; left: 24px; font-size: 0.82rem; padding: 8px 20px; }
   .menu-grid { gap: 18px; }
+  .home-container .menu-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .home-container .menu-card { min-height: 208px; }
   .menu-card { padding: 36px 20px 28px; }
   .menu-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 30px rgba(201,160,68,0.12); }
   .menu-icon svg { width: 64px; height: 64px; }
