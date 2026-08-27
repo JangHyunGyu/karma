@@ -12,3 +12,25 @@
 
 /.github/*
   X-Robots-Tag: noindex, nofollow
+
+# Keep the Cloudflare Pages production subdomain and repository inputs out of search.
+https://karma-f40.pages.dev/*
+  X-Robots-Tag: noindex, follow
+
+/package*.json
+  X-Robots-Tag: noindex, nofollow
+
+/AGENTS.md
+  X-Robots-Tag: noindex, nofollow
+
+/CLAUDE.md
+  X-Robots-Tag: noindex, nofollow
+
+/MODEL_ROUTING.md
+  X-Robots-Tag: noindex, nofollow
+
+/README*
+  X-Robots-Tag: noindex, nofollow
+
+/tests/*
+  X-Robots-Tag: noindex, nofollow
