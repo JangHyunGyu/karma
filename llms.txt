@@ -24,6 +24,11 @@ Karma provides entertainment and cultural interpretation. It is not professional
 - Sitemap: https://karma.archerlab.dev/sitemap.xml
 - Developer: https://archerlab.dev
 
+## Guides
+- [Saju Reading Guide](https://karma.archerlab.dev/seo/saju-reading-guide): Read a saju result without treating it as a fixed prediction
+- [Daily Fortune Routine](https://karma.archerlab.dev/seo/daily-fortune-routine): Use a daily fortune as a practical reflection prompt
+- [Tarot Question Guide](https://karma.archerlab.dev/seo/tarot-question-guide): Frame a specific tarot question and separate symbolic interpretation from verifiable facts
+
 ## Languages
 - Korean (한국어)
 - English
