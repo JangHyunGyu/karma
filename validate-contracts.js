@@ -87,8 +87,9 @@ const tarot = {
   keywords: ['하나', '둘', '셋', '넷', '다섯'],
 };
 const face = {
-  overall_score: 82,
-  overall_grade: 'B+',
+  overall_score: 75,
+  overall_grade: 'A',
+  forehead_observation: { skin_visible: true, hairline_visible: false, observation: text, limitation: text },
   quality_assessment: text,
   visual_evidence: Array(8).fill(text),
   summary: text,

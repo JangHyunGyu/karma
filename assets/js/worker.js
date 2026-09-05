@@ -1402,6 +1402,24 @@ function validateTarotAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
+function normalizeFaceAiScores(value) {
+  if (!isPlainAiObject(value) || value.error || !Array.isArray(value.categories)
+      || value.categories.length !== 6) return value;
+  // The sixth category summarizes the same five features; counting it again
+  // would let the model's preferred overall number bias the result.
+  const scores = value.categories.slice(0, 5).map(category => category?.score);
+  if (!scores.every(score => Number.isInteger(score) && score >= 0 && score <= 100)) return value;
+  const overallScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+  return {
+    ...value,
+    overall_score: overallScore,
+    overall_grade: getGrade(overallScore),
+    categories: value.categories.map((category, index) => (
+      index === 5 && isPlainAiObject(category) ? { ...category, score: overallScore } : category
+    )),
+  };
+}
+
 function validateFaceAiResponse(value) {
   const errors = [];
   if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
@@ -1409,6 +1427,19 @@ function validateFaceAiResponse(value) {
   addAiScoreError(value.overall_score, errors, 'overall_score');
   addRequiredAiTextErrors(value, ['overall_grade', 'quality_assessment', 'summary', 'advice'], errors);
   addAiStringArrayError(value.visual_evidence, errors, 'visual_evidence', 8);
+  if (!isPlainAiObject(value.forehead_observation)) {
+    errors.push('forehead_observation:object');
+  } else {
+    const forehead = value.forehead_observation;
+    for (const key of ['skin_visible', 'hairline_visible']) {
+      if (typeof forehead[key] !== 'boolean') errors.push(`forehead_observation.${key}:boolean`);
+    }
+    addRequiredAiTextErrors(forehead, ['observation'], errors, 'forehead_observation.');
+    if (typeof forehead.limitation !== 'string') errors.push('forehead_observation.limitation:string');
+    if (forehead.skin_visible === false && !isNonEmptyAiText(forehead.limitation)) {
+      errors.push('forehead_observation.limitation:explain_actual_obstruction');
+    }
+  }
   if (!Array.isArray(value.categories) || value.categories.length !== 6) {
     errors.push('categories:array_length_6');
   } else {
@@ -1419,6 +1450,7 @@ function validateFaceAiResponse(value) {
       }
       if (!isNonEmptyAiText(category.name)) errors.push(`categories[${index}].name:non_empty_string`);
       addAiScoreError(category.score, errors, `categories[${index}].score`);
+      if (!Number.isInteger(category.score)) errors.push(`categories[${index}].score:integer`);
       if (!isNonEmptyAiText(category.desc)) errors.push(`categories[${index}].desc:non_empty_string`);
     });
   }
@@ -2111,6 +2143,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       }
       const parsed = parseAiJsonResponse(result.text);
       accumulated = mergeAiContractPatch(accumulated, parsed);
+      if (contractType === 'face') accumulated = normalizeFaceAiScores(accumulated);
       const contract = validateKarmaAiContract(contractType, accumulated, { lang: responseLang });
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
@@ -2511,9 +2544,9 @@ function faceExpertRubric() {
 아래 순서대로 먼저 관찰한 뒤 해석하세요. 실제 전문가 감수 데이터가 아니라, 전통 관상학에 알려진 기준을 서비스용으로 구조화한 것입니다.
 
 0. 전제: 관상은 참고용 점술/성향 해석입니다. 마의상법식 관점에서도 관상보다 몸의 생활습관, 그보다 마음가짐과 선택이 중요하다는 균형 감각을 advice에 반영하세요.
-1. 사진 품질: 정면성, 초점, 조명, 얼굴 가림, 표정 과장, 필터/보정 여부를 먼저 판정. 품질이 낮으면 해당 부위 점수를 낮추고 "사진상 확인 어려움"이라고 명시.
+1. 사진 품질: 정면성, 초점, 조명, 얼굴 가림, 표정 과장, 필터/보정 여부를 먼저 판정. 제한이 있으면 정확히 어느 영역의 어떤 특징을 확인할 수 없는지 명시하세요. 일부 영역의 제한을 부위 전체의 관찰 불가로 확대하지 마세요.
 2. 삼정: 상정(이마, 대략 30세 전후까지), 중정(눈썹~코·광대, 대략 40대까지), 하정(인중~턱, 50대 이후)을 나누어 균형을 봅니다. 세 구간 중 유난히 짧거나 긴 곳, 눌린 곳, 안정된 곳을 summary에 반영하세요.
-3. 이마/부모궁/관록궁: 이마의 높이·폭·윤택함·굴곡·흉터/잡티·헤어라인 가림 여부를 봅니다. 전통적으로 초년운, 부모 도움, 학습력, 관록/사회적 상승 기반과 연결하지만, 머리카락에 가려지면 추정하지 마세요.
+3. 이마: 눈썹 위에서 머리카락이 시작되는 경계까지의 피부 영역입니다. 먼저 이마 피부가 보이는지와 헤어라인이 보이는지를 각각 관찰하세요. 머리카락이 위쪽이나 옆쪽에 있다는 이유만으로 이마가 가려졌다고 판단하지 마세요. 올린 머리, 뒤로 넘긴 머리, 가르마 사이로 드러난 피부는 보이는 이마입니다. 헤어라인만 가려졌다면 전체 높이 측정만 제한되며, 드러난 피부의 폭·윤곽·표면은 관찰할 수 있습니다. 실제로 앞머리·모자·잘린 구도·번짐이 피부 대부분을 가려 특징을 읽을 수 없을 때만 이마 전체를 확인하기 어렵다고 하세요.
 4. 눈/눈썹: 관상에서 눈은 가장 큰 비중을 둡니다. 눈빛 선명도, 눈꼬리 방향, 눈 사이 거리, 눈두덩이 여유, 좌우 높낮이, 눈썹 농도·끊김·간격을 관찰하세요. 눈 사이가 넓으면 여유/포용, 좁으면 예민함/근심 경향처럼 전통 해석으로만 설명하세요.
 5. 눈 형태 분류: 삼백안/사백안, 돌출눈, 짝눈, 눈썹과 눈이 가까운 압안, 물기 있는 도화안 같은 분류는 사진상 명확할 때만 "그런 인상"으로 언급하세요. 폭력성, 범죄성, 정신질환, 음란성 같은 낙인 표현은 금지.
 6. 코/재백궁: 산근(미간 아래 코뿌리), 콧대, 준두(코끝), 난대·정위(콧방울), 정면 콧구멍 노출 여부를 봅니다. 전통적으로 재물 관리, 자존심, 현실 감각과 연결하되 실제 부자/가난 확정처럼 쓰지 마세요.
@@ -2607,13 +2640,16 @@ ${faceExpertRubric()}
 
 ## 사진별 차별화 필수
 - 먼저 사진에서 실제로 보이는 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
+- JSON의 첫 항목인 \`forehead_observation\`을 먼저 작성하세요. \`skin_visible\`은 눈썹 위 이마 피부의 형태를 관찰할 수 있는지, \`hairline_visible\`은 머리카락 시작 경계가 보이는지를 뜻하는 별개의 boolean입니다. \`observation\`에는 실제 보이는 영역을, \`limitation\`에는 가려진 정확한 위치와 원인만 쓰고 제한이 없으면 빈 문자열을 쓰세요. 머리카락이 사진에 있다는 것만으로 가림을 만들어내지 마세요.
+- \`quality_assessment\`, \`visual_evidence\`, 이마 설명은 이 관찰과 일치해야 합니다. 피부가 보이고 헤어라인만 안 보이면 "이마가 안 보인다"고 쓰거나 이마 전체에 관찰 불가 감점을 적용하지 마세요.
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 얼굴형, 좌우 비대칭, 조명/가림 여부.
 - 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
-- 사진에서 잘 안 보이는 부위는 지어내지 말고 "사진상 확인 어려움"이라고 쓰고 점수를 50~65 사이로 낮추세요.
-- 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
+- 부위의 형태 대부분을 실제로 관찰할 수 없을 때만 해당 부위의 설명에 "사진상 확인 어려움"과 구체 원인을 쓰세요. 부분 가림은 보이는 특징을 먼저 설명하고 확인할 수 없는 특징만 한정하세요.
+- 이마·눈·코·입·턱/광대 순서의 첫 다섯 항목 점수는 각각 관찰한 형태와 균형을 근거로 독립적으로 산정한 0~100 정수입니다. 설명에 점수의 근거를 포함하세요. 잘 보이는 부위는 윤곽·비율·균형을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
+- 점수 예시는 제공하지 않습니다. 미리 정한 대표 숫자나 구간에서 고르거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요. 같은 사진의 같은 관찰은 같은 평가를 받아야 합니다.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수도 달라져야 합니다.
 - summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
-- overall_score와 categories 점수는 보이는 특징에서 나온 결론이어야 합니다. 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
+- 종합 점수·등급과 여섯 번째 전체 인상 점수는 서버가 첫 다섯 부위 점수의 산술평균을 반올림해서 계산합니다. \`overall_score\`, \`overall_grade\`, 여섯 번째 \`score\`를 생성하지 마세요. 종합 점수를 먼저 정한 뒤 부위 점수를 맞추지 마세요.
 
 ## 정확성 원칙
 - 점수는 사진 품질과 해당 부위의 가시성, 전통 관상 기준의 균형을 요약하는 오락용 지표입니다. 사람의 가치나 능력 점수가 아닙니다.
@@ -2629,20 +2665,24 @@ ${faceExpertRubric()}
 5. 턱/광대 - 의지력, 중년~말년운, 말년 고독 여부
 6. 전체 인상 - 종합 관상
 
-반드시 아래 JSON 형식으로만 응답:
+반드시 아래 JSON 형식으로만 응답. 첫 다섯 score의 null은 형식 자리표시자이므로 반드시 실제 관찰에 근거한 정수로 바꾸세요. boolean 자리표시자도 사진에 맞게 true 또는 false로 바꾸세요:
 {
-  "overall_score": 85,
-  "overall_grade": "A",
+  "forehead_observation": {
+    "skin_visible": null,
+    "hairline_visible": null,
+    "observation": "(눈썹 위 이마 피부의 실제 노출 범위와 보이는 형태)",
+    "limitation": "(확인할 수 없는 정확한 영역과 원인. 없으면 빈 문자열)"
+  },
   "quality_assessment": "(사진 품질, 정면성, 가림/조명/보정 여부. 분석 한계가 있으면 명시)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 관찰 2개와 전통적 상징을 구분해 설명. 실제 인생사 단정 금지)",
   "categories": [
-    {"name": "이마 (천정)", "score": 80, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 초년·학습 상징을 조건부로 설명)"},
-    {"name": "눈 (눈매)", "score": 85, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 관계 표현 상징을 조건부로 설명)"},
-    {"name": "코 (준두)", "score": 75, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 현실감각·재물관리 상징을 조건부로 설명)"},
-    {"name": "입 (입술)", "score": 90, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 의사표현 상징을 조건부로 설명)"},
-    {"name": "턱/광대", "score": 80, "desc": "(2~3문장. 실제 형태 관찰 후 전통적인 지속력 상징을 조건부로 설명)"},
-    {"name": "전체 인상", "score": 85, "desc": "(2~3문장. 관찰 가능한 균형을 요약하고 전통 해석과 현실 확인 질문을 분리)"}
+    {"name": "이마 (천정)", "score": null, "desc": "(2~3문장. forehead_observation과 일치하는 실제 형태와 점수 근거 후 전통적 상징을 조건부로 설명)"},
+    {"name": "눈 (눈매)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 관계 표현 상징을 조건부로 설명)"},
+    {"name": "코 (준두)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 현실감각·재물관리 상징을 조건부로 설명)"},
+    {"name": "입 (입술)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 의사표현 상징을 조건부로 설명)"},
+    {"name": "턱/광대", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 지속력 상징을 조건부로 설명)"},
+    {"name": "전체 인상", "desc": "(2~3문장. 관찰 가능한 균형을 요약하고 전통 해석과 현실 확인 질문을 분리)"}
   ],
   "fortune": {
     "wealth": "(코·하관 관찰을 근거로 전통 관상에서 말하는 재물 관리 상징과 현실적인 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",

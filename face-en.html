@@ -260,6 +260,8 @@ window.KarmaShare = window.KarmaShare || {
         <span class="score-grade" id="totalGrade"></span>
       </div>
       <div class="summary-text" id="summary"></div>
+      <p id="scoreMethod" style="display:none;color:#999;font-size:0.78rem;line-height:1.6;margin-top:12px">The overall score is the average of the forehead, eyes, nose, mouth, and jaw/cheek scores. It is an entertainment indicator based on visible features.</p>
+      <p id="photoQuality" style="color:#999;font-size:0.82rem;line-height:1.6;margin-top:12px"></p>
     </div>
 
     <div class="card" id="categories" style="padding:22px"></div>
@@ -375,6 +377,8 @@ function renderResult(d) {
   const grade = cleanGrade(d.overall_grade || getGrade(score));
   document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
   document.getElementById('summary').textContent = d.summary || '';
+  document.getElementById('scoreMethod').style.display = d.forehead_observation ? '' : 'none';
+  document.getElementById('photoQuality').textContent = d.quality_assessment || '';
 
   // Circular progress
   const offset = 327 - (327 * score / 100);
