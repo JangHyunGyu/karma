@@ -4,22 +4,23 @@ All Karma AI features use the single provider-neutral `AI` service binding in
 `wrangler.toml`. The binding targets `KarmaAiEntrypoint` in the shared
 `openrouter-api` Worker, which exposes both text completion and image analysis.
 
-The current production model is OpenRouter `google/gemma-4-31b-it`. Text uses
-the Venice BF16 endpoint; face and palm image analysis use CoreWeave BF16
-because OpenRouter does not currently allow Venice for Gemma image input.
-Provider fallback inside each OpenRouter route is disabled so one cache lineage
-cannot drift between endpoints. The named text preset retains its independent
-official DeepSeek and OpenRouter DeepSeek route fallbacks for outages.
+All text, face, and palm analysis uses OpenRouter `google/gemini-3.5-flash-lite`.
+Google AI Studio and Google Vertex Global are the only configured providers;
+retries stay on Flash Lite without falling back to Gemma or DeepSeek. The
+adapter requests JSON and the supported `minimal` thinking level, and omits
+temperature for Vertex compatibility.
 
 Model selection is centralized in the shared router's
 `wrangler.openrouter.toml`:
 
 ```toml
-TEXT_MODEL_PRESET = "openrouter-gemma"
-OPENROUTER_PROVIDER_ORDER = "venice"
-OPENROUTER_ALLOW_FALLBACKS = "false"
-KARMA_MEDIA_MODEL = "google/gemma-4-31b-it"
-KARMA_MEDIA_PROVIDER = "coreweave"
+KARMA_TEXT_MODEL_PRESET = "openrouter-gemini-flash-lite"
+KARMA_OPENROUTER_PROVIDER_ORDER = "google-ai-studio,google-vertex/global"
+KARMA_OPENROUTER_SUMMARY_PROVIDER_ORDER = "google-ai-studio,google-vertex/global"
+KARMA_OPENROUTER_ALLOW_FALLBACKS = "false"
+KARMA_MEDIA_MODEL = "google/gemini-3.5-flash-lite"
+KARMA_MEDIA_PROVIDER = "google-ai-studio,google-vertex/global"
+KARMA_VIDEO_PROVIDER = "google-ai-studio,google-vertex/global"
 ```
 
 ## Text context caching
@@ -31,21 +32,16 @@ type, and output language. Birth data, questions, and other per-user values
 stay in the later user message and never enter the key.
 
 The shared router combines the caller key with its own stable-system hash for
-the exact OpenRouter `session_id`. On strict Venice Gemma requests, a separate
-`prompt_cache_key` removes only the final system-contract fingerprint and groups
-the endpoint, contract type, and output language family on shared backend
-infrastructure. Venice still reuses only a byte-identical prompt prefix. A
-changed system or retry contract therefore keeps an isolated session without
-losing backend affinity for the common contract family. D1 `perf_stats` records
-the caller key, provider route, cache hits, cached tokens, and cache-write
-tokens.
+the exact OpenRouter `session_id`. Gemini uses provider-managed implicit prefix
+caching; the Venice-only `prompt_cache_key` is not sent. D1 `perf_stats` records
+the caller key, actual model, provider route, and available cache token metrics.
 
 Face and palm image analysis intentionally does not use this text cache key:
-each request contains unique image data and runs on the separate CoreWeave
-media route, so forcing session affinity would not provide a reusable text
-prefix or a meaningful cost benefit.
+each request contains unique image data and runs on the separate media route.
+Valid photos are saved in private R2 before AI calls, and every analysis outcome
+keeps its R2 link in D1.
 
-Gemma accepts image input and returns textual face/palm analysis; it is not an
+Flash Lite accepts image input and returns textual face/palm analysis; it is not an
 image-generation model.
 
 Deploy `openrouter-api` before `karma-api` whenever the entrypoint contract
