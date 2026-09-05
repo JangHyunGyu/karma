@@ -2085,6 +2085,7 @@ const PHOTO_ANALYSIS_MESSAGES = {
     palmAnalysisFailed: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.',
     faceRejected: '분석할 수 있는 얼굴 사진이 아닙니다. 사람의 정면 얼굴이 선명하게 보이는 사진을 업로드해주세요.',
     palmRejected: '분석할 수 있는 손바닥 사진이 아닙니다. 손을 펴고 손금이 선명하게 보이는 사진을 업로드해주세요.',
+    rateLimited: '사진 분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
   },
   en: {
     imageTooLarge: 'The image exceeds the 8 MB upload limit. Please use a smaller photo.',
@@ -2099,6 +2100,7 @@ const PHOTO_ANALYSIS_MESSAGES = {
     palmAnalysisFailed: 'AI analysis failed. Please use a clear photo where the palm is visible.',
     faceRejected: 'This is not a usable face photo. Please upload a clear, front-facing photo of a person.',
     palmRejected: 'This is not a usable palm photo. Please upload a photo with your hand open and the palm lines clearly visible.',
+    rateLimited: 'Too many photo analysis requests. Please try again later.',
   },
 };
 
@@ -2108,6 +2110,23 @@ function normalizePhotoAnalysisLang(lang) {
 
 function getPhotoAnalysisMessage(lang, key) {
   return PHOTO_ANALYSIS_MESSAGES[normalizePhotoAnalysisLang(lang)][key];
+}
+
+async function localizePhotoAnalysisGateError(response, lang) {
+  let result = {};
+  try { result = await response.clone().json(); } catch (_) {}
+  if (!result || typeof result !== 'object' || Array.isArray(result)) result = {};
+  const status = Number(response?.status || 500);
+  const errorMessage = status === 429
+    ? getPhotoAnalysisMessage(lang, 'rateLimited')
+    : String(result.error || `HTTP ${status}`);
+  const localizedResult = { ...result, error: errorMessage };
+  const retryAfter = response?.headers?.get?.('Retry-After');
+  return {
+    result: localizedResult,
+    errorMessage,
+    response: json(localizedResult, status, retryAfter ? { 'Retry-After': retryAfter } : {}),
+  };
 }
 
 const PHOTO_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -2644,19 +2663,17 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
   }
 
   if (analysisGateError) {
-    let gateResult = {};
-    try { gateResult = await analysisGateError.clone().json(); } catch (_) {}
-    const errorMessage = String(gateResult?.error || `HTTP ${analysisGateError.status}`);
+    const localizedGate = await localizePhotoAnalysisGateError(analysisGateError, analysisLang);
     await recordKarmaImageAnalysis(env, {
       requestId,
       r2Key,
       analysisType: 'face',
       status: 'error',
       input: analysisInput,
-      result: gateResult,
-      errorMessage,
+      result: localizedGate.result,
+      errorMessage: localizedGate.errorMessage,
     });
-    return analysisGateError;
+    return localizedGate.response;
   }
 
   if (!env?.AI?.analyze) {
@@ -2821,19 +2838,17 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
   }
 
   if (analysisGateError) {
-    let gateResult = {};
-    try { gateResult = await analysisGateError.clone().json(); } catch (_) {}
-    const errorMessage = String(gateResult?.error || `HTTP ${analysisGateError.status}`);
+    const localizedGate = await localizePhotoAnalysisGateError(analysisGateError, analysisLang);
     await recordKarmaImageAnalysis(env, {
       requestId,
       r2Key,
       analysisType: 'palm',
       status: 'error',
       input: analysisInput,
-      result: gateResult,
-      errorMessage,
+      result: localizedGate.result,
+      errorMessage: localizedGate.errorMessage,
     });
-    return analysisGateError;
+    return localizedGate.response;
   }
 
   if (!env?.AI?.analyze) {

@@ -85,8 +85,10 @@ check(workerSource.includes("'Content-Type': 'application/json; charset=utf-8'")
 check(api.normalizePhotoAnalysisLang('en-US') === 'en' && api.normalizePhotoAnalysisLang('ko-KR') === 'ko', '사진 분석 요청 언어 정규화');
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'faceRejected')), '영문 관상 거절 사유에 한글 없음');
 check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'palmRejected')), '영문 손금 거절 사유에 한글 없음');
+check(!/[가-힣]/.test(api.getPhotoAnalysisMessage('en', 'rateLimited')), '영문 사진 분석 사용량 제한에 한글 없음');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'faceRejected')), '한글 관상 거절 사유 제공');
 check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'palmRejected')), '한글 손금 거절 사유 제공');
+check(/[가-힣]/.test(api.getPhotoAnalysisMessage('ko', 'rateLimited')), '한글 사진 분석 사용량 제한 제공');
 for (const key of ['incompleteAiResponse', 'tarotCardsRequired', 'invalidCardIds', 'aiUnavailable', 'serverError', 'birthDateRequired', 'bothBirthDatesRequired']) {
   check(!/[가-힣]/.test(api.getKarmaTextAnalysisMessage('en', key)), `영문 ${key} 오류 응답에 한글 없음`);
   check(/[가-힣]/.test(api.getKarmaTextAnalysisMessage('ko', key)), `한글 ${key} 오류 응답 제공`);

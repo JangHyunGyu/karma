@@ -104,8 +104,10 @@ test('valid photo uploads are persisted privately before every analysis outcome'
     KARMA_IMAGE_BUCKET: {
       async put() {},
     },
-  }, 'rate-limited-request', jsonResponse({ error: 'Too many requests' }, 429), rateLimitedContext);
+  }, 'rate-limited-request', jsonResponse({ error: '사진 분석 요청이 너무 많습니다.' }, 429, { 'Retry-After': '37' }), rateLimitedContext);
   assert.equal(rateLimitedResponse.status, 429);
+  assert.equal(rateLimitedResponse.headers.get('Retry-After'), '37');
+  assert.match((await rateLimitedResponse.json()).error, /Too many photo analysis requests/);
   assert.match(rateLimitedContext.r2Key, /^karma\/face\/\d+-rate-limited-request\.jpg$/);
 
   const unavailableContext = {};
@@ -141,10 +143,10 @@ test('valid photo uploads are persisted privately before every analysis outcome'
   assert.equal(aiCalledWithoutStorage, false);
 });
 
-function jsonResponse(data, status) {
+function jsonResponse(data, status, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
   });
 }
 
