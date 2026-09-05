@@ -327,9 +327,8 @@ async function doAnalyze() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(sajuInput),
     });
-    if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
-    const data = await resp.json();
-    if (data.error) { alert(data.error); return; }
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) { alert(data.error || 'A server error occurred. Please try again later.'); return; }
     window._sajuInput = augmentShareInput(sajuInput);
     window._sajuResult = data;
     renderResult(data);

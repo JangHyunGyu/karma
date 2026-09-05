@@ -1595,6 +1595,8 @@ const KARMA_TEXT_ANALYSIS_MESSAGES = {
     tarotCardsRequired: '카드 객체 3개를 선택해야 합니다.',
     invalidCardIds: '올바르지 않은 카드가 포함되어 있습니다.',
     aiUnavailable: 'AI 서비스를 사용할 수 없습니다.',
+    aiBusy: 'AI 분석 서비스가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.',
+    invalidRequest: '요청 형식이 올바르지 않습니다. 입력값을 확인해주세요.',
     serverError: '서버 오류가 발생했습니다.',
     birthDateRequired: '생년월일은 필수입니다.',
     bothBirthDatesRequired: '두 사람의 생년월일은 필수입니다.',
@@ -1604,6 +1606,8 @@ const KARMA_TEXT_ANALYSIS_MESSAGES = {
     tarotCardsRequired: 'Please select exactly three card objects.',
     invalidCardIds: 'One or more selected cards are invalid.',
     aiUnavailable: 'The AI service is unavailable.',
+    aiBusy: 'The AI analysis service is temporarily busy. Please try again shortly.',
+    invalidRequest: 'The request format is invalid. Please check your input.',
     serverError: 'A server error occurred.',
     birthDateRequired: 'Date of birth is required.',
     bothBirthDatesRequired: 'Dates of birth are required for both people.',
@@ -1628,6 +1632,24 @@ function getKarmaTextAnalysisMessage(lang, key) {
 
 function incompleteAiResponseMessage(lang) {
   return getKarmaTextAnalysisMessage(lang, 'incompleteAiResponse');
+}
+
+class KarmaAiServiceError extends Error {
+  constructor(lang, cause) {
+    const rateLimited = Number(cause?.status) === 429
+      || /\b429\b|rate[\s_-]*limit|too many requests/i.test(String(cause?.message || ''));
+    super(getKarmaTextAnalysisMessage(lang, rateLimited ? 'aiBusy' : 'aiUnavailable'));
+    this.name = 'KarmaAiServiceError';
+    this.code = rateLimited ? 'AI_RATE_LIMITED' : 'AI_UNAVAILABLE';
+    this.cause = cause;
+  }
+}
+
+function karmaAiServiceErrorResponse(error) {
+  if (!(error instanceof KarmaAiServiceError)) return null;
+  const response = json({ error: error.message, code: error.code }, 503);
+  if (error.code === 'AI_RATE_LIMITED') response.headers.set('Retry-After', '30');
+  return response;
 }
 
 const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
@@ -1711,14 +1733,19 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
     const maxAttempts = contractType ? 3 : 1;
     let contractErrors = [];
     let accumulated = null;
+    let lastParseError = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const hasPartialResponse = isPlainAiObject(accumulated);
+      const usePatchRetry = targetedPatchRetry && attempt > 0 && hasPartialResponse;
       const retryInstruction = attempt > 0
-        ? aiContractRetryInstruction(contractType, contractErrors, validationContext)
+        ? (hasPartialResponse
+          ? aiContractRetryInstruction(contractType, contractErrors, validationContext)
+          : 'The previous response was not a valid JSON object. Return the COMPLETE response matching the original schema, with every required field. Do not return a patch or an error object.')
         : '';
-      const attemptSystem = targetedPatchRetry && attempt > 0
+      const attemptSystem = usePatchRetry
         ? [proseGuard, retryInstruction].filter(Boolean).join('\n\n')
         : [systemText, retryInstruction].filter(Boolean).join('\n\n');
-      const attemptPrompt = targetedPatchRetry && attempt > 0
+      const attemptPrompt = usePatchRetry
         ? `Use the following original request only as factual reference. Ignore any full response schema in it and return exactly the JSON patch required by the system message.\n\n${promptText}`
         : promptText;
       const messages = attemptSystem
@@ -1729,15 +1756,21 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         : [{ role: 'user', content: attemptPrompt }];
       const cacheKey = buildKarmaPromptCacheKey(endpoint, contractType, responseLang, attemptSystem);
       const attemptStart = Date.now();
-      const result = await _env.AI.complete({
-        appId: 'karma',
-        messages,
-        cacheKey,
-        responseFormat: 'json_object',
-        temperature: attempt > 0 ? 0.2 : 0.5,
-        maxTokens: 16384,
-      });
-      const parsed = parseAiJsonResponse(result?.text || '');
+      let result;
+      try {
+        result = await _env.AI.complete({
+          appId: 'karma',
+          messages,
+          cacheKey,
+          responseFormat: 'json_object',
+          temperature: attempt > 0 ? 0.2 : 0.5,
+          maxTokens: 16384,
+        });
+      } catch (error) {
+        // Provider failover has already run in the shared router. Retrying it
+        // here would amplify a rate limit instead of repairing an AI response.
+        throw new KarmaAiServiceError(responseLang, error);
+      }
       const usage = result?.usage || {};
       await logPerfStats(_env, _ctx, {
         app: `karma:${endpoint}`,
@@ -1755,24 +1788,35 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         model: result?.model || null,
         provider_route: result?.providerRoute || result?.providerName || result?.provider || null,
       });
+      let parsed;
+      try {
+        parsed = parseAiJsonResponse(result?.text || '');
+        lastParseError = null;
+      } catch (error) {
+        lastParseError = error;
+        if (!contractErrors.length) contractErrors = ['root:valid_json_object'];
+        continue;
+      }
       accumulated = mergeAiContractPatch(accumulated, parsed);
       const contract = validateKarmaAiContract(contractType, accumulated, validationContext);
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
     }
-    await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, contractErrors.join(', '), {
+    await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, [contractErrors.join(', '), lastParseError?.message].filter(Boolean).join('\n'), {
       endpoint,
       contractType,
       promptChars: _contentsSize,
     });
     return null;
   } catch (error) {
+    const originalError = error instanceof KarmaAiServiceError ? error.cause : error;
     await logApiError(
       _env,
       `[${endpoint}] Karma AI text request failed`,
-      error?.stack || error?.message || String(error),
+      originalError?.stack || originalError?.message || String(originalError),
       { endpoint, contractType, promptChars: _contentsSize }
     );
+    if (error instanceof KarmaAiServiceError) throw error;
     return null;
   }
 }
@@ -2022,7 +2066,8 @@ async function handleTarotReading(request, env) {
       keywords: ai.keywords || [],
     });
   } catch (e) {
-    return json({ error: getKarmaTextAnalysisMessage(responseLang, 'serverError') }, 500);
+    return karmaAiServiceErrorResponse(e)
+      || json({ error: getKarmaTextAnalysisMessage(responseLang, 'serverError') }, 500);
   }
 }
 
@@ -2361,7 +2406,8 @@ async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handle
   try {
     response = await handler(request, env, requestId, rateLimitError, analysisContext);
   } catch (error) {
-    response = json({ error: error?.message || 'Server error' }, 500);
+    response = karmaAiServiceErrorResponse(error)
+      || json({ error: error?.message || 'Server error' }, 500);
   }
   const responseForLog = response.clone();
   const persist = async () => {
@@ -3641,13 +3687,21 @@ async function handleDeleteProfile(request, env) {
 // --- Saju Routes (from routes/saju.js) ---
 
 async function handleSajuAnalysis(request, env) {
-  const { birth_date, birth_time, gender, lang, yajasi, birth_location } = await request.json();
+  const requestLang = /^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko';
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: getKarmaTextAnalysisMessage(requestLang, 'invalidRequest') }, 400);
+  }
+  if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(requestLang, 'invalidRequest') }, 400);
+  const { birth_date, birth_time, gender, lang, yajasi, birth_location } = body;
   const responseLang = normalizeKarmaTextAnalysisLang(lang);
   if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
-  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
+  if (!env?.AI?.complete) return karmaAiServiceErrorResponse(new KarmaAiServiceError(responseLang));
   const ai = await callKarmaTextAi(
     buildSajuPrompt(saju, gender, responseLang, birth_date),
     'saju', env, null, 'saju', {
@@ -3805,10 +3859,15 @@ async function handleMatchDetail(idA, idB, env, lang) {
 
   if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
 
-  const ai = await callKarmaTextAi(
-    buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date),
-    'match-detail', env, null, 'compat'
-  );
+  let ai = null;
+  try {
+    ai = await callKarmaTextAi(
+      buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date),
+      'match-detail', env, null, 'compat'
+    );
+  } catch (error) {
+    if (!(error instanceof KarmaAiServiceError)) throw error;
+  }
   return json({ ...baseResult, ai });
 }
 
