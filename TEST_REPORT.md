@@ -1,3 +1,21 @@
+# AI failure retries — 2026-09-07
+
+- Text and photo analysis now allow three calls to the shared AI service:
+  the initial attempt and up to two retries, delayed by one and two seconds.
+- Network failures, timeouts, provider HTTP 429, and server errors are retryable.
+  Permanent upstream request/authentication errors stop immediately. Local input
+  validation, photo rejection, and the application's usage limit do not retry.
+- Connection failures and incomplete/invalid AI responses share the same budget.
+  Partial valid fields survive an intervening connection failure. A connection
+  failure alone does not add a misleading response-format repair instruction.
+- Photo retries reuse the same image, consume one local quota entry, and persist
+  the final outcome under the original request and private R2 key.
+- `npm test`: all validators and 27 regression tests passed. Fault injection
+  verified recovery on attempts two and three, exhaustion, mixed failures,
+  permanent errors, and both face/palm persistence paths.
+- `wrangler deploy --dry-run`: passed. Runtime version constants and model
+  selection are unchanged.
+
 # D1 audit and palm grade regression — 2026-09-07
 
 - Queried `karma_analyses`, `error_logs`, `client_errors`, and `perf_stats`

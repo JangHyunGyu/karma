@@ -1659,6 +1659,21 @@ function karmaAiServiceErrorResponse(error) {
   return response;
 }
 
+const KARMA_AI_MAX_ATTEMPTS = 3;
+
+function isRetryableKarmaAiError(error) {
+  // RPC may preserve only the error message, including several provider statuses.
+  const statuses = [...String(error?.message || '').matchAll(/\bHTTP\s+(\d{3})\b/gi)]
+    .map(match => Number(match[1]));
+  const status = Number(error?.status);
+  if (Number.isInteger(status) && status >= 400 && status <= 599) statuses.push(status);
+  return !statuses.length || statuses.some(value => value >= 500 || [408, 409, 425, 429].includes(value));
+}
+
+function waitForKarmaAiRetry(attempt) {
+  return new Promise(resolve => setTimeout(resolve, 1000 * (2 ** (attempt - 1))));
+}
+
 const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
 - 사용자에게 보이는 모든 문장은 번역문이 아니라 처음부터 한국어로 쓴 글처럼 자연스럽게 씁니다.
 - 독자는 사주·타로·관상·손금을 처음 접하는 일반인입니다. 관련 지식이 없어도 한 번에 이해할 수 있는 일상적인 말로 설명합니다.
@@ -1737,14 +1752,16 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
 
   try {
     const targetedPatchRetry = contractType === 'saju' || contractType === 'tarot';
-    const maxAttempts = contractType ? 3 : 1;
+    const maxAttempts = KARMA_AI_MAX_ATTEMPTS;
     let contractErrors = [];
     let accumulated = null;
     let lastParseError = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (attempt > 0) await waitForKarmaAiRetry(attempt);
       const hasPartialResponse = isPlainAiObject(accumulated);
-      const usePatchRetry = targetedPatchRetry && attempt > 0 && hasPartialResponse;
-      const retryInstruction = attempt > 0
+      const needsResponseRepair = contractErrors.length > 0;
+      const usePatchRetry = targetedPatchRetry && needsResponseRepair && hasPartialResponse;
+      const retryInstruction = needsResponseRepair
         ? (hasPartialResponse
           ? aiContractRetryInstruction(contractType, contractErrors, validationContext)
           : 'The previous response was not a valid JSON object. Return the COMPLETE response matching the original schema, with every required field. Do not return a patch or an error object.')
@@ -1774,8 +1791,8 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
           maxTokens: 16384,
         });
       } catch (error) {
-        // Provider failover has already run in the shared router. Retrying it
-        // here would amplify a rate limit instead of repairing an AI response.
+        // Transport failures and response repairs share one bounded retry budget.
+        if (isRetryableKarmaAiError(error) && attempt < maxAttempts - 1) continue;
         throw new KarmaAiServiceError(responseLang, error);
       }
       const usage = result?.usage || {};
@@ -2188,15 +2205,16 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   const responseLang = normalizePhotoAnalysisLang(lang);
   const languageGuard = karmaAiLanguageInstruction(responseLang);
   const basePrompt = [String(prompt || ''), proseGuard, languageGuard].filter(Boolean).join('\n\n');
-  const maxAttempts = contractType ? 3 : 1;
+  const maxAttempts = KARMA_AI_MAX_ATTEMPTS;
   let contractErrors = [];
   let lastError = null;
   let accumulated = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) await waitForKarmaAiRetry(attempt);
     try {
       const modelPrompt = [
         basePrompt,
-        attempt > 0 ? aiContractRetryInstruction(contractType, contractErrors, { lang: responseLang }) : '',
+        contractErrors.length ? aiContractRetryInstruction(contractType, contractErrors, { lang: responseLang }) : '',
       ].filter(Boolean).join('\n\n');
       const result = await env.AI.analyze({
         appId: 'karma',
@@ -2222,6 +2240,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
     } catch (error) {
       lastError = error;
+      if (!isRetryableKarmaAiError(error)) break;
     }
   }
   await logApiError(env, 'Karma AI photo analysis failed', lastError?.stack || lastError?.message || String(lastError || ''), {

@@ -99,7 +99,7 @@ test('provider rate limits are reported and logged as service unavailability, no
     assert.equal(response.status, 503);
     assert.equal(body.code, 'AI_RATE_LIMITED');
     assert.equal(response.headers.get('Retry-After'), '30');
-    assert.equal(calls, 1, 'the shared router has already exhausted provider routes');
+    assert.equal(calls, 3, 'provider rate limits receive two bounded retries before the final error');
     assert.doesNotMatch(body.error, /incomplete|항목이 완전|Provider|primary|fallback/);
     assert.match(body.error, lang === 'ko' ? /혼잡/ : /busy/i);
     const saved = writes.find(write => write.sql.includes('INSERT INTO karma_analyses'));
