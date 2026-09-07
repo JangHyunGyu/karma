@@ -1459,12 +1459,19 @@ function validateFaceAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
+function normalizePalmAiGrade(value) {
+  if (!isPlainAiObject(value) || value.error || !Number.isInteger(value.overall_score)
+      || value.overall_score < 0 || value.overall_score > 100) return value;
+  return { ...value, overall_grade: getGrade(value.overall_score) };
+}
+
 function validatePalmAiResponse(value) {
   const errors = [];
   if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
   if (isNonEmptyAiText(value.error)) return { ok: true, errors: [] };
   addAiScoreError(value.overall_score, errors, 'overall_score');
   addRequiredAiTextErrors(value, ['overall_grade', 'quality_assessment', 'summary', 'advice'], errors);
+  if (value.overall_grade !== getGrade(value.overall_score)) errors.push('overall_grade:score_threshold');
   addAiStringArrayError(value.visual_evidence, errors, 'visual_evidence', 8);
   if (!Array.isArray(value.lines) || value.lines.length !== 6) {
     errors.push('lines:array_length_6');
@@ -2208,6 +2215,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       const parsed = parseAiJsonResponse(result.text);
       accumulated = mergeAiContractPatch(accumulated, parsed);
       if (contractType === 'face') accumulated = normalizeFaceAiScores(accumulated);
+      if (contractType === 'palm') accumulated = normalizePalmAiGrade(accumulated);
       const contract = validateKarmaAiContract(contractType, accumulated, { lang: responseLang });
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
@@ -2888,6 +2896,7 @@ ${palmExpertRubric()}
 - summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 확인 어려운 손금 1개를 함께 언급해 이 손만의 대비를 만드세요.
 - fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼으세요. 근거 없이 일반 운세처럼 말하지 마세요.
 - overall_score와 각 lines 점수는 관찰된 선명도·끊김·가시성에서 나와야 합니다. 손바닥 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
+- overall_grade는 서버가 종합 점수에 맞는 공통 등급 기준으로 계산합니다. 등급을 생성하지 마세요.
 
 ## 직설 모드 원칙
 - **끊긴 선·흐린 선·섬(島)·흉터**는 먼저 실제 관찰로 기록한 뒤 전통 수상학상 어떤 경향으로 보는지 설명
@@ -2908,7 +2917,6 @@ ${palmExpertRubric()}
 반드시 아래 JSON 형식으로만 응답:
 {
   "overall_score": 82,
-  "overall_grade": "A",
   "quality_assessment": "(사진 품질, 손바닥 전체 노출, 초점, 조명, 손금 선명도, 분석 한계)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",

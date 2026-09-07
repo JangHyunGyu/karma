@@ -428,7 +428,7 @@ analyzeBtn.addEventListener('click', async () => {
 function renderResult(d) {
   const score = d.overall_score || 0;
   document.getElementById('totalScore').textContent = score;
-  const grade = cleanGrade(d.overall_grade || getGrade(score));
+  const grade = getGrade(score);
   document.getElementById('totalGrade').innerHTML = `<span class="grade grade-${grade}">${grade}</span>`;
   document.getElementById('summary').textContent = d.summary || '';
 
@@ -506,10 +506,6 @@ function _restorePalmInput(input) {
 
 function getGrade(s) {
   if (s >= 90) return 'S'; if (s >= 75) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; return 'D';
-}
-function cleanGrade(g) {
-  g = String(g || '').toUpperCase();
-  return ['S', 'A', 'B', 'C', 'D'].includes(g) ? g : 'D';
 }
 function scoreValue(v) {
   const n = Number(v);

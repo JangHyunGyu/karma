@@ -100,7 +100,7 @@ const face = {
 };
 const palm = {
   overall_score: 78,
-  overall_grade: 'B+',
+  overall_grade: 'A',
   quality_assessment: text,
   visual_evidence: Array(8).fill(text),
   summary: text,
@@ -136,6 +136,7 @@ const nestedFailures = [
   ['face.fortune.health', 'face', face, value => delete value.fortune.health],
   ['face.visual_evidence length', 'face', face, value => value.visual_evidence.pop()],
   ['palm.lines length', 'palm', palm, value => value.lines.pop()],
+  ['palm.overall_grade mismatch', 'palm', palm, value => value.overall_grade = 'C'],
   ['palm.lines[0].length', 'palm', palm, value => delete value.lines[0].length],
   ['palm.hand_shape.desc', 'palm', palm, value => delete value.hand_shape.desc],
   ['palm.fortune.wealth', 'palm', palm, value => delete value.fortune.wealth],
@@ -160,7 +161,7 @@ const pageContracts = {
   daily: ['f.overall', 'f.love', 'f.money', 'f.career', 'f.study', 'f.social', 'f.health', 'f.lucky.color', 'f.lucky.number', 'f.advice'],
   compat: ['d.ai.summary', 'd.ai.categories', 'cat.score', 'cat.desc', 'd.ai.strengths', 'd.ai.cautions', 'd.ai.advice'],
   face: ['d.overall_score', 'd.overall_grade', 'd.summary', 'd.categories', 'd.fortune', 'fort.wealth', 'fort.career', 'fort.love', 'fort.health', 'd.advice'],
-  palm: ['d.overall_score', 'd.overall_grade', 'd.summary', 'd.lines', 'd.hand_shape', 'd.fortune', 'fort.wealth', 'fort.career', 'fort.love', 'fort.health', 'd.advice'],
+  palm: ['d.overall_score', 'getGrade(score)', 'd.summary', 'd.lines', 'd.hand_shape', 'd.fortune', 'fort.wealth', 'fort.career', 'fort.love', 'fort.health', 'd.advice'],
 };
 for (const [page, tokens] of Object.entries(pageContracts)) {
   for (const localePage of [`${page}.html`, `${page}-en.html`]) {
@@ -181,8 +182,9 @@ const promptKeys = {
   fortune: ['year_summary', 'love', 'money', 'health', 'career', 'lucky', 'color', 'number', 'direction', 'month', 'advice'],
   daily: ['overall', 'love', 'money', 'career', 'study', 'social', 'health', 'lucky', 'color', 'number', 'advice'],
   compat: ['summary', 'categories', 'personality', 'intimacy', 'finance', 'timing', 'strengths', 'cautions', 'advice'],
-  face: ['overall_score', 'overall_grade', 'quality_assessment', 'visual_evidence', 'summary', 'categories', 'fortune', 'wealth', 'career', 'love', 'health', 'advice', 'celebrity_resemblance'],
-  palm: ['overall_score', 'overall_grade', 'quality_assessment', 'visual_evidence', 'summary', 'lines', 'hand_shape', 'fortune', 'wealth', 'career', 'love', 'health', 'advice'],
+  // Face totals/grades and palm grades are calculated by the server.
+  face: ['quality_assessment', 'visual_evidence', 'summary', 'categories', 'fortune', 'wealth', 'career', 'love', 'health', 'advice', 'celebrity_resemblance'],
+  palm: ['overall_score', 'quality_assessment', 'visual_evidence', 'summary', 'lines', 'hand_shape', 'fortune', 'wealth', 'career', 'love', 'health', 'advice'],
 };
 for (const [type, keys] of Object.entries(promptKeys)) {
   for (const key of keys) check(workerSource.includes(`"${key}"`), `${type} 프롬프트에 ${key} 키 명시`);
