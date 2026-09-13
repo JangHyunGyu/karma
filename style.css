@@ -277,6 +277,18 @@ h1 {
   transition: background 0.15s, color 0.15s;
 }
 .combo-option:hover { background: rgba(201,160,68,0.15); color: #fff; }
+.combo-option:focus-visible { outline: 2px solid #f5d778; outline-offset: -2px; }
+#yajasiHintModal {
+  max-height: 100dvh;
+  padding-top: max(20px, env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+}
+#yajasiHintModal > div {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#yajasiHintModal button { min-height: 44px; }
 .combo-option.selected { background: rgba(201,160,68,0.25); color: #c9a044; font-weight: 600; }
 .combo-dropdown::-webkit-scrollbar { width: 6px; }
 .combo-dropdown::-webkit-scrollbar-track { background: transparent; }

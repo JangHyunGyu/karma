@@ -200,6 +200,8 @@ function getBirthDate() {
 // ===== 커스텀 콤보박스 =====
 function setComboLayerState(combo, active) {
   if (!combo) return;
+  const trigger = combo.querySelector('.combo-trigger');
+  if (trigger) trigger.setAttribute('aria-expanded', String(active));
 
   const parentCard = combo.closest('.card');
   if (parentCard) parentCard.classList.toggle('combo-active', active);
@@ -225,6 +227,12 @@ function createCombo(selectEl) {
   // 트리거
   const trigger = document.createElement('div');
   trigger.className = 'combo-trigger';
+  trigger.tabIndex = 0;
+  trigger.setAttribute('role', 'combobox');
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  const label = selectEl.labels?.[0] || selectEl.parentElement.querySelector('label');
+  if (label) trigger.setAttribute('aria-label', label.textContent.trim());
   const _initLang = document.documentElement.lang || 'ko';
   const _initText = selectedOpt ? (selectedOpt.dataset[_initLang] || selectedOpt.textContent) : '';
   trigger.innerHTML = `<span>${_initText}</span><span class="combo-arrow">▾</span>`;
@@ -232,6 +240,9 @@ function createCombo(selectEl) {
   // 드롭다운
   const dropdown = document.createElement('div');
   dropdown.className = 'combo-dropdown';
+  dropdown.id = (selectEl.id || 'combo-' + document.querySelectorAll('.combo').length) + '-options';
+  dropdown.setAttribute('role', 'listbox');
+  trigger.setAttribute('aria-controls', dropdown.id);
   const _lang = () => document.documentElement.lang || 'ko';
   const _optText = (el) => (el.dataset[_lang()] || el.dataset.ko || el.textContent);
   options.forEach(opt => {
@@ -287,12 +298,54 @@ function createCombo(selectEl) {
     setComboLayerState(combo, combo.classList.contains('open'));
     // fixed 위치 계산
     if (combo.classList.contains('open')) {
+      dropdown.querySelectorAll('.combo-option').forEach((option, index) => {
+        option.id = dropdown.id + '-' + index;
+        option.tabIndex = -1;
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', String(option.classList.contains('selected')));
+      });
       positionDropdown();
       const sel = dropdown.querySelector('.selected');
       if (sel) {
         dropdown.scrollTop = sel.offsetTop - dropdown.offsetHeight / 2 + sel.offsetHeight / 2;
       }
     }
+  });
+
+  combo.addEventListener('keydown', (event) => {
+    const options = Array.from(dropdown.querySelectorAll('.combo-option'));
+    if (!options.length) return;
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      combo.classList.remove('open');
+      setComboLayerState(combo, false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        trigger.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const option = event.target.closest('.combo-option');
+      if (option) {
+        option.click();
+        trigger.focus({ preventScroll: true });
+      } else {
+        trigger.click();
+        if (combo.classList.contains('open')) (dropdown.querySelector('.selected') || options[0]).focus();
+      }
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const wasOpen = combo.classList.contains('open');
+    if (!wasOpen) trigger.click();
+    let index = options.indexOf(document.activeElement);
+    if (index < 0) index = Math.max(0, options.findIndex(option => option.classList.contains('selected')));
+    if (event.key === 'Home') index = 0;
+    else if (event.key === 'End') index = options.length - 1;
+    else if (wasOpen) index = Math.max(0, Math.min(options.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+    options[index].focus();
   });
 
   selectEl.style.display = 'none';
@@ -501,21 +554,26 @@ function initAllCombos() {
   });
 }
 
-// 외부 클릭 시 닫기
-document.addEventListener('click', () => {
+// Fixed-position lists must be dismissed when their viewport or anchor moves.
+function closeOpenCombos() {
   document.querySelectorAll('.combo.open').forEach(c => {
+    const restoreFocus = c.contains(document.activeElement);
     c.classList.remove('open');
     setComboLayerState(c, false);
+    if (restoreFocus) c.querySelector('.combo-trigger')?.focus({ preventScroll: true });
   });
-});
+}
+document.addEventListener('click', closeOpenCombos);
+window.addEventListener('resize', closeOpenCombos);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', closeOpenCombos);
+  window.visualViewport.addEventListener('scroll', closeOpenCombos);
+}
 
 // 스크롤 시 드롭다운 닫기 (드롭다운 내부 스크롤은 제외)
 window.addEventListener('scroll', (e) => {
   if (e.target.closest && e.target.closest('.combo-dropdown')) return;
-  document.querySelectorAll('.combo.open').forEach(c => {
-    c.classList.remove('open');
-    setComboLayerState(c, false);
-  });
+  closeOpenCombos();
 }, true);
 
 // ===== 마침표 줄바꿈 =====
