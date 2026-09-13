@@ -70,7 +70,8 @@ console.log('\n🏠 홈 화면 완성도·접근성');
 for (const page of ['index', 'index-en']) {
   const html = fs.readFileSync(path.join(root, `${page}.html`), 'utf8');
   check(html.includes('class="container home-container"'), `${page}에 전용 반응형 홈 레이아웃 적용`);
-  check((html.match(/class="home-benefits"/g) || []).length === 1, `${page}에 서비스 이용 기준 안내`);
+  check(!html.includes('class="home-benefits"'), `${page} 첫 화면에서 중복 이용 안내 제거`);
+  check(/<meta name="description" content="[^"]+"/.test(html) && html.includes('application/ld+json') && html.includes('id="servicesTitle"'), `${page} 서비스 설명과 검색용 구조 유지`);
   check(/<button[^>]+class="menu-card disabled"[^>]+aria-haspopup="dialog"/.test(html), `${page} 준비중 카드를 키보드 버튼으로 제공`);
   check(/role="dialog"[^>]+aria-modal="true"[^>]+aria-hidden="true"/.test(html), `${page} 준비중 안내에 대화상자 의미 제공`);
   check(html.includes("event.key === 'Escape'"), `${page} 준비중 안내를 Esc 키로 닫을 수 있음`);

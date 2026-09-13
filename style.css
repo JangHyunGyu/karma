@@ -590,22 +590,6 @@ option { background: #1a1a2e; color: #e0e0e0; }
   letter-spacing: 0.22em;
 }
 .home-hero .subtitle { margin-bottom: 18px; }
-.home-benefits {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.home-benefits span {
-  padding: 7px 11px;
-  color: #d8d0c2;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  background: rgba(16,12,30,0.72);
-  border: 1px solid rgba(201,160,68,0.22);
-  border-radius: 999px;
-}
-.home-benefits span::before { content: '✓'; margin-right: 6px; color: #e5c66f; font-weight: 900; }
 .home-section-title {
   margin: 0 0 16px;
   color: #f2eadb;
@@ -741,8 +725,6 @@ option { background: #1a1a2e; color: #e0e0e0; }
   .subtitle { font-size: 0.8rem; margin-bottom: 20px; }
   .home-hero { margin-bottom: 24px; }
   .home-hero .subtitle { margin-bottom: 14px; }
-  .home-benefits { gap: 6px; }
-  .home-benefits span { padding: 6px 9px; font-size: 0.65rem; }
   .home-section-title { font-size: 0.95rem; margin-bottom: 12px; }
   .card { padding: 16px; border-radius: 14px; margin-bottom: 12px; }
   .btn { padding: 13px; font-size: 0.95rem; }
@@ -895,84 +877,77 @@ body.bg-compat::after {
   opacity: 0;
 }
 
-.home-nav a,
-select.lang-select,
-.combo-trigger,
-.cal-btn,
-.btn,
-.coming-soon-btn,
-.tarot-reset-btn,
-.year-cta-row a,
-.year-page .cta-main {
+/* Generated celestial enamel button artwork; text remains selectable HTML. */
+:root { --karma-button-art: url('/images/ui/celestial-button.webp'); }
+.home-nav a, select.lang-select, .combo-trigger, .cal-btn, .btn,
+.coming-soon-btn, .tarot-reset-btn, .year-cta-row a, .year-page .cta-main {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background:
-    linear-gradient(145deg, rgba(201,160,68,0.14), rgba(15,11,31,0.86)),
-    var(--karma-ui-surface) center / 340px 340px !important;
-  background-blend-mode: normal, soft-light !important;
-  border-color: rgba(201,160,68,0.34) !important;
+  background: linear-gradient(#160f2999, #160f2999), var(--karma-button-art) center / 100% 100% no-repeat !important;
+  background-blend-mode: normal !important;
+  border-color: #8a7046 !important;
+  color: #f9e8bc;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: filter 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
-
-.btn,
-.coming-soon-btn,
-.tarot-reset-btn,
-.year-page .cta-main {
-  background:
-    linear-gradient(135deg, rgba(139,94,47,0.94), rgba(201,160,68,0.95), rgba(212,175,85,0.92)),
-    var(--karma-ui-surface) center / 380px 380px !important;
-  background-blend-mode: normal, soft-light !important;
+.btn:not(.btn-secondary):not(.btn-kakao), .coming-soon-btn, .tarot-reset-btn, .year-page .cta-main {
+  min-height: 44px;
+  padding: 12px 30px;
+  line-height: 1.4;
+  color: #fff0bc;
+  background: #1d102b !important;
+  border: 1px solid #8a7046;
+  box-shadow: 0 3px 0 #100817, 0 5px 14px #00000030;
+  text-shadow: 0 1px 2px #00000080;
 }
-
-.btn.btn-kakao {
-  background: #FEE500 !important;
-  color: #191919;
-  text-shadow: none;
-}
-
-select.lang-select {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a044'/%3E%3C/svg%3E"),
-    linear-gradient(145deg, rgba(201,160,68,0.14), rgba(15,11,31,0.86)),
-    var(--karma-ui-surface) !important;
-  background-repeat: no-repeat, no-repeat, repeat !important;
-  background-position: right 10px center, center, center !important;
-  background-size: 10px 6px, auto, 340px 340px !important;
-  background-blend-mode: normal, normal, soft-light !important;
-}
-
-.home-nav a::before,
-.combo-trigger::before,
-.cal-btn::before,
-.btn::before,
-.coming-soon-btn::before,
-.tarot-reset-btn::before,
-.year-cta-row a::before,
-.year-page .cta-main::before {
+.btn:not(.btn-secondary):not(.btn-kakao)::before, .coming-soon-btn::before,
+.tarot-reset-btn::before, .year-page .cta-main::before {
   content: '';
   position: absolute;
-  inset: -110% -45%;
-  background: var(--karma-ui-hover) center / cover no-repeat;
-  mix-blend-mode: screen;
-  opacity: 0;
-  transform: translateX(-12%) scale(0.9);
-  transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  inset: 0;
+  z-index: -1;
+  border: 0 solid transparent;
+  border-image: var(--karma-button-art) 9% 16% fill / 5px 26px / 0 stretch;
   pointer-events: none;
+  opacity: 1;
+}
+.cal-btn.active, .combo.open .combo-trigger {
+  border-color: #f5d778 !important;
+  color: #fff5d6;
+  box-shadow: inset 0 0 0 1px #f5d778, 0 0 0 1px #f5d77833;
+}
+select.lang-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a044'/%3E%3C/svg%3E"), linear-gradient(#160f2988, #160f2988), var(--karma-button-art) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center, center, center !important;
+  background-size: 10px 6px, auto, 100% 100% !important;
+}
+.btn.btn-kakao { background: #fee500 !important; color: #191919; text-shadow: none; }
+.btn.btn-kakao::before { content: none; }
+.btn.btn-secondary { color: #e5dccb; box-shadow: inset 0 1px 0 #ffffff15; }
+.btn-small { padding: 8px 20px; }
+:is(.home-nav a, select.lang-select, .combo-trigger, .cal-btn, .btn, .coming-soon-btn, .tarot-reset-btn, .year-cta-row a, .year-page .cta-main):focus-visible {
+  outline: 3px solid #f5d778;
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.home-nav a, .combo-trigger, .cal-btn, .btn, .coming-soon-btn, .tarot-reset-btn, .year-cta-row a, .year-page .cta-main):not(:disabled):hover { filter: brightness(1.15); transform: none; }
+}
+:is(.btn, .coming-soon-btn, .cal-btn, .tarot-reset-btn):not(:disabled):active { filter: brightness(.9); transform: none; }
+.btn:disabled { filter: saturate(.25); box-shadow: none; cursor: not-allowed; }
+.btn:disabled::before { opacity: 1; }
+@media (pointer: coarse), (max-width: 768px) {
+  .home-nav a, select.lang-select, .combo-trigger, .cal-btn, .btn, .coming-soon-btn, .tarot-reset-btn { min-height: 44px; }
+  .btn { font-size: .9rem; letter-spacing: .02em; }
+  .home-nav a { display: inline-flex; align-items: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-nav a, select.lang-select, .combo-trigger, .cal-btn, .btn, .coming-soon-btn, .tarot-reset-btn, .year-cta-row a, .year-page .cta-main { transition: none; transform: none; }
 }
 
-.home-nav a:hover::before,
-.combo-trigger:hover::before,
-.combo.open .combo-trigger::before,
-.cal-btn:hover::before,
-.cal-btn.active::before,
-.btn:hover::before,
-.coming-soon-btn:hover::before,
-.tarot-reset-btn:hover::before,
-.year-cta-row a:hover::before,
-.year-page .cta-main:hover::before {
-  opacity: 0.68;
-  transform: translateX(0) scale(1);
-}
 
 input,
 select,
