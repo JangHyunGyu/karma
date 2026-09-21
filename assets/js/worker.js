@@ -1420,7 +1420,91 @@ function normalizeFaceAiScores(value) {
   };
 }
 
-function validateFaceAiResponse(value) {
+function isAdultFaceAge(age) {
+  return ['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(age);
+}
+
+function normalizeFaceAppearance(value, context = {}) {
+  if (!isPlainAiObject(value?.appearance)) return value;
+  const appearance = { ...value.appearance };
+  if (isPlainAiObject(appearance.style)) {
+    appearance.style = { ...appearance.style };
+    if (['남성', 'male'].includes(context.gender)) appearance.style.makeup = '';
+    if (['여성', 'female'].includes(context.gender)) appearance.style.grooming = '';
+  }
+  if (!isAdultFaceAge(context.age) || appearance.adult_subject !== true) {
+    appearance.sex_appeal = '';
+    appearance.cosmetic_consultation = [];
+  }
+  return { ...value, appearance };
+}
+
+function validateFaceAppearance(value, errors, context) {
+  const appearance = value.appearance;
+  if (!isPlainAiObject(appearance)) {
+    errors.push('appearance:object');
+  } else {
+    addAiStringArrayError(appearance.types, errors, 'appearance.types', 2);
+    if (appearance.types?.length > 3) errors.push('appearance.types:max_3');
+    addRequiredAiTextErrors(appearance, ['harmony', 'first_impression'], errors, 'appearance.');
+    if (!Array.isArray(appearance.highlights) || appearance.highlights.length < 2 || appearance.highlights.length > 3) {
+      errors.push('appearance.highlights:array_length_2_to_3');
+    } else {
+      appearance.highlights.forEach((item, index) => {
+        if (!isPlainAiObject(item)) errors.push(`appearance.highlights[${index}]:object`);
+        else addRequiredAiTextErrors(item, ['feature', 'description'], errors, `appearance.highlights[${index}].`);
+      });
+    }
+    if (!isPlainAiObject(appearance.style)) errors.push('appearance.style:object');
+    else {
+      addRequiredAiTextErrors(appearance.style, ['hair', 'glasses', 'photo'], errors, 'appearance.style.');
+      for (const key of ['makeup', 'grooming']) {
+        if (typeof appearance.style[key] !== 'string') errors.push(`appearance.style.${key}:string`);
+      }
+      if (['여성', 'female'].includes(context.gender)) {
+        addRequiredAiTextErrors(appearance.style, ['makeup'], errors, 'appearance.style.');
+      }
+      if (['남성', 'male'].includes(context.gender)) {
+        addRequiredAiTextErrors(appearance.style, ['grooming'], errors, 'appearance.style.');
+      }
+    }
+    if (typeof appearance.adult_subject !== 'boolean') errors.push('appearance.adult_subject:boolean');
+    if (typeof appearance.sex_appeal !== 'string') errors.push('appearance.sex_appeal:string');
+    if (!Array.isArray(appearance.cosmetic_consultation) || appearance.cosmetic_consultation.length > 2) {
+      errors.push('appearance.cosmetic_consultation:array_max_2');
+    } else {
+      appearance.cosmetic_consultation.forEach((item, index) => {
+        if (!isPlainAiObject(item)) errors.push(`appearance.cosmetic_consultation[${index}]:object`);
+        else addRequiredAiTextErrors(item, ['area', 'observation', 'question', 'alternative'], errors, `appearance.cosmetic_consultation[${index}].`);
+      });
+    }
+    if (isAdultFaceAge(context.age) && appearance.adult_subject === true) {
+      addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
+      if (!appearance.cosmetic_consultation?.length) errors.push('appearance.cosmetic_consultation:min_1');
+    }
+  }
+  const color = value.personal_color;
+  if (!isPlainAiObject(color)) {
+    errors.push('personal_color:object');
+  } else {
+    if (!['spring', 'summer', 'autumn', 'winter', 'undetermined'].includes(color.season)) errors.push('personal_color.season:enum');
+    if (!['warm', 'cool', 'neutral', 'undetermined'].includes(color.undertone)) errors.push('personal_color.undertone:enum');
+    addRequiredAiTextErrors(color, ['observation', 'limitation', 'styling_tip'], errors, 'personal_color.');
+    if (!Array.isArray(color.colors) || color.colors.length < 3 || color.colors.length > 5) {
+      errors.push('personal_color.colors:array_length_3_to_5');
+    } else {
+      color.colors.forEach((item, index) => {
+        if (!isPlainAiObject(item)) errors.push(`personal_color.colors[${index}]:object`);
+        else {
+          addRequiredAiTextErrors(item, ['name'], errors, `personal_color.colors[${index}].`);
+          if (!/^#[0-9a-f]{6}$/i.test(item.hex || '')) errors.push(`personal_color.colors[${index}].hex:hex_color`);
+        }
+      });
+    }
+  }
+}
+
+function validateFaceAiResponse(value, context = {}) {
   const errors = [];
   if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
   if (isNonEmptyAiText(value.error)) return { ok: true, errors: [] };
@@ -1456,6 +1540,7 @@ function validateFaceAiResponse(value) {
   }
   addFortuneObjectErrors(value.fortune, errors, 'fortune');
   if (typeof value.celebrity_resemblance !== 'string') errors.push('celebrity_resemblance:string');
+  validateFaceAppearance(value, errors, context);
   return { ok: errors.length === 0, errors };
 }
 
@@ -1499,6 +1584,7 @@ const KARMA_LATIN_WORD_PATTERN = /[A-Za-z]{2,}/;
 
 function addKarmaAiLanguageErrors(value, lang, errors, path = '') {
   if (typeof value === 'string') {
+    if (/^personal_color\.(season|undertone)$|^personal_color\.colors\[\d+\]\.hex$/.test(path)) return;
     const errorPath = path || 'root';
     if (lang === 'en' && KARMA_CJK_TEXT_PATTERN.test(value)) {
       errors.push(`${errorPath}:english_only`);
@@ -1525,7 +1611,7 @@ function validateKarmaAiContract(contractType, value, context = {}) {
     case 'fortune': contract = validateFortuneAiResponse(value); break;
     case 'daily': contract = validateDailyAiResponse(value); break;
     case 'compat': contract = validateCompatAiResponse(value); break;
-    case 'face': contract = validateFaceAiResponse(value); break;
+    case 'face': contract = validateFaceAiResponse(value, context); break;
     case 'palm': contract = validatePalmAiResponse(value); break;
     default: contract = { ok: true, errors: [] };
   }
@@ -2196,7 +2282,7 @@ function validatePhotoImageInput(image, mimeType, lang = 'ko') {
   return { image: encoded, mimeType: normalizedMime, status: 200 };
 }
 
-async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '') {
+async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '', contractContext = {}) {
   if (!env?.AI?.analyze) {
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
@@ -2204,7 +2290,10 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   const proseGuard = karmaResponseStyleGuide(normalizePhotoAnalysisLang(lang));
   const responseLang = normalizePhotoAnalysisLang(lang);
   const languageGuard = karmaAiLanguageInstruction(responseLang);
-  const basePrompt = [String(prompt || ''), proseGuard, languageGuard].filter(Boolean).join('\n\n');
+  const colorFormatGuard = contractType === 'face'
+    ? 'Exception for machine-readable fields: preserve personal_color.season and personal_color.undertone enum values in English and colors[].hex as #RRGGBB. Localize all descriptive text and color names.'
+    : '';
+  const basePrompt = [String(prompt || ''), proseGuard, languageGuard, colorFormatGuard].filter(Boolean).join('\n\n');
   const maxAttempts = KARMA_AI_MAX_ATTEMPTS;
   let contractErrors = [];
   let lastError = null;
@@ -2232,9 +2321,9 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       }
       const parsed = parseAiJsonResponse(result.text);
       accumulated = mergeAiContractPatch(accumulated, parsed);
-      if (contractType === 'face') accumulated = normalizeFaceAiScores(accumulated);
+      if (contractType === 'face') accumulated = normalizeFaceAppearance(normalizeFaceAiScores(accumulated), contractContext);
       if (contractType === 'palm') accumulated = normalizePalmAiGrade(accumulated);
-      const contract = validateKarmaAiContract(contractType, accumulated, { lang: responseLang });
+      const contract = validateKarmaAiContract(contractType, accumulated, { ...contractContext, lang: responseLang });
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
       lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
@@ -2728,6 +2817,24 @@ ${gender ? `성별: ${gender}` : ''}${age ? `, 나이대: ${age}` : ''}
 
 ${faceExpertRubric()}
 
+## 외모 매력과 스타일
+- appearance에는 매력 유형 키워드 2~3개, 눈에 띄는 매력 포인트 2~3개와 관찰 근거, 이목구비 조화, 사진 속 첫인상, 스타일 제안을 작성하세요. 관상 운세와 구분하고 외모 순위·백분위·점수는 만들지 마세요. 첫인상은 표정과 형태가 만드는 시각적 분위기로만 설명하고 실제 성격이나 타인의 호감을 단정하지 마세요.
+- 성별은 사용자가 선택한 값만 사용하세요. 사진으로 성별을 추정하지 말고 매력 유형을 성별 고정관념에 맞추지 마세요. 헤어·안경·사진 각도는 보이는 얼굴형과 비율에 맞춰 구체적으로 제안하세요.
+- ${['여성', 'female'].includes(gender) ? '여성 선택: style.makeup에 눈매에 맞는 아이라인·눈썹 표현과 립·블러셔 색상 제안을 포함하세요. personal_color와 색상 제안이 서로 맞아야 합니다. style.grooming은 필요 없으면 빈 문자열입니다.' : ['남성', 'male'].includes(gender) ? '남성 선택: style.grooming에 눈썹 정리·구레나룻·수염선처럼 얼굴선에 맞는 선택지를 제안하세요. 보이지 않는 수염 상태를 만들어내지 마세요. style.makeup은 빈 문자열입니다.' : '성별 미선택: 성별을 전제하지 않는 헤어·안경·사진 각도를 제안하세요. style.makeup과 style.grooming은 필요 없으면 빈 문자열입니다.'}
+- 나이대에 맞는 일상적인 스타일을 제안하고 결점 지적, 과장된 찬사, 살을 빼거나 피부색을 바꾸라는 권유는 하지 마세요.
+
+## 성인 항목
+- 사용자 나이대의 성인 조건: ${isAdultFaceAge(age) ? '충족' : '미충족'}. 조건 미충족이면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열입니다.
+- 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
+- adult_subject가 true일 때 sex_appeal에는 눈빛·표정·입매가 만드는 성적 매력을 비노골적인 2~3문장으로 설명하세요. 신체의 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 타인의 욕망 단정은 금지합니다.
+- cosmetic_consultation은 성형을 이미 고민하는 성인이 전문의에게 물어볼 상담 포인트 1~2개입니다. area에는 관찰 가능한 부위, observation에는 사진에 보이는 비율과 촬영 각도 한계, question에는 원하는 인상 변화가 가능한지와 위험·회복·대안을 상담할 질문, alternative에는 헤어·메이크업·안경 등 비의료적 대안을 적으세요. 수술이 필요하다고 하거나 특정 수술·시술의 적합성, 효과, 결과를 판정·추천하지 마세요. 질환 진단이나 미용 결함을 만들어내지 마세요.
+
+## 사진 기반 퍼스널 컬러
+- 피부에 비친 색감과 눈·머리카락의 명도 대비를 관찰해 계절과 웜·쿨·중립 계열을 잠정 제안하세요. 피부 밝기를 매력의 우열로 평가하지 말고 성별·인종으로 색을 정하지 마세요.
+- 조명 색, 필터, 염색, 메이크업, 노출 때문에 판별하기 어려우면 season과 undertone을 undetermined로 두세요. 확실한 진단이나 신뢰도 수치를 만들지 마세요. limitation에는 사진의 구체적인 한계와 자연광에서 색을 비교할 방법을 설명하세요.
+- colors는 옷·액세서리로 비교해 볼 색 3~5개이며 name은 응답 언어의 색 이름, hex는 #RRGGBB 형식입니다. 판별이 어려워도 비교용 색을 제안하되 styling_tip에 비교용임을 밝히세요. 여성 메이크업 색과 남성 의류·안경 색 등 선택한 스타일과 연결하세요.
+- season, undertone의 열거값과 hex는 기계 판독용이므로 번역하지 마세요. 나머지 설명과 색 이름만 요청 언어로 작성하세요.
+
 ## 사진별 차별화 필수
 - 먼저 사진에서 실제로 보이는 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
 - JSON의 첫 항목인 \`forehead_observation.observation\`에 양쪽 눈썹과 그 위 피부, 머리카락 또는 천의 경계 위치를 먼저 묘사한 다음 boolean을 작성하세요. \`skin_visible\`은 눈썹 위 이마 피부가 일부라도 보이면 true이며 이마 피부가 전혀 보이지 않을 때만 false입니다. \`hairline_visible\`은 머리카락 시작 경계가 보이는지를 뜻하는 별개 값입니다. \`limitation\`에는 가려진 정확한 위치와 원인만 쓰고 제한이 없으면 빈 문자열을 쓰세요. 두건·모자가 있다는 사실만으로 skin_visible을 false로 정하지 마세요. 일부 노출을 전체 가림으로 표현하면 관찰 오류입니다.
@@ -2781,11 +2888,29 @@ ${faceExpertRubric()}
     "health": "(건강운 3~4문장. 사진상 보이는 피로감·긴장감·생활관리 주의 중심. 특정 질환 확정이나 발병 나이 단정 금지)"
   },
   "advice": "(관상 기반 조언 3~4문장. 격언 금지. '이 상은 ~을 반드시 피하라, ~부터 ~을 준비해라' 식 구체 지시)",
-  "celebrity_resemblance": ""
+  "celebrity_resemblance": "",
+  "appearance": {
+    "types": ["(사진에서 느껴지는 매력 유형)", "(또 다른 매력 유형)"],
+    "highlights": [{"feature": "(부위)", "description": "(눈에 띄는 특징과 이유)"}, {"feature": "(다른 부위)", "description": "(관찰 근거)"}],
+    "harmony": "(얼굴형과 이목구비 비율이 만드는 인상)",
+    "first_impression": "(사진 속 표정과 형태가 만드는 분위기)",
+    "style": {"hair": "(헤어 제안과 이유)", "glasses": "(안경 제안과 이유)", "photo": "(표정·촬영 각도 제안)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
+    "adult_subject": null,
+    "sex_appeal": "(성인 조건을 충족하고 사진 속 인물도 확실한 성인일 때만 작성, 아니면 빈 문자열)",
+    "cosmetic_consultation": ${isAdultFaceAge(age) ? '[{"area": "(상담할 부위)", "observation": "(사진에 보이는 비율과 촬영 한계)", "question": "(원하는 변화·위험·회복·대안을 전문의에게 물어볼 질문)", "alternative": "(수술 없이 시도할 스타일)"}]' : '[]'}
+  },
+  "personal_color": {
+    "season": "(spring/summer/autumn/winter/undetermined 중 하나)",
+    "undertone": "(warm/cool/neutral/undetermined 중 하나)",
+    "observation": "(사진에 보이는 색감과 명도 대비, 잠정 제안 이유)",
+    "limitation": "(사진의 한계와 자연광에서 비교하는 방법)",
+    "colors": [{"name": "(색 이름)", "hex": "(#RRGGBB)"}, {"name": "(색 이름)", "hex": "(#RRGGBB)"}, {"name": "(색 이름)", "hex": "(#RRGGBB)"}],
+    "styling_tip": "(추천 색을 옷·안경·메이크업에 적용하거나 비교할 방법)"
+  }
 }` + langInstruction(analysisLang);
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
-  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face');
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face', { gender, age });
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {

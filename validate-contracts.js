@@ -87,6 +87,7 @@ const tarot = {
   keywords: ['하나', '둘', '셋', '넷', '다섯'],
 };
 const face = {
+  ...require('./tests/fixtures/face-appearance.cjs')('ko'),
   overall_score: 75,
   overall_grade: 'A',
   forehead_observation: { skin_visible: true, hairline_visible: false, observation: text, limitation: text },

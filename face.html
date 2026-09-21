@@ -156,6 +156,17 @@
   color: #b39ddb;
   display: flex; align-items: center; gap: 8px;
 }
+.appearance-card { padding: 22px; }
+.appearance-card h3 { margin: 0 0 8px; font-size: 0.92rem; color: #e8e0d0; }
+.appearance-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.appearance-tag { border: 1px solid rgba(201,160,68,0.3); border-radius: 20px; padding: 6px 12px; color: #d6b66e; font-size: 0.8rem; }
+.appearance-card p { color: #aaa; font-size: 0.84rem; line-height: 1.7; overflow-wrap: anywhere; }
+.appearance-card .appearance-note { color: #999; font-size: 0.76rem; }
+.appearance-card .appearance-row { padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.appearance-card .appearance-row:last-child { border-bottom: none; padding-bottom: 0; }
+.appearance-palette { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.appearance-color { width: 76px; color: #bbb; font-size: 0.75rem; line-height: 1.4; overflow-wrap: anywhere; }
+.appearance-swatch { display: block; width: 100%; height: 40px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; margin-bottom: 6px; }
 </style>
 <script src="/js/browser-check.js?v=1.1.0"></script>
 <script src="/js/components.js?v=10"></script>
@@ -265,6 +276,10 @@ window.KarmaShare = window.KarmaShare || {
     </div>
 
     <div class="card" id="categories" style="padding:22px"></div>
+
+    <section class="card appearance-card" id="appearance" style="display:none"></section>
+    <section class="card appearance-card" id="personalColor" style="display:none"></section>
+    <section class="card appearance-card" id="cosmeticConsultation" style="display:none"></section>
 
     <div class="card">
       <h2 data-ko="🔮 운세 풀이" data-en="🔮 Fortune Reading">🔮 운세 풀이</h2>
@@ -409,6 +424,8 @@ function renderResult(d) {
     `;
   }).join('');
 
+  renderAppearance(d);
+
   const fort = d.fortune || {};
   document.getElementById('fortune').innerHTML = [
     ['💰', _L('재물운','Wealth'), fort.wealth],
@@ -435,6 +452,61 @@ function renderResult(d) {
   document.getElementById('shareCard').style.display = 'block';
   document.getElementById('result').style.display = '';
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderAppearance(d) {
+  const appearanceCard = document.getElementById('appearance');
+  const colorCard = document.getElementById('personalColor');
+  const cosmeticCard = document.getElementById('cosmeticConsultation');
+  for (const card of [appearanceCard, colorCard, cosmeticCard]) {
+    card.innerHTML = '';
+    card.style.display = 'none';
+  }
+  const a = d.appearance;
+  const row = (title, text) => typeof text === 'string' && text.trim()
+    ? `<div class="appearance-row"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>` : '';
+  const input = typeof window !== 'undefined' ? window._faceInput : null;
+  const adult = ['20\uB300', '30\uB300', '40\uB300', '50\uB300', '60\uB300 \uC774\uC0C1', '20s', '30s', '40s', '50s', '60s+'].includes(input?.age) && a?.adult_subject === true;
+  if (a && typeof a === 'object') {
+    const style = a.style || {};
+    appearanceCard.innerHTML = '<h2>' + _L('✨ 외모 매력 분석', '✨ Appearance & Appeal') + '</h2>'
+      + '<div class="appearance-row"><h3>' + _L('매력 유형', 'Appeal type') + '</h3><div class="appearance-tags">'
+      + (Array.isArray(a.types) ? a.types : []).filter(t => typeof t === 'string').map(t => `<span class="appearance-tag">${esc(t)}</span>`).join('') + '</div></div>'
+      + '<div class="appearance-row"><h3>' + _L('눈에 띄는 매력 포인트', 'Standout features') + '</h3>'
+      + (Array.isArray(a.highlights) ? a.highlights : []).filter(h => h && typeof h === 'object').map(h => `<p><strong>${esc(h.feature)}</strong> · ${esc(h.description)}</p>`).join('') + '</div>'
+      + row(_L('이목구비 조화', 'Facial harmony'), a.harmony)
+      + row(_L('첫인상 분위기', 'First impression'), a.first_impression)
+      + '<div class="appearance-row"><h3>' + _L('매력을 살리는 스타일', 'Style suggestions') + '</h3>'
+      + [
+        [_L('헤어', 'Hair'), style.hair],
+        [_L('안경', 'Glasses'), style.glasses],
+        [_L('사진 각도·표정', 'Photo angle & expression'), style.photo],
+        [_L('메이크업', 'Makeup'), style.makeup],
+        [_L('눈썹·그루밍', 'Brows & grooming'), style.grooming],
+      ].filter(([, text]) => typeof text === 'string' && text.trim()).map(([label, text]) => `<p><strong>${esc(label)}</strong> · ${esc(text)}</p>`).join('') + '</div>'
+      + (adult ? row(_L('성적 매력', 'Sensual appeal'), a.sex_appeal) : '');
+    appearanceCard.style.display = '';
+  }
+  const c = d.personal_color;
+  if (c && typeof c === 'object') {
+    const seasons = { spring: _L('봄', 'Spring'), summer: _L('여름', 'Summer'), autumn: _L('가을', 'Autumn'), winter: _L('겨울', 'Winter'), undetermined: _L('계절 판단 보류', 'Season undetermined') };
+    const tones = { warm: _L('웜톤', 'Warm'), cool: _L('쿨톤', 'Cool'), neutral: _L('뉴트럴톤', 'Neutral'), undetermined: _L('톤 판단 보류', 'Undertone undetermined') };
+    colorCard.innerHTML = '<h2>' + _L('🎨 퍼스널 컬러', '🎨 Personal Color') + '</h2>'
+      + '<p class="appearance-note">' + _L('사진 기반 추정이에요. 조명·보정·메이크업에 따라 달라질 수 있어요.', 'A photo-based estimate. Lighting, filters, and makeup can affect the result.') + '</p>'
+      + row(_L('예상 색상 계열', 'Suggested color family'), (seasons[c.season] || seasons.undetermined) + ' · ' + (tones[c.undertone] || tones.undetermined))
+      + row(_L('사진에서 보이는 색감', 'Visible color cues'), c.observation)
+      + '<div class="appearance-row"><h3>' + _L('비교해 볼 색', 'Colors to try') + '</h3><div class="appearance-palette">'
+      + (Array.isArray(c.colors) ? c.colors : []).filter(color => color && /^#[0-9a-f]{6}$/i.test(color.hex)).map(color => `<div class="appearance-color"><span class="appearance-swatch" aria-hidden="true" style="background-color:${color.hex}"></span>${esc(color.name)}</div>`).join('') + '</div></div>'
+      + row(_L('스타일에 적용하기', 'Putting colors to use'), c.styling_tip)
+      + row(_L('사진의 한계와 확인 방법', 'Limitations & how to check'), c.limitation);
+    colorCard.style.display = '';
+  }
+  if (adult && Array.isArray(a.cosmetic_consultation) && a.cosmetic_consultation.length) {
+    cosmeticCard.innerHTML = '<h2>' + _L('💬 성형 상담 포인트', '💬 Cosmetic Consultation Points') + '</h2>'
+      + '<p class="appearance-note">' + _L('성형을 고민 중이라면 전문의 상담 때 참고하세요. 사진만으로 수술의 필요성·적합성·결과를 판단할 수 없어요.', 'If you are considering a cosmetic procedure, use these points in a consultation with a qualified clinician. A photo cannot establish whether surgery is needed, suitable, or how it will turn out.') + '</p>'
+      + a.cosmetic_consultation.filter(item => item && typeof item === 'object').map(item => '<div class="appearance-row"><h3>' + esc(item.area) + '</h3><p>' + esc(item.observation) + '</p><p><strong>' + _L('상담할 질문', 'Ask your clinician') + '</strong> · ' + esc(item.question) + '</p><p><strong>' + _L('먼저 시도할 스타일', 'Styling to try first') + '</strong> · ' + esc(item.alternative) + '</p></div>').join('');
+    cosmeticCard.style.display = '';
+  }
 }
 
 function handleShareKakao() {

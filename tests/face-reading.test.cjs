@@ -6,6 +6,7 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 const { webcrypto } = require('node:crypto');
+const appearanceFixture = require('./fixtures/face-appearance.cjs');
 
 const workerPath = path.join(__dirname, '../assets/js/worker.js');
 const source = fs.readFileSync(workerPath, 'utf8');
@@ -16,13 +17,14 @@ const context = {
   fetch: async () => new Response('{}'),
 };
 vm.runInNewContext(source.replace('export default {', 'const worker = {') + `
-globalThis.api = { normalizeFaceAiScores, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading };
+globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading };
 `, context);
 const api = context.api;
 
 function face(scores = [81, 87, 79, 84, 76], lang = 'en') {
   const text = lang === 'en' ? 'Visible contour and proportions.' : '윤곽과 비율이 보입니다.';
   return {
+    ...appearanceFixture(lang),
     forehead_observation: {
       skin_visible: true,
       hairline_visible: false,
@@ -191,5 +193,134 @@ test('both face pages display photo limitations safely and retain old shared res
     delete result.forehead_observation;
     dom.renderResult(result);
     assert.equal(elements.get('scoreMethod').style.display, 'none');
+  }
+});
+
+test('new face sections validate both languages and reject missing evidence or unsafe colors', () => {
+  for (const lang of ['ko', 'en']) {
+    const context = { lang, gender: 'female', age: '20s' };
+    assert.equal(api.validateKarmaAiContract('face', api.normalizeFaceAiScores(face(undefined, lang)), context).ok, true);
+    for (const change of [
+      d => delete d.appearance,
+      d => delete d.personal_color,
+      d => { d.appearance.style.makeup = ''; },
+      d => { d.appearance.highlights = []; },
+      d => { d.appearance.cosmetic_consultation = []; },
+      d => { d.appearance.sex_appeal = ''; },
+      d => { d.personal_color.colors[0].hex = 'red;background:url(https://example.com)'; },
+      d => { d.personal_color.season = 'certain'; },
+      d => { d.personal_color.limitation = ''; },
+      d => { d.personal_color.colors[0].name = lang === 'ko' ? 'English leak' : '한글 누출'; },
+    ]) {
+      const invalid = api.normalizeFaceAiScores(face(undefined, lang));
+      change(invalid);
+      assert.equal(api.validateKarmaAiContract('face', invalid, context).ok, false);
+    }
+  }
+});
+
+test('adult content is removed for teens, unknown ages, or uncertain subjects without mutating the response', () => {
+  for (const age of ['10대', 'teens', '', undefined, '18', 'adult', '20s injected']) {
+    const original = face();
+    const result = api.normalizeFaceAppearance(original, { age });
+    assert.equal(result.appearance.sex_appeal, '');
+    assert.equal(result.appearance.cosmetic_consultation.length, 0);
+    assert.ok(original.appearance.sex_appeal);
+    assert.equal(result.personal_color, original.personal_color);
+  }
+  for (const age of ['20대', '60대 이상', '20s', '60s+']) {
+    const adult = face();
+    assert.ok(api.normalizeFaceAppearance(adult, { age }).appearance.sex_appeal);
+    adult.appearance.adult_subject = false;
+    assert.equal(api.normalizeFaceAppearance(adult, { age }).appearance.sex_appeal, '');
+  }
+});
+
+test('vision repairs missing female makeup and color sections while preserving the original score', async () => {
+  const requests = [];
+  const partial = face();
+  partial.appearance.style.makeup = '';
+  delete partial.personal_color;
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze(input) {
+      requests.push(input);
+      return { text: JSON.stringify(requests.length === 1 ? partial : {
+        appearance: { style: { makeup: 'Try a soft line along the visible eye contour.' } },
+        personal_color: face().personal_color,
+      }) };
+    } },
+  }, 'en', 'face', { gender: 'female', age: '20s' });
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].prompt, /appearance.style.makeup/);
+  assert.match(requests[1].prompt, /personal_color/);
+  assert.equal(result.overall_score, 81);
+  assert.equal(result.appearance.style.grooming, '');
+  assert.ok(result.appearance.style.makeup);
+  assert.ok(result.appearance.sex_appeal);
+});
+
+test('face handler uses the selected gender and age and persists only age-appropriate fields', async () => {
+  for (const [gender, age, lang] of [['남성', '30대', 'ko'], ['여성', '20대', 'ko'], ['male', 'teens', 'en'], ['female', '20s', 'en']]) {
+    let prompt;
+    const writes = [];
+    const response = await api.handleFaceReading(new Request('https://example.com/api/face-reading', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: '/9j/4AAQSkZJRg==', mimeType: 'image/jpeg', gender, age, lang }),
+    }), {
+      KARMA_IMAGE_BUCKET: { async put() {} },
+      AI: { async analyze(input) { prompt = input.prompt; return { text: JSON.stringify(face(undefined, lang)) }; } },
+      DB: { prepare(sql) { return { async run() {}, bind(...values) { return { async run() { writes.push({ sql, values }); } }; } }; } },
+    }, 'appearance-test');
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    const female = ['여성', 'female'].includes(gender);
+    assert.match(prompt, female ? /여성 선택: style.makeup/ : /남성 선택: style.grooming/);
+    assert.ok(result.appearance.style[female ? 'makeup' : 'grooming']);
+    assert.equal(result.appearance.style[female ? 'grooming' : 'makeup'], '');
+    if (age === 'teens') {
+      assert.equal(result.appearance.sex_appeal, '');
+      assert.deepEqual(result.appearance.cosmetic_consultation, []);
+    } else assert.ok(result.appearance.sex_appeal);
+    assert.deepEqual(JSON.parse(writes.find(w => w.sql.includes('INSERT INTO karma_image_analyses')).values[5]), result);
+  }
+});
+
+test('both renderers escape new content, reject CSS injection, gate adult sections, and clear old results', () => {
+  for (const page of ['face.html', 'face-en.html']) {
+    const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
+    const renderSource = html.slice(html.indexOf('function renderResult(d)'), html.indexOf('function handleShareKakao'));
+    const elements = new Map();
+    const dom = {
+      window: { _faceInput: { age: '20s', gender: 'female' } },
+      document: { getElementById(id) {
+        if (!elements.has(id)) elements.set(id, { style: {}, scrollIntoView() {} });
+        return elements.get(id);
+      } },
+      _L: (ko, en) => en, cleanGrade: value => value, getGrade: () => 'A', scoreValue: value => value,
+      esc: value => String(value || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
+    };
+    vm.runInNewContext(renderSource, dom);
+    const result = api.normalizeFaceAiScores(face());
+    result.appearance.harmony = '<img src=x onerror=alert(1)>';
+    result.personal_color.colors.push({ name: 'Injected', hex: '#ffffff" onmouseover="alert(1)' });
+    dom.renderResult(result);
+    assert.equal(elements.get('appearance').style.display, '');
+    assert.match(elements.get('appearance').innerHTML, /&lt;img/);
+    assert.doesNotMatch(elements.get('appearance').innerHTML, /<img/);
+    assert.match(elements.get('appearance').innerHTML, /Sensual appeal/);
+    assert.equal(elements.get('cosmeticConsultation').style.display, '');
+    assert.doesNotMatch(elements.get('personalColor').innerHTML, /onmouseover|Injected/);
+    assert.match(elements.get('personalColor').innerHTML, /#C98F9E/);
+    dom.window._faceInput.age = 'teens';
+    dom.renderResult(result);
+    assert.doesNotMatch(elements.get('appearance').innerHTML, /Sensual appeal/);
+    assert.equal(elements.get('cosmeticConsultation').style.display, 'none');
+    delete result.appearance;
+    delete result.personal_color;
+    dom.renderResult(result);
+    for (const id of ['appearance', 'personalColor', 'cosmeticConsultation']) {
+      assert.equal(elements.get(id).style.display, 'none');
+      assert.equal(elements.get(id).innerHTML, '');
+    }
   }
 });

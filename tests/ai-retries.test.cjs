@@ -37,6 +37,7 @@ function photo(type) {
     fortune: { wealth: text, career: text, love: text, health: text },
   };
   return type === 'face' ? {
+    ...require('./fixtures/face-appearance.cjs')('en'),
     ...common, celebrity_resemblance: '',
     forehead_observation: { skin_visible: true, hairline_visible: true, observation: text, limitation: '' },
     categories: Array.from({ length: 6 }, () => ({ name: text, score: 76, desc: text })),
