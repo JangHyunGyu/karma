@@ -2308,7 +2308,7 @@ function validatePhotoImageInput(image, mimeType, lang = 'ko') {
   return { image: encoded, mimeType: normalizedMime, status: 200 };
 }
 
-async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '', contractContext = {}) {
+async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '', contractContext = {}, analysisContext = {}) {
   if (!env?.AI?.analyze) {
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
   }
@@ -2331,6 +2331,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         basePrompt,
         contractErrors.length ? aiContractRetryInstruction(contractType, contractErrors, { lang: responseLang }) : '',
       ].filter(Boolean).join('\n\n');
+      analysisContext.aiCalled = true;
       const result = await env.AI.analyze({
         appId: 'karma',
         prompt: modelPrompt,
@@ -2540,7 +2541,7 @@ async function recordKarmaAnalysis(env, {
     `).bind(
       String(requestId || crypto.randomUUID()),
       String(analysisType || 'unknown').slice(0, 40),
-      ['success', 'rejected', 'error'].includes(status) ? status : 'error',
+      ['success', 'rejected', 'invalid_input', 'error'].includes(status) ? status : 'error',
       Number.isInteger(httpStatus) ? httpStatus : 500,
       JSON.stringify(sanitizeKarmaAnalysisInput(input || {})),
       JSON.stringify(result || {}),
@@ -2562,7 +2563,7 @@ async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handle
   if (rateLimitError && !isPhotoAnalysis) return rateLimitError;
   const requestForLog = isPhotoAnalysis ? null : request.clone();
   const requestId = crypto.randomUUID();
-  const analysisContext = { r2Key: '' };
+  const analysisContext = { r2Key: '', aiCalled: false };
   let response;
   try {
     response = await handler(request, env, requestId, rateLimitError, analysisContext);
@@ -2582,12 +2583,14 @@ async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handle
     await recordKarmaAnalysis(env, {
       requestId,
       analysisType,
-      status: response.ok ? 'success' : (response.status === 400 && isPhotoAnalysis ? 'rejected' : 'error'),
+      status: response.ok ? 'success'
+        : isPhotoAnalysis && !analysisContext.aiCalled && [400, 413].includes(response.status) ? 'invalid_input'
+        : response.status === 400 && isPhotoAnalysis && analysisContext.aiCalled ? 'rejected' : 'error',
       httpStatus: response.status,
       input,
       result,
       errorMessage,
-      aiService,
+      aiService: isPhotoAnalysis && !analysisContext.aiCalled ? 'NOT_CALLED' : aiService,
       r2Key: analysisContext.r2Key || result?.r2_key || '',
     });
   };
@@ -2604,6 +2607,7 @@ async function recordKarmaImageAnalysis(env, {
   input,
   result,
   errorMessage,
+  aiService = 'KARMA_AI',
 }) {
   if (!env?.DB) return;
   try {
@@ -2614,7 +2618,7 @@ async function recordKarmaImageAnalysis(env, {
         INSERT INTO karma_image_analyses (
           request_id, r2_key, analysis_type, status, input_json,
           result_json, error_message, ai_service
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'KARMA_AI')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(r2_key) DO UPDATE SET
           request_id = excluded.request_id,
           analysis_type = excluded.analysis_type,
@@ -2632,6 +2636,7 @@ async function recordKarmaImageAnalysis(env, {
         JSON.stringify(input || {}),
         JSON.stringify(result || {}),
         String(errorMessage || '').slice(0, 2000),
+        aiService,
       ).run();
     }
     await recordKarmaAnalysis(env, {
@@ -2642,7 +2647,7 @@ async function recordKarmaImageAnalysis(env, {
       input,
       result,
       errorMessage,
-      aiService: 'KARMA_AI',
+      aiService,
       r2Key,
     });
   } catch (error) {
@@ -2814,6 +2819,7 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
       input: analysisInput,
       result: localizedGate.result,
       errorMessage: localizedGate.errorMessage,
+      aiService: 'NOT_CALLED',
     });
     return localizedGate.response;
   }
@@ -2828,6 +2834,7 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
       input: analysisInput,
       result: { error: errorMessage },
       errorMessage,
+      aiService: 'NOT_CALLED',
     });
     return json({ error: errorMessage }, 503);
   }
@@ -2943,7 +2950,7 @@ ${faceExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
-  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face', { gender, age });
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face', { gender, age }, analysisContext);
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
@@ -3032,6 +3039,7 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
       input: analysisInput,
       result: localizedGate.result,
       errorMessage: localizedGate.errorMessage,
+      aiService: 'NOT_CALLED',
     });
     return localizedGate.response;
   }
@@ -3046,6 +3054,7 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
       input: analysisInput,
       result: { error: errorMessage },
       errorMessage,
+      aiService: 'NOT_CALLED',
     });
     return json({ error: errorMessage }, 503);
   }
@@ -3118,7 +3127,7 @@ ${palmExpertRubric()}
 }` + langInstruction(analysisLang);
 
   const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
-  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm');
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm', {}, analysisContext);
   if (!result) {
     const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
     await recordKarmaImageAnalysis(env, {
