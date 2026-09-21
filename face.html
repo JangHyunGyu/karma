@@ -479,7 +479,7 @@ function renderAppearance(d) {
       + '<div class="appearance-row"><h3>' + _L('매력을 살리는 스타일', 'Style suggestions') + '</h3>'
       + [
         [_L('헤어', 'Hair'), style.hair],
-        [_L('안경', 'Glasses'), style.glasses],
+        [_L('액세서리', 'Accessories'), style.accessories ?? style.glasses],
         [_L('사진 각도·표정', 'Photo angle & expression'), style.photo],
         [_L('메이크업', 'Makeup'), style.makeup],
         [_L('눈썹·그루밍', 'Brows & grooming'), style.grooming],
@@ -504,7 +504,15 @@ function renderAppearance(d) {
   if (adult && Array.isArray(a.cosmetic_consultation) && a.cosmetic_consultation.length) {
     cosmeticCard.innerHTML = '<h2>' + _L('💬 성형 상담 포인트', '💬 Cosmetic Consultation Points') + '</h2>'
       + '<p class="appearance-note">' + _L('성형을 고민 중이라면 전문의 상담 때 참고하세요. 사진만으로 수술의 필요성·적합성·결과를 판단할 수 없어요.', 'If you are considering a cosmetic procedure, use these points in a consultation with a qualified clinician. A photo cannot establish whether surgery is needed, suitable, or how it will turn out.') + '</p>'
-      + a.cosmetic_consultation.filter(item => item && typeof item === 'object').map(item => '<div class="appearance-row"><h3>' + esc(item.area) + '</h3><p>' + esc(item.observation) + '</p><p><strong>' + _L('상담할 질문', 'Ask your clinician') + '</strong> · ' + esc(item.question) + '</p><p><strong>' + _L('먼저 시도할 스타일', 'Styling to try first') + '</strong> · ' + esc(item.alternative) + '</p></div>').join('');
+      + a.cosmetic_consultation.filter(item => item && typeof item === 'object').map(item => '<div class="appearance-row"><h3>' + esc(item.area) + '</h3>'
+        + row(_L('사진에서 보이는 특징', 'Visible features'), item.observation)
+        + row(_L('바꾸려는 인상', 'Desired change'), item.goal)
+        + (Array.isArray(item.options) ? item.options : []).filter(option => option && typeof option === 'object').map(option =>
+          row(_L('비교할 성형·시술', 'Procedure to compare'), option.name)
+          + row(_L('어느 부분을 어떻게 바꾸는지', 'What it aims to change'), option.purpose)
+          + row(_L('확인할 조건·위험', 'Conditions & risks to check'), option.caution)).join('')
+        + row(_L('상담할 질문', 'Ask your clinician'), item.question)
+        + row(_L('먼저 시도할 스타일', 'Styling to try first'), item.alternative) + '</div>').join('');
     cosmeticCard.style.display = '';
   }
 }

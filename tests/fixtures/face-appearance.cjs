@@ -10,10 +10,14 @@ module.exports = function appearanceFixture(lang = 'en') {
         { feature: lang === 'en' ? 'Jawline' : '얼굴선', description: text },
       ],
       harmony: text, first_impression: text,
-      style: { hair: text, glasses: text, photo: text, makeup: text, grooming: text },
+      style: { hair: text, accessories: text, photo: text, makeup: text, grooming: text },
       adult_subject: true,
-      sex_appeal: text,
-      cosmetic_consultation: [{ area: lang === 'en' ? 'Face proportions' : '얼굴 비율', observation: text, question: text, alternative: text }],
+      sex_appeal: lang === 'en'
+        ? 'The curved lower lip is a sensual feature. A relaxed smile makes its contour more visible.'
+        : '둥근 아랫입술 곡선이 성적 매력 포인트예요. 입에 힘을 빼고 살짝 웃으면 그 선이 더 잘 드러나요.',
+      cosmetic_consultation: [{ area: lang === 'en' ? 'Face proportions' : '얼굴 비율', observation: text, goal: text,
+        options: [{ name: lang === 'en' ? 'Blepharoplasty' : '쌍꺼풀 수술', purpose: text, caution: text }],
+        question: text, alternative: text }],
     },
     personal_color: {
       season: 'summer', undertone: 'cool', observation: text,

@@ -205,8 +205,14 @@ test('new face sections validate both languages and reject missing evidence or u
       d => delete d.personal_color,
       d => { d.appearance.style.makeup = ''; },
       d => { d.appearance.highlights = []; },
-      d => { d.appearance.cosmetic_consultation = []; },
+      d => { d.appearance.cosmetic_consultation[0].goal = ''; },
+      d => { d.appearance.cosmetic_consultation[0].options = []; },
+      d => { d.appearance.cosmetic_consultation[0].options[0].name = ''; },
+      d => { d.appearance.cosmetic_consultation[0].options[0].purpose = ''; },
+      d => { d.appearance.cosmetic_consultation[0].options[0].caution = ''; },
+      d => { delete d.appearance.style.accessories; },
       d => { d.appearance.sex_appeal = ''; },
+      d => { d.appearance.sex_appeal = lang === 'en' ? 'Your eyes create an elegant and refined aura.' : '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.'; },
       d => { d.personal_color.colors[0].hex = 'red;background:url(https://example.com)'; },
       d => { d.personal_color.season = 'certain'; },
       d => { d.personal_color.limitation = ''; },
@@ -217,6 +223,50 @@ test('new face sections validate both languages and reject missing evidence or u
       assert.equal(api.validateKarmaAiContract('face', invalid, context).ok, false);
     }
   }
+});
+
+test('accessories and cosmetic changes are not forced when there is no grounded suggestion', () => {
+  const result = api.normalizeFaceAiScores(face());
+  result.appearance.style.accessories = '';
+  result.appearance.cosmetic_consultation = [];
+  assert.equal(api.validateKarmaAiContract('face', result, { lang: 'en', age: '30s' }).ok, true);
+  assert.equal(result.appearance.style.glasses, undefined);
+});
+
+test('vision repairs a vague cosmetic question into named options without losing the observation', async () => {
+  const partial = face();
+  delete partial.appearance.cosmetic_consultation[0].options;
+  const requests = [];
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze(input) {
+      requests.push(input);
+      return { text: JSON.stringify(requests.length === 1 ? partial : {
+        appearance: { cosmetic_consultation: face().appearance.cosmetic_consultation },
+      }) };
+    } },
+  }, 'en', 'face', { age: '30s' });
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].prompt, /options/);
+  assert.equal(result.appearance.cosmetic_consultation[0].options[0].name, 'Blepharoplasty');
+  assert.equal(result.appearance.cosmetic_consultation[0].observation, partial.appearance.cosmetic_consultation[0].observation);
+});
+
+test('vision rewrites generic elegance as explicit adult appeal while preserving the other fields', async () => {
+  const partial = face();
+  partial.appearance.sex_appeal = 'Your eyes create an elegant and refined aura.';
+  const requests = [];
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze(input) {
+      requests.push(input);
+      return { text: JSON.stringify(requests.length === 1 ? partial : {
+        appearance: { sex_appeal: face().appearance.sex_appeal },
+      }) };
+    } },
+  }, 'en', 'face', { age: '30s' });
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].prompt, /explicit_sex_appeal_not_generic_elegance/);
+  assert.equal(result.appearance.sex_appeal, face().appearance.sex_appeal);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.appearance.cosmetic_consultation)), partial.appearance.cosmetic_consultation);
 });
 
 test('adult content is removed for teens, unknown ages, or uncertain subjects without mutating the response', () => {
@@ -275,6 +325,10 @@ test('face handler uses the selected gender and age and persists only age-approp
     const result = await response.json();
     const female = ['여성', 'female'].includes(gender);
     assert.match(prompt, female ? /여성 선택: style.makeup/ : /남성 선택: style.grooming/);
+    assert.match(prompt, /style.accessories/);
+    assert.doesNotMatch(prompt, /"glasses"\s*:/);
+    assert.match(prompt, /왜 시선을 끌거나 섹시하게 보일 수 있는지/);
+    assert.match(prompt, /실제 수술·시술 명칭/);
     assert.ok(result.appearance.style[female ? 'makeup' : 'grooming']);
     assert.equal(result.appearance.style[female ? 'grooming' : 'makeup'], '');
     if (age === 'teens') {
@@ -308,7 +362,23 @@ test('both renderers escape new content, reject CSS injection, gate adult sectio
     assert.match(elements.get('appearance').innerHTML, /&lt;img/);
     assert.doesNotMatch(elements.get('appearance').innerHTML, /<img/);
     assert.match(elements.get('appearance').innerHTML, /Sensual appeal/);
+    assert.match(elements.get('appearance').innerHTML, /Accessories/);
+    assert.doesNotMatch(elements.get('appearance').innerHTML, />Glasses</);
     assert.equal(elements.get('cosmeticConsultation').style.display, '');
+    assert.match(elements.get('cosmeticConsultation').innerHTML, /Blepharoplasty/);
+    for (const label of ['Desired change', 'What it aims to change', 'Conditions &amp; risks to check']) {
+      assert.ok(elements.get('cosmeticConsultation').innerHTML.includes(label));
+    }
+    result.appearance.style.accessories = '';
+    result.appearance.style.glasses = 'legacy glasses';
+    dom.renderResult(result);
+    assert.doesNotMatch(elements.get('appearance').innerHTML, /Accessories|legacy glasses/);
+    delete result.appearance.style.accessories;
+    delete result.appearance.cosmetic_consultation[0].goal;
+    delete result.appearance.cosmetic_consultation[0].options;
+    dom.renderResult(result);
+    assert.match(elements.get('appearance').innerHTML, /Accessories.*legacy glasses/s);
+    assert.doesNotMatch(elements.get('cosmeticConsultation').innerHTML, /undefined|Desired change|Procedure to compare/);
     assert.doesNotMatch(elements.get('personalColor').innerHTML, /onmouseover|Injected/);
     assert.match(elements.get('personalColor').innerHTML, /#C98F9E/);
     dom.window._faceInput.age = 'teens';

@@ -1457,8 +1457,8 @@ function validateFaceAppearance(value, errors, context) {
     }
     if (!isPlainAiObject(appearance.style)) errors.push('appearance.style:object');
     else {
-      addRequiredAiTextErrors(appearance.style, ['hair', 'glasses', 'photo'], errors, 'appearance.style.');
-      for (const key of ['makeup', 'grooming']) {
+      addRequiredAiTextErrors(appearance.style, ['hair', 'photo'], errors, 'appearance.style.');
+      for (const key of ['accessories', 'makeup', 'grooming']) {
         if (typeof appearance.style[key] !== 'string') errors.push(`appearance.style.${key}:string`);
       }
       if (['여성', 'female'].includes(context.gender)) {
@@ -1475,12 +1475,24 @@ function validateFaceAppearance(value, errors, context) {
     } else {
       appearance.cosmetic_consultation.forEach((item, index) => {
         if (!isPlainAiObject(item)) errors.push(`appearance.cosmetic_consultation[${index}]:object`);
-        else addRequiredAiTextErrors(item, ['area', 'observation', 'question', 'alternative'], errors, `appearance.cosmetic_consultation[${index}].`);
+        else {
+          const prefix = `appearance.cosmetic_consultation[${index}].`;
+          addRequiredAiTextErrors(item, ['area', 'observation', 'goal', 'question', 'alternative'], errors, prefix);
+          if (!Array.isArray(item.options) || item.options.length < 1 || item.options.length > 2) {
+            errors.push(`${prefix}options:array_length_1_to_2`);
+          } else item.options.forEach((option, optionIndex) => {
+            if (!isPlainAiObject(option)) errors.push(`${prefix}options[${optionIndex}]:object`);
+            else addRequiredAiTextErrors(option, ['name', 'purpose', 'caution'], errors, `${prefix}options[${optionIndex}].`);
+          });
+        }
       });
     }
     if (isAdultFaceAge(context.age) && appearance.adult_subject === true) {
       addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
-      if (!appearance.cosmetic_consultation?.length) errors.push('appearance.cosmetic_consultation:min_1');
+      if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
+          && !/섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(appearance.sex_appeal)) {
+        errors.push('appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance');
+      }
     }
   }
   const color = value.personal_color;
@@ -1769,6 +1781,13 @@ const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
 - [근거: ...] 표기가 필요할 때도 계산값만 나열하지 말고, "내 사주에서 생각을 말과 행동으로 옮기는 성향이 두드러짐"처럼 누구나 이해할 수 있는 짧은 설명을 씁니다.
 - 문장 하나에는 핵심 내용 하나만 담고 짧게 씁니다. "변화 압력", "표현 자원", "관계 템포" 같은 추상적인 표현 대신 실제 생활에서 겪을 수 있는 상황이나 행동으로 풀어 씁니다.
 - 조언은 "주의하세요"로 끝내지 말고, 오늘·이번 주·올해 무엇을 어떻게 해볼지 바로 실행할 수 있게 씁니다.
+- 각 해석에서 잘 맞는 선택과 아쉬운 점을 분명히 고릅니다. "장단점이 공존한다", "균형이 필요하다", "가능성이 열려 있다"로 양쪽을 덮지 말고, 어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지 밝힙니다. 입력 근거가 부족한 부분만 범위를 좁혀 모른다고 씁니다.
+- 사주·운세·궁합·타로의 본문은 쉬운 결론 → 입력 근거 → 생활 속 장면이나 행동으로 이어갑니다. 예를 들 때는 실제로 있었던 사건처럼 꾸미지 않습니다. 특정 입력값을 먼저 길게 나열하라는 지시보다 읽기 쉬운 결론을 앞세웁니다.
+- 관상·손금은 눈에 보이는 모양·위치·길이·비율을 먼저 말하고 전통 해석과 실천할 행동을 구분합니다. "돈 관리에 유의" 대신 관리할 지출이나 확인할 항목을, "관계에 노력" 대신 바꿔 볼 대화 행동을 구체적으로 적습니다.
+- "성숙한 우아함", "자연스러운 조화", "깊이 있는 분위기" 같은 칭찬만으로 설명을 끝내지 않습니다. 어느 특징이 어떤 인상을 만드는지, 무엇을 어느 방향으로 바꾸면 인상이 어떻게 달라 보이는지 적습니다. 전문 용어나 긴 문장으로 직설적인 설명을 대신하지 않습니다.
+- 본문에서 "기운을 채우다", "에너지를 나누다", "균형을 맞추다", "유연한 태도가 필요하다" 같은 설명을 쓰지 않습니다. 대신 실제로 할 수 있는 동작을 씁니다. 예를 들어 업무 조언은 "협업하세요"보다 "새 일을 받기 전에 담당자와 마감일을 먼저 정하세요"처럼 대상과 행동이 드러나야 합니다. 예시는 문장 수준의 기준일 뿐 모든 사람에게 같은 행동을 복사하지 않습니다.
+- [근거: ...]도 전문 용어를 나열하는 부록이 아닙니다. 해석한 특징이 왜 그 결론으로 이어지는지 쉬운 말로 한 번만 풉니다. 매 문장에 근거를 붙여 흐름을 끊거나 "~할 수 있습니다"를 반복하지 않습니다. 조언의 끝은 "살펴보세요/생각해보세요"보다 무엇을 확인·기록·비교·중단할지 특정합니다.
+- 정확한 표현은 확정적인 예언이 아닙니다. 근거 없이 사건·날짜·금액·성격·건강·타인의 마음을 만들어내지 않으며, 전통 해석의 한계는 짧게 밝히고 본문에서 같은 완곡어와 주의 문구를 반복하지 않습니다.
 - 영어·일본어 직역 어순, 불필요한 피동·명사화·이중 완곡, 상담원이나 보고서 같은 상투어를 피하고 뜻이 분명한 능동 동사로 바로 씁니다.
 - 문맥상 분명한 주어와 대명사는 자연스럽게 생략합니다. 같은 문장 시작·접속사·종결어미와 기계적인 열거를 반복하지 않고 문장 길이와 호흡을 내용에 맞게 조절합니다.
 - 입력이나 작업 과정을 메타적으로 요약하지 말고, 요청된 장르와 출력 형식에 맞는 결과만 제시합니다.`;
@@ -1782,6 +1801,13 @@ const ENGLISH_PLAIN_PROSE_GUARD = `[Clear, plain English]
 - If an [Evidence: ...] label is required, do not fill it with raw calculations. Use a short explanation anyone can understand, such as "your chart puts more emphasis on turning ideas into action."
 - Keep one main idea per sentence and keep sentences short. Replace abstractions such as "change pressure," "expressive resources," or "relationship tempo" with a concrete situation or action from everyday life.
 - Do not end advice with vague phrases such as "be careful." Say what the reader can do today, this week, or this year.
+- Choose a clear strength, drawback, or priority from the supplied evidence. Do not hide the conclusion behind "balance is needed," "both strengths and weaknesses," or "potential." Name the situation, useful choice, and likely friction within the reading; identify only the specific unknowns.
+- For Saju, fortunes, compatibility, and tarot, lead with a plain conclusion, then its input evidence and a concrete everyday example or action. An example is not a claim about an event that happened. Readability takes precedence over opening with a list of chart symbols.
+- For face and palm readings, start with visible shape, position, length, or proportions, then distinguish traditional interpretation from a practical action. Replace "manage money carefully" or "work on relationships" with an expense to review or a communication behavior to try.
+- Praise such as "mature elegance," "natural harmony," or "a deep aura" is not an explanation. Name the feature, the visual impression it creates, and the specific adjustment that would change that impression.
+- Replace "replenish your energy," "find balance," or "be flexible" with an action and its object. "Agree on an owner and a deadline before taking on new work" is clearer than "collaborate." This is a specificity example, not advice to copy into every reading.
+- Explain [Evidence: ...] once in plain language instead of listing raw chart terminology after every sentence. End advice with what to check, record, compare, or stop, rather than merely asking the reader to reflect.
+- Directness does not mean certainty: do not invent events, dates, amounts, personality, medical findings, or other people's feelings. State the scope briefly without repeating hedges and disclaimers throughout the reading.
 - Avoid corporate, academic, mystical, or report-like filler. Use direct active verbs and vary sentence rhythm naturally.
 - Do not describe the input or your writing process. Return only the requested result in the required format.`;
 
@@ -2063,7 +2089,7 @@ function buildTarotPrompt(cards, question, lang) {
 
 ## Spread-Specific Differentiation
 - Treat the exact three-card order, direction, and question as this reading's fingerprint. A different card, reversed state, or question must change the core conflict, advice, and keywords.
-- The first sentence of overall must name at least two drawn cards and explain their cause-effect link. Do not start with a generic life theme.
+- Start overall with a clear answer to the question or a priority supported by this spread, then explain the cause-effect link between at least two drawn cards. Do not start with a generic life theme.
 - If there is no question, choose one dominant real-life arena from this exact card combination; do not cover love, career, and personal growth with equal generic weight.
 - Keywords must come from this exact spread, not a reusable tarot keyword list.
 
@@ -2103,7 +2129,7 @@ ${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${questi
 
 ## 배열별 차별화 필수
 - 뽑힌 3장의 카드명, 순서, 정/역방향, 질문을 이번 리딩의 지문으로 삼으세요. 카드 한 장, 방향 하나, 질문 하나가 달라지면 핵심 갈등·조언·키워드도 달라져야 합니다.
-- overall 첫 문장은 반드시 뽑힌 카드 2장 이상을 직접 언급하고, 그 카드들이 어떤 원인→결과 흐름을 만드는지로 시작하세요. 일반적인 인생 주제로 시작하지 마세요.
+- overall 첫 문장은 질문에 대한 답이나 이 배열에서 우선할 행동을 쉬운 말로 제시하고, 뽑힌 카드 2장 이상의 원인→결과 흐름을 근거로 이어 쓰세요. 일반적인 인생 주제로 시작하지 마세요.
 - 질문이 없는 경우에도 카드 조합에서 가장 강한 현실 영역 하나를 골라 깊게 파세요. 연애·직업·성장을 같은 비중의 무난한 설명으로 나열하지 마세요.
 - keywords는 이번 카드 조합에서 나온 단어만 고르세요. 재사용 가능한 타로 공통 키워드 목록처럼 만들지 마세요.
 
@@ -2819,16 +2845,21 @@ ${faceExpertRubric()}
 
 ## 외모 매력과 스타일
 - appearance에는 매력 유형 키워드 2~3개, 눈에 띄는 매력 포인트 2~3개와 관찰 근거, 이목구비 조화, 사진 속 첫인상, 스타일 제안을 작성하세요. 관상 운세와 구분하고 외모 순위·백분위·점수는 만들지 마세요. 첫인상은 표정과 형태가 만드는 시각적 분위기로만 설명하고 실제 성격이나 타인의 호감을 단정하지 마세요.
-- 성별은 사용자가 선택한 값만 사용하세요. 사진으로 성별을 추정하지 말고 매력 유형을 성별 고정관념에 맞추지 마세요. 헤어·안경·사진 각도는 보이는 얼굴형과 비율에 맞춰 구체적으로 제안하세요.
-- ${['여성', 'female'].includes(gender) ? '여성 선택: style.makeup에 눈매에 맞는 아이라인·눈썹 표현과 립·블러셔 색상 제안을 포함하세요. personal_color와 색상 제안이 서로 맞아야 합니다. style.grooming은 필요 없으면 빈 문자열입니다.' : ['남성', 'male'].includes(gender) ? '남성 선택: style.grooming에 눈썹 정리·구레나룻·수염선처럼 얼굴선에 맞는 선택지를 제안하세요. 보이지 않는 수염 상태를 만들어내지 마세요. style.makeup은 빈 문자열입니다.' : '성별 미선택: 성별을 전제하지 않는 헤어·안경·사진 각도를 제안하세요. style.makeup과 style.grooming은 필요 없으면 빈 문자열입니다.'}
-- 나이대에 맞는 일상적인 스타일을 제안하고 결점 지적, 과장된 찬사, 살을 빼거나 피부색을 바꾸라는 권유는 하지 마세요.
+- 성별은 사용자가 선택한 값만 사용하세요. 사진으로 성별을 추정하지 말고 매력 유형을 성별 고정관념에 맞추지 마세요. 헤어·액세서리·사진 각도는 보이는 얼굴형과 비율에 맞춰 구체적으로 제안하세요. style.accessories는 어울리는 액세서리가 있을 때만 종류·크기·형태와 이유를 쓰고, 근거가 없으면 빈 문자열로 두세요. 안경은 필수 항목이 아닙니다. 눈썹·눈매·얼굴 폭에 어울리는 프레임을 설명할 수 있을 때만 액세서리의 한 선택지로 제안하세요. 모두에게 얇은 메탈 프레임을 권하지 말고 glasses 키를 생성하지 마세요.
+- ${['여성', 'female'].includes(gender) ? '여성 선택: style.makeup에 눈매에 맞는 아이라인·눈썹 표현과 립·블러셔 색상 제안을 포함하세요. personal_color와 색상 제안이 서로 맞아야 합니다. style.grooming은 필요 없으면 빈 문자열입니다.' : ['남성', 'male'].includes(gender) ? '남성 선택: style.grooming에 눈썹 정리·구레나룻·수염선처럼 얼굴선에 맞는 선택지를 제안하세요. 보이지 않는 수염 상태를 만들어내지 마세요. style.makeup은 빈 문자열입니다.' : '성별 미선택: 성별을 전제하지 않는 헤어·액세서리·사진 각도를 제안하세요. style.makeup과 style.grooming은 필요 없으면 빈 문자열입니다.'}
+- 나이대에 맞는 일상적인 스타일을 제안하세요. 원하는 인상을 기준으로 상대적으로 덜 드러나는 부위나 아쉬운 비율을 구체적으로 설명하되, 이를 객관적인 결함이나 반드시 고칠 문제로 규정하지 마세요. 과장된 찬사, 살을 빼거나 피부색을 바꾸라는 권유는 하지 마세요.
 
 ## 성인 항목
 - 사용자 나이대의 성인 조건: ${isAdultFaceAge(age) ? '충족' : '미충족'}. 조건 미충족이면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열입니다.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
-- adult_subject가 true일 때 sex_appeal에는 눈빛·표정·입매가 만드는 성적 매력을 비노골적인 2~3문장으로 설명하세요. 신체의 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 타인의 욕망 단정은 금지합니다.
-- cosmetic_consultation은 성형을 이미 고민하는 성인이 전문의에게 물어볼 상담 포인트 1~2개입니다. area에는 관찰 가능한 부위, observation에는 사진에 보이는 비율과 촬영 각도 한계, question에는 원하는 인상 변화가 가능한지와 위험·회복·대안을 상담할 질문, alternative에는 헤어·메이크업·안경 등 비의료적 대안을 적으세요. 수술이 필요하다고 하거나 특정 수술·시술의 적합성, 효과, 결과를 판정·추천하지 마세요. 질환 진단이나 미용 결함을 만들어내지 마세요.
-- 상담 포인트를 홈케어·피부 관리·탄력 유지 조언으로 대체하지 마세요. question은 사진에서 관찰한 부위의 폭·길이·선·비율 중 하나와 연결해, 그 인상을 바꾸고 싶을 때 가능한 변화의 범위와 위험·회복 기간·시술하지 않는 선택을 전문의에게 물어보는 질문입니다. 목표가 정해져 있지 않으므로 반드시 "이 부분의 인상을 바꾸고 싶다면"처럼 조건을 붙이세요. 현재 모습을 결함으로 표현하거나 바꿔야 한다고 말하지 마세요.
+- adult_subject가 true일 때 sex_appeal은 이성에게 어필할 수 있는 섹슈얼한 얼굴 매력을 직접 설명합니다. 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 왜 시선을 끌거나 섹시하게 보일 수 있는지와 그 매력을 살릴 표정·시선·각도를 2~3문장으로 쓰세요. "성숙하고 우아하다"는 총평으로 대체하지 마세요. 실제 사진이 밋밋하면 과장하지 말고 강조할 포인트를 말하세요. 노골적인 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 상대의 욕망·호감 단정은 금지합니다.
+- sex_appeal의 첫 문장은 "깊고 그윽한 눈빛", "고혹적인 분위기"가 아니라 실제 눈꼬리 방향·눈의 가로 길이·입술의 볼륨·입꼬리 곡선처럼 형태를 짚습니다. 그 형태가 만드는 섹시함을 직접 말한 뒤 어느 표정을 지으면 강조되는지 설명하세요. "시선을 자연스럽게 사로잡는다"만으로 매력의 이유를 대신하지 마세요. 다른 사진에도 붙일 수 있는 형용사 문장은 삭제합니다.
+- 성인 sex_appeal에서는 "섹시하다", "성적 매력", "이성적 끌림"이라는 표현을 우아함·고혹적 분위기로 돌려 말하지 마세요. 눈꼬리가 올라갔는지, 입꼬리가 한쪽으로 올라갔는지, 어떤 입술선이 도드라지는지처럼 실제 형태를 이유로 들고, 그 포인트가 왜 섹시하게 보일 수 있는지 짧게 답하세요. 상대가 반드시 끌린다는 확언은 하지 마세요.
+- sex_appeal의 구체성 예: "성적 매력 포인트는 도톰한 아랫입술입니다. 입을 꼭 다물 때보다 힘을 빼고 살짝 웃을 때 입술의 곡선이 드러나 더 섹시한 인상을 줍니다." 이 문장이나 특징을 복사하지 말고, 사진에서 가장 두드러지는 부위에 맞게 같은 수준으로 직접 쓰세요. 영문도 sex appeal 또는 sexy라는 뜻을 일반적인 elegance로 바꾸지 마세요.
+- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위만 최대 2개 쓰고, 없으면 빈 배열로 두세요.
+- 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
+- question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.
+- observation은 현재 보이는 특징만 씁니다. "입체감을 살리면 더 세련되어진다" 같은 제안을 관찰인 것처럼 쓰지 마세요. goal도 "조화롭고 세련되게"로 끝내지 말고 어느 선을 덜 강조하거나 어느 부위가 더 드러나게 하려는지 밝히세요. 정면 사진 하나에서 측면 돌출 정도를 확정하지 마세요.
 - alternative에는 해당 부위의 인상을 달리 보여 줄 헤어·메이크업·안경·촬영 각도 중 하나만 구체적으로 제안하세요. 마사지·표정 운동·스트레칭·홈케어·기기·제품으로 탄력이나 얼굴 구조를 바꿀 수 있다는 설명은 쓰지 마세요.
 
 ## 사진 기반 퍼스널 컬러
@@ -2889,17 +2920,17 @@ ${faceExpertRubric()}
     "love": "(눈·입·하관 관찰을 근거로 전통 관상에서 말하는 관계 표현 상징과 대화 질문 3~4문장. 실제 성격·관계 결과 단정 금지)",
     "health": "(건강운 3~4문장. 사진상 보이는 피로감·긴장감·생활관리 주의 중심. 특정 질환 확정이나 발병 나이 단정 금지)"
   },
-  "advice": "(관상 기반 조언 3~4문장. 격언 금지. '이 상은 ~을 반드시 피하라, ~부터 ~을 준비해라' 식 구체 지시)",
+  "advice": "(관찰 근거에 연결된 우선순위와 실행할 행동 2~3문장. 막연한 격언이나 필연적인 운명 단정 금지)",
   "celebrity_resemblance": "",
   "appearance": {
     "types": ["(사진에서 느껴지는 매력 유형)", "(또 다른 매력 유형)"],
     "highlights": [{"feature": "(부위)", "description": "(눈에 띄는 특징과 이유)"}, {"feature": "(다른 부위)", "description": "(관찰 근거)"}],
     "harmony": "(얼굴형과 이목구비 비율이 만드는 인상)",
     "first_impression": "(사진 속 표정과 형태가 만드는 분위기)",
-    "style": {"hair": "(헤어 제안과 이유)", "glasses": "(안경 제안과 이유)", "photo": "(표정·촬영 각도 제안)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
+    "style": {"hair": "(가르마·기장·볼륨 위치와 얼굴 비율상의 이유)", "accessories": "(어울리는 액세서리의 종류·크기·형태와 이유. 안경은 어울릴 때만 포함. 제안 근거가 없으면 빈 문자열)", "photo": "(시선·턱 방향·입매 중 바꿔 볼 행동과 강조되는 특징)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
     "adult_subject": null,
-    "sex_appeal": "(성인 조건을 충족하고 사진 속 인물도 확실한 성인일 때만 작성, 아니면 빈 문자열)",
-    "cosmetic_consultation": ${isAdultFaceAge(age) ? '[{"area": "(관찰한 얼굴 부위)", "observation": "(해당 부위의 폭·길이·선·비율과 촬영 한계)", "question": "(이 부위의 인상을 바꾸고 싶다면 가능한 변화 범위와 위험·회복 기간·시술하지 않는 선택을 전문의에게 물어볼 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·안경·촬영 각도 중 하나, 홈케어 금지)"}]' : '[]'}
+    "sex_appeal": "(성인일 때만: 가장 섹시하게 보일 수 있는 부위 하나를 직접 고르고, 실제 형태가 주는 성적 매력의 이유와 그 부위를 강조할 표정·시선 행동을 2~3문장으로. 우아함·고혹적 분위기로 대체 금지. 비성인이거나 불확실하면 빈 문자열)",
+    "cosmetic_consultation": ${isAdultFaceAge(age) ? '[{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]' : '[]'}
   },
   "personal_color": {
     "season": "(spring/summer/autumn/winter/undetermined 중 하나)",
@@ -3045,6 +3076,8 @@ ${palmExpertRubric()}
 - overall_grade는 서버가 종합 점수에 맞는 공통 등급 기준으로 계산합니다. 등급을 생성하지 마세요.
 
 ## 직설 모드 원칙
+- 각 손금의 설명은 보이는 선의 위치·깊이·갈라짐 → 전통 해석에서의 강점 또는 약점 → 생활에서 점검할 행동으로 이어집니다. "기운이 좋다", "균형을 잡아라"로 끝내지 마세요. 흐린 선은 관찰 한계이지 불운의 증거가 아닙니다.
+- 재물·직업·연애 항목은 해당 손금의 해석 안에서 우선할 선택과 조심할 행동을 하나씩 구체화하세요. 같은 "계획하고 소통하세요"를 분야명만 바꿔 반복하지 마세요. 보이지 않는 결혼선으로 상대 유형이나 결혼 횟수를 만들지 마세요.
 - **끊긴 선·흐린 선·섬(島)·흉터**는 먼저 실제 관찰로 기록한 뒤 전통 수상학상 어떤 경향으로 보는지 설명
 - 결혼선은 측면이 보여야 판단 가능. 안 보이면 확인 어렵다고 쓰고, 이혼·재혼·불륜을 단정하지 마세요.
 - 건강 관련 내용은 의학적 진단이 아니라 생활관리 주의로만 표현하세요.
@@ -3309,7 +3342,7 @@ ${OHANG_RELATIONS}
 - pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
 - strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 위험 3개를 골라야 합니다.
 - 단순히 0개/4개 이상일 때만 차이를 찾지 마세요. 매번 제공된 우세·희소 오행과 십성 역할 수를 비교해 이 원국만의 대비를 잡으세요.
-- 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 경향으로 시작하세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
+- 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 강점과 걸림돌을 쉬운 생활 언어로 먼저 말하고 근거를 이어 쓰세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
 
 ## 응답 형식
 반드시 아래 JSON 형식으로만 응답. 문체는 명확하고 구체적으로:
@@ -3420,7 +3453,7 @@ function buildFortunePrompt(saju, gender, year, lang, birthDate) {
 - 세운(올해 천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 세운의 오행만 설명하는 도입부는 절대 금지(예: "올해는 ○(○) 기운이 강한 해라..." 금지).
 - 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 내부 합충)이다. 세운은 방아쇠이며 현재 대운을 함께 고려하라.
 - 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 같은 세운이 어떤 역할을 늘리는지 원국 지문과 비교하라.
-- year_summary 첫 문장은 반드시 원국의 특정 신호와 세운 또는 현재 대운의 관계를 직접 언급하며 시작하라.
+- year_summary 첫 문장은 올해 우선할 선택과 부담이 커질 수 있는 상황을 쉬운 말로 제시하고, 원국의 특정 신호와 세운 또는 현재 대운의 관계를 근거로 이어 쓰세요.
 - love, money, health, career, advice는 서로 다른 근거를 써야 합니다. 같은 "올해 조심" 문장을 분야명만 바꿔 반복하지 말고, 원국 오행·일지 관계·세운 합/충·대운 중 무엇을 근거로 삼았는지 문장 안에 드러내세요.
 - 각 항목에 [근거: 입력 신호]를 최소 한 번 표시하세요. lucky의 월은 제공된 월별 대표 신호 중 실제 합·충 또는 일간 관계가 있는 달만 선택하세요.
 
@@ -3551,7 +3584,7 @@ function buildDailyPrompt(saju, gender, todayStr, lang, birthDate) {
 - 오늘의 일진(천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 일진의 오행만 설명하는 도입부는 절대 금지(예: "오늘은 ○(○) 기운이 강한 날이라..." 금지).
 - 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 합충)과 현재 대운이다. 일진이 이 지문을 어떻게 건드리는지로 풀어라.
 - 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
-- overall 첫 문장은 반드시 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 언급하며 시작하라.
+- overall 첫 문장은 오늘 우선할 일이나 조심할 대화 행동을 쉬운 말로 먼저 제시하고, 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 근거로 이어 쓰세요.
 - love, money, career, study, social, health는 같은 경고를 분야명만 바꿔 반복하면 실패입니다. 각 항목마다 원국 오행·일지 관계·일진 합/충·요일/60갑자 순번 중 서로 다른 근거를 골라야 합니다.
 - 각 항목에 [근거: 입력 신호]를 표시하세요. lucky.color와 lucky.number는 오늘 일진과 가장 희소한 표면 오행에서 도출하세요.
 
@@ -3684,7 +3717,7 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, b
 - 각 categories.desc와 advice에 [근거: 실제 조합 신호]를 표시하세요.
 
 ## 조합별 차별화 필수
-- summary 첫 문장은 반드시 A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 직접 언급하며 시작하세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
+- summary 첫 문장은 두 사람이 실제 대화나 결정에서 맞아떨어지거나 부딪힐 수 있는 지점을 쉬운 말로 짚고, A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 근거로 이어 쓰세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
 - personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·현재 대운을 나눠 반영하세요.
 - strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
 - advice는 이 커플만의 금지 행동과 허용 행동을 나눠 적으세요. 다른 커플에게 그대로 붙여도 말이 되면 다시 써야 합니다.

@@ -315,10 +315,27 @@ async function testContractPatchRetry(type, partial, patch, contractContext, ver
   );
   check(calls === 2, `${type} 재시도가 누락 필드 패치를 요청`);
   check(retrySystem.includes('ONLY the missing or invalid fields'), `${type} 재시도가 전체 응답을 반복하지 않음`);
+  check(retrySystem.includes('어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지'), `${type} 보완 요청도 구체적인 해석 지시를 유지`);
   check(verify(result), `${type} 기존 필드와 재시도 패치를 병합`);
 }
 
+async function testConcreteGuidanceOnEveryRoute() {
+  for (const [type, fixture] of Object.entries({ saju, fortune, daily, tarot, compat, face, palm })) {
+    let transmitted = '';
+    const env = { AI: {
+      async complete(input) { transmitted = input.messages[0].content; return { text: JSON.stringify(fixture) }; },
+      async analyze(input) { transmitted = input.prompt; return { text: JSON.stringify(fixture) }; },
+    } };
+    const result = ['face', 'palm'].includes(type)
+      ? await api.callKarmaVisionAi('Photo evidence.', 'https://example.com/photo.jpg', env, 'ko', type)
+      : await api.callKarmaTextAi({ system: 'Reading contract.', user: 'Input facts.', lang: 'ko' }, type, env, null, type, { hasTime: true, daeunCount: 8 });
+    check(Boolean(result), `${type} 구체적인 해석 지시가 기존 응답 계약과 호환`);
+    check(transmitted.includes('어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지') && transmitted.includes('생활 속 장면이나 행동'), `${type} 실제 AI 요청에 명확한 결론·상황·행동 지시 포함`);
+  }
+}
+
 Promise.resolve()
+  .then(() => testConcreteGuidanceOnEveryRoute())
   .then(() => testContractRetry('fortune', { year_summary: text }, fortune))
   .then(() => testContractRetry('saju', { pillar_reading: text }, saju, { hasTime: true, daeunCount: 8 }))
   .then(() => testContractRetry('tarot', { cards: [] }, tarot))
