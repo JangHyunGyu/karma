@@ -1439,6 +1439,7 @@ function normalizeFaceAppearance(value, context = {}) {
     if (['여성', 'female'].includes(context.gender)) appearance.style.grooming = '';
   }
   // Keep sex_appeal / cosmetic_consultation for every reading; do not blank by age.
+  
   return { ...value, appearance };
 }
 
@@ -1490,11 +1491,12 @@ function validateFaceAppearance(value, errors, context) {
         }
       });
     }
-    addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
-    if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
-        && !/섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(appearance.sex_appeal)) {
-      errors.push('appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance');
-    }
+          addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
+      if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
+          && !/섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(appearance.sex_appeal)) {
+        errors.push('appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance');
+      }
+
   }
   const color = value.personal_color;
   if (!isPlainAiObject(color)) {
@@ -2858,9 +2860,9 @@ ${faceExpertRubric()}
 - 나이대에 맞는 일상적인 스타일을 제안하세요. 원하는 인상을 기준으로 상대적으로 덜 드러나는 부위나 아쉬운 비율을 구체적으로 설명하되, 이를 객관적인 결함이나 반드시 고칠 문제로 규정하지 마세요. 과장된 찬사, 살을 빼거나 피부색을 바꾸라는 권유는 하지 마세요.
 
 ## 성인 항목
-- adult_subject는 참고용입니다. 나이와 관계없이 sex_appeal과 cosmetic_consultation을 항상 채우세요.
-- adult_subject는 true/false 참고값만 두고, sex_appeal과 cosmetic_consultation은 비우지 마세요.
-- sex_appeal은 이성에게 어필할 수 있는 섹슈얼한 얼굴 매력을 직접 설명합니다. 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 왜 시선을 끌거나 섹시하게 보일 수 있는지와 그 매력을 살릴 표정·시선·각도를 2~3문장으로 쓰세요. "성숙하고 우아하다"는 총평으로 대체하지 마세요. 실제 사진이 밋밋하면 과장하지 말고 강조할 포인트를 말하세요. 노골적인 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 상대의 욕망·호감 단정은 금지합니다.
+- 나이대와 무관하게 항상 adult_subject는 true로 두고, sex_appeal과 cosmetic_consultation을 채우세요. 나이·성인 여부로 이 항목을 비우지 마세요.
+- 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
+- adult_subject가 true일 때 sex_appeal은 이성에게 어필할 수 있는 섹슈얼한 얼굴 매력을 직접 설명합니다. 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 왜 시선을 끌거나 섹시하게 보일 수 있는지와 그 매력을 살릴 표정·시선·각도를 2~3문장으로 쓰세요. "성숙하고 우아하다"는 총평으로 대체하지 마세요. 실제 사진이 밋밋하면 과장하지 말고 강조할 포인트를 말하세요. 노골적인 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 상대의 욕망·호감 단정은 금지합니다.
 - sex_appeal의 첫 문장은 "깊고 그윽한 눈빛", "고혹적인 분위기"가 아니라 실제 눈꼬리 방향·눈의 가로 길이·입술의 볼륨·입꼬리 곡선처럼 형태를 짚습니다. 그 형태가 만드는 섹시함을 직접 말한 뒤 어느 표정을 지으면 강조되는지 설명하세요. "시선을 자연스럽게 사로잡는다"만으로 매력의 이유를 대신하지 마세요. 다른 사진에도 붙일 수 있는 형용사 문장은 삭제합니다.
 - 성인 sex_appeal에서는 "섹시하다", "성적 매력", "이성적 끌림"이라는 표현을 우아함·고혹적 분위기로 돌려 말하지 마세요. 눈꼬리가 올라갔는지, 입꼬리가 한쪽으로 올라갔는지, 어떤 입술선이 도드라지는지처럼 실제 형태를 이유로 들고, 그 포인트가 왜 섹시하게 보일 수 있는지 짧게 답하세요. 상대가 반드시 끌린다는 확언은 하지 마세요.
 - sex_appeal의 구체성 예: "성적 매력 포인트는 도톰한 아랫입술입니다. 입을 꼭 다물 때보다 힘을 빼고 살짝 웃을 때 입술의 곡선이 드러나 더 섹시한 인상을 줍니다." 이 문장이나 특징을 복사하지 말고, 사진에서 가장 두드러지는 부위에 맞게 같은 수준으로 직접 쓰세요. 영문도 sex appeal 또는 sexy라는 뜻을 일반적인 elegance로 바꾸지 마세요.
@@ -2937,5 +2939,1675 @@ ${faceExpertRubric()}
     "first_impression": "(사진 속 표정과 형태가 만드는 분위기)",
     "style": {"hair": "(가르마·기장·볼륨 위치와 얼굴 비율상의 이유)", "accessories": "(어울리는 액세서리의 종류·크기·형태와 이유. 안경은 어울릴 때만 포함. 제안 근거가 없으면 빈 문자열)", "photo": "(시선·턱 방향·입매 중 바꿔 볼 행동과 강조되는 특징)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
     "adult_subject": null,
-    "sex_appeal": "(가장 섹시하게 보일 수 있는 부위 하나를 직접 고르고, 실제 형태가 주는 성적 매력의 이유와 그 부위를 강조할 표정·시선 행동을 2~3문장으로. 우아함·고혹적 분위기로 대체 금지. 항상 2~3문장)",
-    "cosmetic_consultation": [{"area":"(관찰한 얼굴 부위)","observation":"(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)","goal":"(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)","options":[{"name":"(비교할 실제 수술·시술 명칭)","purpose":"(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)","caution":"(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}],"question":"(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)","alternative":"(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]
+    "sex_appeal": "(항상 작성: 가장 섹시하게 보일 수 있는 부위 하나를 직접 고르고, 실제 형태가 주는 성적 매력의 이유와 그 부위를 강조할 표정·시선 행동을 2~3문장으로. 우아함·고혹적 분위기로 대체 금지. )",
+    "cosmetic_consultation": '[{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]'
+  },
+  "personal_color": {
+    "season": "(spring/summer/autumn/winter/undetermined 중 하나)",
+    "undertone": "(warm/cool/neutral/undetermined 중 하나)",
+    "observation": "(사진에 보이는 색감과 명도 대비, 잠정 제안 이유)",
+    "limitation": "(사진의 한계와 자연광에서 비교하는 방법)",
+    "colors": [{"name": "(색 이름)", "hex": "(#RRGGBB)"}, {"name": "(색 이름)", "hex": "(#RRGGBB)"}, {"name": "(색 이름)", "hex": "(#RRGGBB)"}],
+    "styling_tip": "(추천 색을 옷·안경·메이크업에 적용하거나 비교할 방법)"
+  }
+}` + langInstruction(analysisLang);
+
+  const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'face', { gender, age }, analysisContext);
+  if (!result) {
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'faceAnalysisFailed');
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 500);
+  }
+  if (result._apiError) {
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'error',
+      input: analysisInput,
+      result: { error: result._apiError },
+      errorMessage: result._apiError,
+    });
+    return json({ error: result._apiError }, 500);
+  }
+  if (result.error) {
+    const localizedResult = { ...result, error: rejectionMessage };
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'rejected',
+      input: analysisInput,
+      result: localizedResult,
+      errorMessage: rejectionMessage,
+    });
+    return json({ error: rejectionMessage }, 400);
+  }
+  await recordKarmaImageAnalysis(env, {
+    requestId,
+    r2Key,
+    analysisType: 'face',
+    status: 'success',
+    input: analysisInput,
+    result,
+    errorMessage: '',
+  });
+  return json(result);
+}
+
+async function handlePalmReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
+  const oversizedRequest = getOversizedPhotoRequestError(request);
+  if (oversizedRequest) return oversizedRequest;
+  const { image, mimeType, hand, dominant, gender, lang } = await request.json();
+  const analysisLang = normalizePhotoAnalysisLang(lang);
+  const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
+  if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
+
+  const analysisInput = {
+    hand: hand || '',
+    dominant: dominant || '',
+    gender: gender || '',
+    lang: analysisLang,
+  };
+  let r2Key;
+  try {
+    r2Key = await saveKarmaAnalysisImageToR2(env, {
+      image: photoInput.image,
+      mimeType: photoInput.mimeType,
+      analysisType: 'palm',
+      requestId,
+    });
+    analysisContext.r2Key = r2Key;
+  } catch (error) {
+    console.error('[KarmaAnalysis] required palm image save failed:', error?.message || error);
+    return json({ error: getPhotoAnalysisMessage(analysisLang, 'imageStorageFailed') }, 503);
+  }
+
+  if (analysisGateError) {
+    const localizedGate = await localizePhotoAnalysisGateError(analysisGateError, analysisLang);
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: localizedGate.result,
+      errorMessage: localizedGate.errorMessage,
+      aiService: 'NOT_CALLED',
+    });
+    return localizedGate.response;
+  }
+
+  if (!env?.AI?.analyze) {
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'serviceUnavailable');
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+      aiService: 'NOT_CALLED',
+    });
+    return json({ error: errorMessage }, 503);
+  }
+  const handContext = buildPalmHandContext(hand, dominant, analysisLang);
+
+  const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'palmRejected');
+  const prompt = `당신은 사진에서 관찰 가능한 손바닥 특징과 전통 수상학 해석을 명확히 구분하는 손금 해설가입니다. 손금은 오락·자기성찰용 전통 해석이며 실제 성격, 건강, 수명, 재산, 관계, 미래 사건을 판정하지 않습니다.
+
+중요: 먼저 사진에 사람의 손바닥이 있는지 확인하세요. 손바닥이 없거나 손금이 보이지 않는 사진이면 반드시 다음 JSON만 반환:
+{"error": ${JSON.stringify(rejectionMessage)}}
+
+손바닥이 확인되면 손금 감정 진행.
+${handContext}${gender ? `\n성별: ${gender}` : ''}
+
+${palmExpertRubric()}
+
+## 사진별 차별화 필수
+- 먼저 사진에서 실제로 보이는 손바닥 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
+- \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 손바닥 폭, 손가락 길이/벌어짐, 엄지 각도, 생명선 깊이/끊김, 두뇌선 기울기, 감정선 위치, 운명선 선명도, 태양선 유무, 결혼선 가시성, 굳은살/흉터/조명/흐림 여부.
+- 각 \`lines.desc\`의 첫 문장은 반드시 해당 손금의 실제 관찰 특징으로 시작하세요. 관찰 없이 운세부터 말하지 마세요.
+- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 낮추세요.
+- 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
+- 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
+- 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
+- summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 확인 어려운 손금 1개를 함께 언급해 이 손만의 대비를 만드세요.
+- fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼으세요. 근거 없이 일반 운세처럼 말하지 마세요.
+- overall_score와 각 lines 점수는 관찰된 선명도·끊김·가시성에서 나와야 합니다. 손바닥 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
+- overall_grade는 서버가 종합 점수에 맞는 공통 등급 기준으로 계산합니다. 등급을 생성하지 마세요.
+
+## 직설 모드 원칙
+- 각 손금의 설명은 보이는 선의 위치·깊이·갈라짐 → 전통 해석에서의 강점 또는 약점 → 생활에서 점검할 행동으로 이어집니다. "기운이 좋다", "균형을 잡아라"로 끝내지 마세요. 흐린 선은 관찰 한계이지 불운의 증거가 아닙니다.
+- 재물·직업·연애 항목은 해당 손금의 해석 안에서 우선할 선택과 조심할 행동을 하나씩 구체화하세요. 같은 "계획하고 소통하세요"를 분야명만 바꿔 반복하지 마세요. 보이지 않는 결혼선으로 상대 유형이나 결혼 횟수를 만들지 마세요.
+- **끊긴 선·흐린 선·섬(島)·흉터**는 먼저 실제 관찰로 기록한 뒤 전통 수상학상 어떤 경향으로 보는지 설명
+- 결혼선은 측면이 보여야 판단 가능. 안 보이면 확인 어렵다고 쓰고, 이혼·재혼·불륜을 단정하지 마세요.
+- 건강 관련 내용은 의학적 진단이 아니라 생활관리 주의로만 표현하세요.
+- 재물선이 약하면 전통 수상학의 돈 관리 상징과 현실 점검 질문으로 설명하되 실제 습관·부·손실을 단정하지 마세요.
+- 점수 낮은 항목은 낮은 점수 + 직설적 설명. 평균 올리려 억지로 75+ 매기지 말 것
+
+## 주요 손금 분석
+1. 생명선 - 활력·회복력·생활 리듬
+2. 두뇌선 - 사고방식·판단력·감정 컨트롤
+3. 감정선 - 연애 패턴·상처·집착 성향
+4. 운명선 - 직업 안정성·방황 시기
+5. 태양선 - 명예·성공 가능성 (없으면 없는 대로)
+6. 결혼선 - 측면이 보일 때만 관계 지속 패턴 참고
+7. 손 형태 - 성격 민낯
+
+반드시 아래 JSON 형식으로만 응답:
+{
+  "overall_score": 82,
+  "quality_assessment": "(사진 품질, 손바닥 전체 노출, 초점, 조명, 손금 선명도, 분석 한계)",
+  "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
+  "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",
+  "lines": [
+    {"name": "생명선", "score": 85, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 생명선의 실제 깊이·연속성·호 형태 관찰부터 시작. 활력·회복력 중심, 질병/사고 단정 금지)"},
+    {"name": "두뇌선", "score": 78, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 실제 선의 시작·길이·기울기 관찰 후 전통적인 사고 방식 상징을 조건부로 설명. 정신건강 추정 금지)"},
+    {"name": "감정선", "score": 88, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 감정선의 위치·곡선·끊김 관찰부터 시작. 연애 패턴과 상처 처리 방식 중심으로 설명)"},
+    {"name": "운명선", "score": 75, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(2~3문장. 중앙 세로선의 선명도 관찰부터 시작. 직업 안정성·전환이 잦은 경향으로 설명)"},
+    {"name": "태양선", "score": 70, "length": "있음/희미/없음/확인 어려움", "desc": "(2~3문장. 실제 가시성 관찰 후 전통적인 성취 표현 상징을 조건부로 설명. 성공 예측 금지)"},
+    {"name": "결혼선", "score": 80, "length": "1개/2개/여러개/확인 어려움", "desc": "(2~3문장. 새끼손가락 아래 측면이 보이는 경우만 해석. 안 보이면 확인 어렵다고 명시)"}
+  ],
+  "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "(손 형태로 본 성격 민낯 2~3문장)"},
+  "fortune": {
+    "wealth": "(재물 관련 선의 관찰과 전통적 돈 관리 상징, 현실 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",
+    "career": "(운명선·두뇌선 관찰과 전통적 업무 방식 상징, 현실 점검 질문 3~4문장. 직업 적합성·성공 단정 금지)",
+    "love": "(연애/결혼운 3~4문장. 감정선·결혼선 가시성에 근거해 관계 방식, 맞는 상대 유형, 갈등 주의점을 경향으로 설명)",
+    "health": "(건강운 3~4문장. 손의 긴장도·선명도·생활 리듬 기반 주의. 특정 질병 확정, 사고 시기 단정 금지. 필요 시 일반적 검진 권장)"
+  },
+  "advice": "(손금 기반 조언 3~4문장. 격언 금지. 관찰된 손금 특징에 연결해 이번 달/올해 실천할 행동을 구체적으로)"
+}` + langInstruction(analysisLang);
+
+  const imageUrl = `data:${photoInput.mimeType};base64,${photoInput.image}`;
+  const result = await callKarmaVisionAi(prompt, imageUrl, env, analysisLang, 'palm', {}, analysisContext);
+  if (!result) {
+    const errorMessage = getPhotoAnalysisMessage(analysisLang, 'palmAnalysisFailed');
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: errorMessage },
+      errorMessage,
+    });
+    return json({ error: errorMessage }, 500);
+  }
+  if (result._apiError) {
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'error',
+      input: analysisInput,
+      result: { error: result._apiError },
+      errorMessage: result._apiError,
+    });
+    return json({ error: result._apiError }, 500);
+  }
+  if (result.error) {
+    const localizedResult = { ...result, error: rejectionMessage };
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'rejected',
+      input: analysisInput,
+      result: localizedResult,
+      errorMessage: rejectionMessage,
+    });
+    return json({ error: rejectionMessage }, 400);
+  }
+  await recordKarmaImageAnalysis(env, {
+    requestId,
+    r2Key,
+    analysisType: 'palm',
+    status: 'success',
+    input: analysisInput,
+    result,
+    errorMessage: '',
+  });
+  return json(result);
+}
+
+function getOhangRelations(ohangA, ohangB) {
+  const relations = { sangsaeng: [], sanggeuk: [], same: false };
+  if (SANGSAENG[ohangA] === ohangB) relations.sangsaeng.push(`${ohangA}→${ohangB}`);
+  if (SANGSAENG[ohangB] === ohangA) relations.sangsaeng.push(`${ohangB}→${ohangA}`);
+  if (SANGGEUK[ohangA] === ohangB) relations.sanggeuk.push(`${ohangA}→${ohangB}`);
+  if (SANGGEUK[ohangB] === ohangA) relations.sanggeuk.push(`${ohangB}→${ohangA}`);
+  if (ohangA === ohangB) relations.same = true;
+  return relations;
+}
+
+// ============================================================
+// Prompt Builders (from prompt.js)
+// ============================================================
+
+const CHEONGAN_INFO = {
+  갑: { ohang: '목', yin: false, desc: '큰 나무. 리더십, 곧은 성격, 개척 정신' },
+  을: { ohang: '목', yin: true, desc: '풀/덩굴. 유연함, 적응력, 부드러운 외교력' },
+  병: { ohang: '화', yin: false, desc: '태양. 열정, 화려함, 밝은 에너지, 리더 기질' },
+  정: { ohang: '화', yin: true, desc: '촛불. 섬세함, 따뜻한 배려, 내면의 열정' },
+  무: { ohang: '토', yin: false, desc: '큰 산. 듬직함, 포용력, 안정감, 신뢰' },
+  기: { ohang: '토', yin: true, desc: '논밭. 현실적, 실리 추구, 세심한 관리력' },
+  경: { ohang: '금', yin: false, desc: '강철/바위. 강한 의지, 결단력, 정의감' },
+  신: { ohang: '금', yin: true, desc: '보석/칼날. 예리함, 완벽주의, 심미안' },
+  임: { ohang: '수', yin: false, desc: '큰 바다/강. 지혜, 포용, 대범함, 자유로움' },
+  계: { ohang: '수', yin: true, desc: '이슬/시냇물. 감수성, 직관력, 내면의 깊이' },
+};
+
+const OHANG_RELATIONS = `
+오행 상생(생해주는 관계): 목→화→토→금→수→목
+오행 상극(제어하는 관계): 목→토, 토→수, 수→화, 화→금, 금→목
+오행 과다: 해당 기운이 넘쳐 부작용 (예: 금 과다→지나친 완벽주의, 비판적)
+오행 부족: 해당 기운이 없어 약점 (예: 화 부족→열정/추진력 부족, 소극적)
+`;
+
+function getOhangAnalysis(ohangCount) {
+  const excess = [];
+  const lack = [];
+  const entries = Object.entries(ohangCount).sort((a, b) => b[1] - a[1]);
+  const max = entries[0]?.[1] ?? 0;
+  const min = entries[entries.length - 1]?.[1] ?? 0;
+  for (const [key, val] of Object.entries(ohangCount)) {
+    if (val >= 4) excess.push(`${key}(${val}개) 과다`);
+    else if (val === 0) lack.push(`${key} 부족`);
+  }
+  const dominant = entries.filter(([, val]) => val === max).map(([key, val]) => `${key}(${val})`);
+  const sparse = entries.filter(([, val]) => val === min).map(([key, val]) => `${key}(${val})`);
+  return { excess, lack, dominant, sparse };
+}
+
+function inverseOhangRelation(map, target) {
+  return Object.keys(map).find(key => map[key] === target) || '';
+}
+
+function buildSajuEvidence(saju) {
+  const count = saju.ohangCount;
+  const day = saju.ilganOhang;
+  const resource = inverseOhangRelation(SANGSAENG, day);
+  const output = SANGSAENG[day];
+  const wealth = SANGGEUK[day];
+  const authority = inverseOhangRelation(SANGGEUK, day);
+  const peerCount = count[day] || 0;
+  const resourceCount = count[resource] || 0;
+  const outputCount = count[output] || 0;
+  const wealthCount = count[wealth] || 0;
+  const authorityCount = count[authority] || 0;
+  const surfaceSupport = peerCount + resourceCount;
+  const surfaceDrain = outputCount + wealthCount + authorityCount;
+  const balance = surfaceSupport > surfaceDrain
+    ? '표면 글자 기준 일간 지원 쪽이 우세'
+    : surfaceSupport < surfaceDrain
+      ? '표면 글자 기준 일간 소모·통제 쪽이 우세'
+      : '표면 글자 기준 지원과 소모가 비슷함';
+  const { dominant, sparse, lack } = getOhangAnalysis(count);
+  return {
+    resource, output, wealth, authority,
+    roleLine: `비겁 ${day}${peerCount} / 인성 ${resource}${resourceCount} / 식상 ${output}${outputCount} / 재성 ${wealth}${wealthCount} / 관성 ${authority}${authorityCount}`,
+    balance,
+    dominant: dominant.join(', '),
+    sparse: sparse.join(', '),
+    missing: lack.join(', ') || '없음',
+    fingerprint: `${saju.pillars.map(p => `${p.gan}${p.ji}`).join('-')}|${['목','화','토','금','수'].map(k => `${k}${count[k]}`).join('-')}|S${surfaceSupport}D${surfaceDrain}`,
+  };
+}
+
+function getAgeAt(birthDate, targetDate) {
+  if (!birthDate) return null;
+  const [by, bm, bd] = birthDate.split('-').map(Number);
+  const target = typeof targetDate === 'string' ? new Date(`${targetDate}T12:00:00Z`) : targetDate;
+  if (!by || Number.isNaN(target?.getTime?.())) return null;
+  let age = target.getUTCFullYear() - by;
+  if ((target.getUTCMonth() + 1) < bm || ((target.getUTCMonth() + 1) === bm && target.getUTCDate() < bd)) age--;
+  return Math.max(0, age);
+}
+
+function getActiveDaeun(saju, birthDate, targetDate) {
+  const age = getAgeAt(birthDate, targetDate);
+  const daeun = age == null ? null : (saju.daeun || []).find(d => age >= d.fromAge && age <= d.toAge) || null;
+  return { age, daeun };
+}
+
+function formatActiveDaeun(saju, birthDate, targetDate) {
+  const { age, daeun } = getActiveDaeun(saju, birthDate, targetDate);
+  if (age == null) return '출생일 미전달로 현재 대운 판별 불가';
+  if (!daeun) return `만 ${age}세, 계산된 8개 대운 범위 밖`;
+  return `만 ${age}세 → ${daeun.label} ${daeun.gan}${daeun.ji}(${daeun.ohang}/${daeun.jiOhang})`;
+}
+
+function buildMonthlySignals(saju, year) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const sajuYear = getSajuYear(year, month, 15, 12, 0);
+    const sajuMonth = getSajuMonth(year, month, 15, 12, 0);
+    const yGan = yearCheongan(sajuYear);
+    const gan = monthCheongan(CHEONGAN.indexOf(yGan), sajuMonth);
+    const ji = monthJiji(sajuMonth);
+    const rel = analyzeSajuRelations([{ name: `${month}월`, gan, ji }], saju.pillars);
+    const relation = getOhangRelations(saju.ilganOhang, CHEONGAN_OHANG[gan]);
+    const facts = [];
+    if (relation.sangsaeng.length) facts.push(`일간과 상생 ${relation.sangsaeng.join('/')}`);
+    if (relation.sanggeuk.length) facts.push(`일간과 상극 ${relation.sanggeuk.join('/')}`);
+    if (relation.same) facts.push('일간과 같은 오행');
+    if (rel.ganHap.length) facts.push(`천간합 ${rel.ganHap.join('/')}`);
+    if (rel.jiHap.length) facts.push(`지지합 ${rel.jiHap.join('/')}`);
+    if (rel.jiChung.length) facts.push(`지지충 ${rel.jiChung.join('/')}`);
+    return `${month}월 중순 대표 월주 ${gan}${ji}: ${facts.join(', ') || '뚜렷한 합충 없음'}`;
+  });
+}
+
+function buildHourlySignals(saju, dayGan) {
+  const labels = ['23~01시','01~03시','03~05시','05~07시','07~09시','09~11시','11~13시','13~15시','15~17시','17~19시','19~21시','21~23시'];
+  return labels.map((label, index) => {
+    const hour = index === 0 ? 0 : index * 2;
+    const pillar = hourPillar(dayGan, hour);
+    const rel = analyzeSajuRelations([{ name: label, ...pillar }], saju.pillars);
+    const facts = [];
+    if (rel.ganHap.length) facts.push(`천간합 ${rel.ganHap.join('/')}`);
+    if (rel.jiHap.length) facts.push(`지지합 ${rel.jiHap.join('/')}`);
+    if (rel.jiChung.length) facts.push(`지지충 ${rel.jiChung.join('/')}`);
+    return `${label} ${pillar.gan}${pillar.ji}: ${facts.join(', ') || '뚜렷한 합충 없음'}`;
+  });
+}
+
+function langInstruction(lang) {
+  if (normalizeKarmaTextAnalysisLang(lang) === 'en') return '\n\nIMPORTANT: You MUST respond entirely in English. Every text value in the JSON must contain English and romanized Saju names only. Never include Hangul, Chinese characters, Korean labels, or untranslated Korean/Chinese terms.';
+  return '';
+}
+
+function buildSajuPrompt(saju, gender, lang, birthDate) {
+  const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
+  const yinYang = ilganInfo.yin ? '음(陰)' : '양(陽)';
+  const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const rel = analyzeInternalRelations(saju.pillars);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, new Date());
+
+  const system = `당신은 사주 원국의 계산값을 근거로 설명하는 명리 해설가입니다. 좋은 말이나 나쁜 말을 만들기보다 입력된 원국이 다른 이유를 정확히 구분하세요.
+
+## 정확성 원칙
+- 입력에 없는 과거 사건, 가족사, 질병, 이혼, 파산, 범죄, 수명과 미래 사건을 사실처럼 만들지 마세요.
+- 현재 계산기는 겉으로 드러난 천간·지지 오행 수, 합·충, 대운을 제공합니다. 지장간·월령 가중치·12운성 전체가 없으므로 신강/신약, 용신, 희신을 확정하지 마세요.
+- 성격·연애·직업·대운은 전통 명리 관점의 경향으로 설명하고, 의료·법률·재무 결론은 내리지 마세요.
+- 시주가 없으면 hour는 빈 문자열로 두고 자녀운·말년을 추정하지 마세요.
+- 각 핵심 문단에는 반드시 [근거: 실제 입력값]을 한 번 이상 표시하세요. 근거가 없으면 쓰지 마세요.
+
+## 오행 상생/상극 기본 원리
+${OHANG_RELATIONS}
+
+## 개인화 필수 (누구나 비슷한 사주 풀이면 실패)
+- 해석의 출발점은 원국 지문, 일간 역할별 오행 수, 우세·희소 오행, 내부 합/충, 현재 대운입니다. 성별이나 일반 사주 상식만으로 결론을 만들지 마세요.
+- pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
+- strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 위험 3개를 골라야 합니다.
+- 단순히 0개/4개 이상일 때만 차이를 찾지 마세요. 매번 제공된 우세·희소 오행과 십성 역할 수를 비교해 이 원국만의 대비를 잡으세요.
+- 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 강점과 걸림돌을 쉬운 생활 언어로 먼저 말하고 근거를 이어 쓰세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답. 문체는 명확하고 구체적으로:
+{
+  "pillar_reading": {
+    "year": "(년주가 전체 원국에서 맡는 역할과 전통적 초년·외부환경 경향 3~4문장. 실제 가족사를 지어내지 말 것)",
+    "month": "(월주와 월지의 계절·사회 활동 경향 3~4문장. 직장 사건을 지어내지 말 것)",
+    "day": "(일간·일지 관계로 본 자기표현과 가까운 관계 방식 3~4문장)",
+    "hour": "(시주가 있을 때만 장기 목표·표현 경향 3~4문장. 시주 없으면 빈 문자열)"
+  },
+  "personality": "(서로 다른 계산 근거 2개 이상을 연결한 성향 4~5문장)",
+  "strengths": ["서로 다른 근거에서 나온 강점 3가지. 각 항목에 근거 표기"],
+  "cautions": ["서로 다른 근거에서 나온 주의 경향 3가지. 단정 대신 작동 조건과 대응 행동 명시"],
+  "love_style": "(일간·일지·재성/관성 수를 근거로 관계의 표현·갈등·조율 방식 4~5문장)",
+  "career": "(식상·재성·관성·인성의 표면 수를 비교해 잘 맞는 업무 환경 3개와 부담이 큰 환경 2개, 이유 포함)",
+  "daeun_reading": ["대운 8개를 입력 순서대로 각각 2~3문장. 원국과 해당 대운 오행의 상호작용 및 준비할 행동만 설명. 사건 확정 금지"],
+  "advice": "(현재 대운과 가장 희소한 역할을 근거로 지금 실행할 행동 3~4문장)"
+}` + langInstruction(lang);
+
+  const user = `## 기본 정보
+${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
+- 현재 대운: ${activeDaeun}
+
+## 사주 원국 (四柱 原局)
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+
+## 일간 (日干) 분석
+- 일간: ${saju.ilgan} (${saju.ilganOhang}, ${yinYang})
+- 일간의 본성: ${ilganInfo.desc || ''}
+
+## 오행 분포
+- 목: ${saju.ohangCount.목} | 화: ${saju.ohangCount.화} | 토: ${saju.ohangCount.토} | 금: ${saju.ohangCount.금} | 수: ${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다 오행: ${dominant.join(', ')}
+- 최저 오행: ${sparse.join(', ')}
+
+## 일간 기준 역할별 표면 분포
+- ${evidence.roleLine}
+- ${evidence.balance}
+- 주의: 이 값은 지장간·월령 가중치가 없는 표면 비교이므로 신강/신약·용신을 확정하는 자료가 아님
+
+## 사주 내부 합/충 관계 (코드로 계산된 결과)
+${rel.ganHap.length ? `- 천간합: ${rel.ganHap.join(', ')}` : '- 천간합: 없음'}
+${rel.jiHap.length ? `- 지지육합: ${rel.jiHap.join(', ')}` : '- 지지육합: 없음'}
+${rel.jiChung.length ? `- 지지충: ${rel.jiChung.join(', ')}` : '- 지지충: 없음'}
+${saju.daeun ? `
+## 대운 (大運) — 10년 단위 인생 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+
+## 개인화 키 (반복 방지 기준)
+- 원국 지문: ${evidence.fingerprint}
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 합충 키: 천간합=${rel.ganHap.length ? rel.ganHap.join('/') : '없음'}; 지지육합=${rel.jiHap.length ? rel.jiHap.join('/') : '없음'}; 지지충=${rel.jiChung.length ? rel.jiChung.join('/') : '없음'}`;
+
+  return { system, user, lang };
+}
+
+function buildFortunePrompt(saju, gender, year, lang, birthDate) {
+  const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
+  const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, `${year}-07-01`);
+  const monthlySignals = buildMonthlySignals(saju, year);
+  const yGan = yearCheongan(year);
+  const yJi = yearJiji(year);
+  const yOhang = CHEONGAN_OHANG[yGan];
+  const yJiOhang = JIJI_OHANG[yJi];
+  const ilOhang = saju.ilganOhang;
+  const relations = getOhangRelations(ilOhang, yOhang);
+  const yearPillar = [{ name: '세운', gan: yGan, ji: yJi }];
+  const yearRel = analyzeSajuRelations(yearPillar, saju.pillars);
+  const iljiPillar = saju.pillars.find(p => p.name === '일주') || {};
+  const iljiOhang = iljiPillar.ji ? JIJI_OHANG[iljiPillar.ji] : '';
+  const branchRelations = iljiOhang ? getOhangRelations(iljiOhang, yJiOhang) : { sangsaeng: [], sanggeuk: [], same: false };
+  const branchRelDesc = [];
+  if (branchRelations.sangsaeng.length) branchRelDesc.push(`상생(${branchRelations.sangsaeng.join(', ')})`);
+  if (branchRelations.sanggeuk.length) branchRelDesc.push(`상극(${branchRelations.sanggeuk.join(', ')})`);
+  if (branchRelations.same) branchRelDesc.push('비화(같은 오행)');
+  let yearCycleIndex = 0;
+  for (let i = 0; i < 60; i++) {
+    if (CHEONGAN[i % 10] === yGan && JIJI[i % 12] === yJi) {
+      yearCycleIndex = i;
+      break;
+    }
+  }
+
+  // 세운과 일간의 관계 요약
+  const relDesc = [];
+  if (relations.sangsaeng.length) relDesc.push(`상생(${relations.sangsaeng.join(', ')})`);
+  if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
+  if (relations.same) relDesc.push('비화(같은 오행)');
+
+  const system = `당신은 원국·현재 대운·세운의 계산된 관계를 구분해 설명하는 명리 해설가입니다. 올해의 사건을 만들어내지 말고, 어떤 조건에서 어떤 선택이 유리하거나 부담스러운지를 근거와 함께 설명하세요.
+
+## 절대 금지
+- 입력에 없는 이별·외도·손실·퇴사·수술·질환을 일어날 사실처럼 단정
+- 오행만으로 특정 장기나 질병, 투자 상품의 수익·손실, 법적 문제를 예측
+- 계산되지 않은 신강/신약·용신을 확정하거나 월별 합충 근거 없이 특정 월을 좋다/나쁘다고 지정
+- "전반적으로 무난", "긍정적으로 생각" 같은 재사용 가능한 문장
+- 해마다 같은 결론 반복 금지. 입력의 세운 60갑자 순번, 세운-원국 합/충, 일지-세운 지지 관계를 근거로 해당 연도만의 사건·월·행운 요소를 골라라
+
+## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+- 세운(올해 천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 세운의 오행만 설명하는 도입부는 절대 금지(예: "올해는 ○(○) 기운이 강한 해라..." 금지).
+- 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 내부 합충)이다. 세운은 방아쇠이며 현재 대운을 함께 고려하라.
+- 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 같은 세운이 어떤 역할을 늘리는지 원국 지문과 비교하라.
+- year_summary 첫 문장은 올해 우선할 선택과 부담이 커질 수 있는 상황을 쉬운 말로 제시하고, 원국의 특정 신호와 세운 또는 현재 대운의 관계를 근거로 이어 쓰세요.
+- love, money, health, career, advice는 서로 다른 근거를 써야 합니다. 같은 "올해 조심" 문장을 분야명만 바꿔 반복하지 말고, 원국 오행·일지 관계·세운 합/충·대운 중 무엇을 근거로 삼았는지 문장 안에 드러내세요.
+- 각 항목에 [근거: 입력 신호]를 최소 한 번 표시하세요. lucky의 월은 제공된 월별 대표 신호 중 실제 합·충 또는 일간 관계가 있는 달만 선택하세요.
+
+## 해석 원칙
+1. 세운·월운의 합충은 확정 사건이 아니라 변화 압력이 나타나는 영역과 대응 행동으로 번역하세요.
+2. 월을 언급할 때는 아래 월별 대표 월주의 실제 합·충·상생·상극을 문장 안에 함께 적으세요.
+3. 건강은 수면·과로·식사·스트레스 같은 일반 생활관리만 다루고 증상은 의료진에게 확인하도록 안내하세요.
+4. 연애는 관계에서 나타날 수 있는 표현·갈등 패턴과 대화 방법을 설명하고 외도·이별을 예언하지 마세요.
+5. 돈은 예산·계약 검토·충동지출 관리처럼 일반적인 의사결정 절차만 제안하고 종목·손실 규모를 예측하지 마세요.
+6. 직장은 역할·협업·결정 속도의 경향과 준비 행동을 설명하되 승진·퇴사 확률을 만들지 마세요.
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답:
+{
+  "year_summary": "(원국 지문+현재 대운+세운을 연결한 올해 흐름 4~5문장. 근거가 있는 상대적 기회 월과 점검 월 포함)",
+  "love": "(일지·관성/재성 표면 수·세운 관계를 근거로 표현 방식과 갈등 조율 5~6문장)",
+  "money": "(재성 표면 수·세운 관계를 근거로 소비·계약·예산 관리 포인트 5~6문장. 투자 예측 금지)",
+  "health": "(원국의 과다·희소 신호를 근거로 한 일반 생활 리듬 점검 4~5문장. 진단·발병 예측 금지)",
+  "career": "(식상·관성·인성 표면 수와 현재 대운·세운을 근거로 업무 방식과 준비 행동 5~6문장)",
+  "lucky": {
+    "color": "(올해 행운의 색)",
+    "number": "(올해 행운의 숫자)",
+    "direction": "(올해 행운의 방향)",
+    "month": "(올해 가장 좋은 달)"
+  },
+  "advice": "(올해 핵심 조언 3~4문장. 근거와 실행 시점을 포함하되 결과를 위협적으로 단정하지 말 것)"
+}` + langInstruction(lang);
+
+  const user = `## 기본 정보
+${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
+- 올해: ${year}년
+- ${year}년 기준 현재 대운: ${activeDaeun}
+
+## 사주 원국 (해석의 1순위 근거)
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다: ${dominant.join(', ')} / 최저: ${sparse.join(', ')}
+- 일간 역할별 표면 수: ${evidence.roleLine}
+- 표면 균형: ${evidence.balance} (신강/신약 확정값 아님)
+${saju.daeun ? `
+## 대운 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+
+## ${year}년 세운 (年運 — 원국에 작용하는 방아쇠)
+- 천간: ${yGan} (${yOhang})
+- 지지: ${yJi} (${yJiOhang})
+- 60갑자 순번: ${yearCycleIndex + 1}/60
+- 세운과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+- 일지(${iljiPillar.ji || '미상'}, ${iljiOhang || '미상'})와 세운 지지(${yJi}, ${yJiOhang})의 관계: ${branchRelDesc.length ? branchRelDesc.join(', ') : '특별한 관계 없음'}
+
+## 세운-원국 합/충 (코드 계산)
+- 천간합: ${yearRel.ganHap.length ? yearRel.ganHap.join(', ') : '없음'}
+- 지지육합: ${yearRel.jiHap.length ? yearRel.jiHap.join(', ') : '없음'}
+- 지지충: ${yearRel.jiChung.length ? yearRel.jiChung.join(', ') : '없음'}
+
+## 월별 대표 신호 (각 양력 월 15일 정오 기준 월주, 사건 확정값 아님)
+${monthlySignals.map(line => `- ${line}`).join('\n')}
+
+## 개인화 키 (동년생/같은 해 반복 방지)
+- 원국 지문: ${evidence.fingerprint}
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 세운 키: ${year}-${yGan}${yJi}-${String(yearCycleIndex + 1).padStart(2, '0')}/60
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${yearRel.ganHap.concat(yearRel.jiHap, yearRel.jiChung).join('/') || '없음'}`;
+
+  return { system, user, lang };
+}
+
+function buildDailyPrompt(saju, gender, todayStr, lang, birthDate) {
+  const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
+  const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
+  const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
+  const evidence = buildSajuEvidence(saju);
+  const activeDaeun = formatActiveDaeun(saju, birthDate, todayStr);
+  const ilOhang = saju.ilganOhang;
+
+  const [tY, tM, tD] = todayStr.split('-').map(Number);
+  const yGan = yearCheongan(tY);
+  const yJi = yearJiji(tY);
+  const yOhang = CHEONGAN_OHANG[yGan];
+
+  // 오늘의 일진 (일간지)
+  const todayDP = dayPillar(tY, tM, tD);
+  const todayGan = todayDP.gan;
+  const todayJi = todayDP.ji;
+  const todayGanOhang = CHEONGAN_OHANG[todayGan];
+  const todayJiOhang = JIJI_OHANG[todayJi];
+  const todayPillar = [{ name: '일진', gan: todayGan, ji: todayJi }];
+  const hourlySignals = buildHourlySignals(saju, todayGan);
+  const dailyRel = analyzeSajuRelations(todayPillar, saju.pillars);
+  const iljiPillar = saju.pillars.find(p => p.name === '일주') || {};
+  const iljiOhang = iljiPillar.ji ? JIJI_OHANG[iljiPillar.ji] : '';
+  const branchRelations = iljiOhang ? getOhangRelations(iljiOhang, todayJiOhang) : { sangsaeng: [], sanggeuk: [], same: false };
+  const branchRelDesc = [];
+  if (branchRelations.sangsaeng.length) branchRelDesc.push(`상생(${branchRelations.sangsaeng.join(', ')})`);
+  if (branchRelations.sanggeuk.length) branchRelDesc.push(`상극(${branchRelations.sanggeuk.join(', ')})`);
+  if (branchRelations.same) branchRelDesc.push('비화(같은 오행)');
+  let dayCycleIndex = 0;
+  for (let i = 0; i < 60; i++) {
+    if (CHEONGAN[i % 10] === todayGan && JIJI[i % 12] === todayJi) {
+      dayCycleIndex = i;
+      break;
+    }
+  }
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(tY, tM - 1, tD)).getUTCDay()];
+
+  const relations = getOhangRelations(ilOhang, todayGanOhang);
+  const relDesc = [];
+  if (relations.sangsaeng.length) relDesc.push(`상생(${relations.sangsaeng.join(', ')})`);
+  if (relations.sanggeuk.length) relDesc.push(`상극(${relations.sanggeuk.join(', ')})`);
+  if (relations.same) relDesc.push('비화(같은 오행)');
+
+  const system = `당신은 개인 원국·현재 대운·오늘 일진의 계산된 관계를 구분해 설명하는 일진 해설가입니다. 실제 사건을 예언하지 말고 오늘 선택에 참고할 상대적 흐름과 행동을 근거 중심으로 안내하세요.
+
+## 절대 금지
+- 입력에 없는 싸움·분실·사고·질병·계약 실패를 오늘 발생할 사실처럼 단정
+- 오행만으로 신체 부위의 증상이나 투자·결제 결과를 예측
+- 시간주 근거가 없는 시간대를 임의로 좋다/나쁘다고 지정
+- "긍정적으로 보내세요", "마음가짐이 중요" 같은 재사용 가능한 조언
+- 매일 같은 문장 구조와 결론 반복 금지. 입력의 오늘 날짜 식별자, 60갑자 순번, 일진-원국 합/충을 근거로 날짜별로 다른 사건·시간대·행운 색·숫자를 골라라
+
+## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+- 오늘의 일진(천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 일진의 오행만 설명하는 도입부는 절대 금지(예: "오늘은 ○(○) 기운이 강한 날이라..." 금지).
+- 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 합충)과 현재 대운이다. 일진이 이 지문을 어떻게 건드리는지로 풀어라.
+- 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
+- overall 첫 문장은 오늘 우선할 일이나 조심할 대화 행동을 쉬운 말로 먼저 제시하고, 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 근거로 이어 쓰세요.
+- love, money, career, study, social, health는 같은 경고를 분야명만 바꿔 반복하면 실패입니다. 각 항목마다 원국 오행·일지 관계·일진 합/충·요일/60갑자 순번 중 서로 다른 근거를 골라야 합니다.
+- 각 항목에 [근거: 입력 신호]를 표시하세요. lucky.color와 lucky.number는 오늘 일진과 가장 희소한 표면 오행에서 도출하세요.
+
+## 해석 원칙
+1. 일진 합충은 사건 확정이 아니라 반응이 커지기 쉬운 주제와 점검 행동으로 번역하세요.
+2. 시간대를 언급할 때는 아래 시간주 신호의 실제 합·충을 함께 적으세요. 신호가 없으면 정확한 시간 예측을 만들지 마세요.
+3. 연애·대인관계는 말투, 속도, 경청처럼 사용자가 조절할 수 있는 행동을 제안하세요.
+4. 금전은 예산 확인·결제 보류·계약 재검토 같은 일반 절차만 제안하고 손실이나 투자 성과를 예측하지 마세요.
+5. 건강은 과음·과로·수면·식사 같은 일반 생활관리만 다루고 증상을 예측하지 마세요.
+6. 직장·학업은 집중과 의사소통 방식의 상대적 흐름을 설명하고 실패 확률을 만들지 마세요.
+7. 합/충이 없더라도 오늘 지지와 일지의 오행 관계를 반드시 해석 근거로 삼아 전날과 다른 포인트를 만든다
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답:
+{
+  "overall": "(원국 지문+현재 대운+일진을 연결한 총운 3~4문장. 시간 신호가 있을 때만 상대적 편의 시간대 포함)",
+  "love": "(일지와 일진 관계에 근거한 표현·대화 포인트 3~4문장. 만남·싸움 예언 금지)",
+  "money": "(재성 표면 수와 일진 관계에 근거한 지출·계약 점검 3~4문장. 투자 예측 금지)",
+  "career": "(관성·식상 표면 수와 일진 관계에 근거한 업무 행동 3~4문장)",
+  "study": "(인성·식상 표면 수를 근거로 한 학습 방식 2~3문장)",
+  "social": "(비겁과 일진 합충을 근거로 한 대화·약속 관리 2~3문장)",
+  "health": "(일반적인 수면·식사·과로 관리 2~3문장. 증상·질병 예측 금지)",
+  "lucky": {
+    "color": "(오늘의 행운의 색)",
+    "number": "(오늘의 행운의 숫자)"
+  },
+  "advice": "(입력 근거에 연결된 오늘의 실행 행동 1~2문장. 위협적 단정 금지)"
+}` + langInstruction(lang);
+
+  const user = `## 기본 정보
+${genderText ? `- 성별: ${genderText}` : ''}
+${birthDate ? `- 생년월일: ${birthDate}` : ''}
+- 오늘 날짜: ${todayStr}
+- 요일: ${weekday}요일
+- 오늘 날짜 식별자: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60
+- 오늘 기준 현재 대운: ${activeDaeun}
+
+## 사주 원국 (해석의 1순위 근거)
+${saju.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${saju.ilgan} (${ilOhang}) — ${ilganInfo.desc || ''}
+- 오행 분포: 목${saju.ohangCount.목} 화${saju.ohangCount.화} 토${saju.ohangCount.토} 금${saju.ohangCount.금} 수${saju.ohangCount.수}
+${excess.length ? `- 과다: ${excess.join(', ')}` : ''}
+${lack.length ? `- 부족: ${lack.join(', ')}` : ''}
+- 최다: ${dominant.join(', ')} / 최저: ${sparse.join(', ')}
+- 일간 역할별 표면 수: ${evidence.roleLine}
+- 표면 균형: ${evidence.balance} (신강/신약 확정값 아님)
+${saju.daeun ? `
+## 대운 흐름
+${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOhang})`).join('\n')}
+` : ''}
+
+## 오늘의 일진 (日辰 — 원국에 작용하는 방아쇠)
+- 천간: ${todayGan} (${todayGanOhang})
+- 지지: ${todayJi} (${todayJiOhang})
+- 60갑자 순번: ${dayCycleIndex + 1}/60
+- 오늘 일진과 일간(${saju.ilgan}, ${ilOhang})의 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+- 일지(${iljiPillar.ji || '미상'}, ${iljiOhang || '미상'})와 오늘 지지(${todayJi}, ${todayJiOhang})의 관계: ${branchRelDesc.length ? branchRelDesc.join(', ') : '특별한 관계 없음'}
+
+## 일진-원국 합/충 (코드 계산)
+- 천간합: ${dailyRel.ganHap.length ? dailyRel.ganHap.join(', ') : '없음'}
+- 지지육합: ${dailyRel.jiHap.length ? dailyRel.jiHap.join(', ') : '없음'}
+- 지지충: ${dailyRel.jiChung.length ? dailyRel.jiChung.join(', ') : '없음'}
+
+## 시간주-원국 신호 (두 시간 단위 대표 시주, 사건 확정값 아님)
+${hourlySignals.map(line => `- ${line}`).join('\n')}
+
+## ${tY}년 세운 (참고)
+- 천간: ${yGan} (${yOhang})
+- 지지: ${yJi} (${JIJI_OHANG[yJi]})
+
+## 개인화 키 (같은 날짜 반복 방지)
+- 원국 지문: ${evidence.fingerprint}
+- 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
+- 일진 키: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60-${weekday}
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${dailyRel.ganHap.concat(dailyRel.jiHap, dailyRel.jiChung).join('/') || '없음'}`;
+
+  return { system, user, lang };
+}
+
+function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, birthDateA, birthDateB) {
+  const genderTextA = genderA === 'male' ? '남성' : genderA === 'female' ? '여성' : '';
+  const genderTextB = genderB === 'male' ? '남성' : genderB === 'female' ? '여성' : '';
+  const ilganA = CHEONGAN_INFO[sajuA.ilgan] || {};
+  const ilganB = CHEONGAN_INFO[sajuB.ilgan] || {};
+  const { excess: excessA, lack: lackA } = getOhangAnalysis(sajuA.ohangCount);
+  const { excess: excessB, lack: lackB } = getOhangAnalysis(sajuB.ohangCount);
+  const evidenceA = buildSajuEvidence(sajuA);
+  const evidenceB = buildSajuEvidence(sajuB);
+  const today = new Date();
+  const activeDaeunA = formatActiveDaeun(sajuA, birthDateA, today);
+  const activeDaeunB = formatActiveDaeun(sajuB, birthDateB, today);
+
+  // 보완 관계 (완화: 차이 3 이상이면 보완으로 판정)
+  const complementary = [];
+  for (const key of Object.keys(sajuA.ohangCount)) {
+    const diff = sajuB.ohangCount[key] - sajuA.ohangCount[key];
+    if (diff >= 3) complementary.push(`B가 A의 부족한 ${key}(${sajuA.ohangCount[key]}→${sajuB.ohangCount[key]})을 보완`);
+    if (diff <= -3) complementary.push(`A가 B의 부족한 ${key}(${sajuB.ohangCount[key]}→${sajuA.ohangCount[key]})을 보완`);
+    if (sajuA.ohangCount[key] === 0 && sajuB.ohangCount[key] >= 2) complementary.push(`B가 A에게 없는 ${key}을 채워줌`);
+    if (sajuB.ohangCount[key] === 0 && sajuA.ohangCount[key] >= 2) complementary.push(`A가 B에게 없는 ${key}을 채워줌`);
+  }
+
+  // 합/충 관계 계산
+  const rel = analyzeSajuRelations(sajuA.pillars, sajuB.pillars);
+  const ilganRel = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
+  const relDesc = [];
+  if (ilganRel.sangsaeng.length) relDesc.push(`상생(${ilganRel.sangsaeng.join(', ')})`);
+  if (ilganRel.sanggeuk.length) relDesc.push(`상극(${ilganRel.sanggeuk.join(', ')})`);
+  if (ilganRel.same) relDesc.push('비화(같은 오행)');
+
+  // 음양 조합 분석
+  const yinYangA = ilganA.yin ? '음' : '양';
+  const yinYangB = ilganB.yin ? '음' : '양';
+  const yinYangMatch = yinYangA !== yinYangB; // 양+음이 이상적
+
+  // 대운 시기 분석 데이터
+  const daeunInfoA = sajuA.daeun ? sajuA.daeun.map(d => `${d.label}: ${d.gan}${d.ji}(${d.ohang}/${d.jiOhang})`).join(', ') : '정보없음';
+  const daeunInfoB = sajuB.daeun ? sajuB.daeun.map(d => `${d.label}: ${d.gan}${d.ji}(${d.ohang}/${d.jiOhang})`).join(', ') : '정보없음';
+
+  const system = `당신은 두 원국의 계산된 공통점과 차이를 설명하는 명리 궁합 해설가입니다. 점수를 미화하지 말되, 관계의 미래나 사적인 행동을 사주만으로 예언하지 마세요.
+
+## 해석 원칙 (CRITICAL)
+- **두루뭉술한 일반론 금지**. 주어진 데이터(일간, 일지, 오행 분포, 합/충, 대운)를 직접 인용
+- A가 B에게 부담을 줄 수 있는 상호작용과 B가 A에게 부담을 줄 수 있는 상호작용을 각각 근거와 함께 명시
+- 외도·이혼·성욕·질병·재산 손실·임신·출산 시기를 추정하거나 사실처럼 단정하지 마세요.
+- 일지와 수화 비율은 전통 명리의 관계 템포 참고값일 뿐 실제 성행동·충실도·성적 지향을 판단하는 자료가 아닙니다.
+- 궁합 점수는 일간·일지·전체 원국의 합충·오행 보완을 가중 합산한 서비스용 휴리스틱이며 관계 성공 확률이 아닙니다.
+- 현재 대운이 판별된 경우에도 두 사람의 관계 사건을 확정하지 말고 각자가 예민해질 수 있는 주제와 대화 방법만 설명하세요.
+- 각 categories.desc와 advice에 [근거: 실제 조합 신호]를 표시하세요.
+
+## 조합별 차별화 필수
+- summary 첫 문장은 두 사람이 실제 대화나 결정에서 맞아떨어지거나 부딪힐 수 있는 지점을 쉬운 말로 짚고, A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 근거로 이어 쓰세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
+- personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·현재 대운을 나눠 반영하세요.
+- strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
+- advice는 이 커플만의 금지 행동과 허용 행동을 나눠 적으세요. 다른 커플에게 그대로 붙여도 말이 되면 다시 써야 합니다.
+
+## 오행 상생/상극 원리
+${OHANG_RELATIONS}
+
+## 카테고리별 해석 지침
+
+### 1. 성격/관계 궁합 (personality)
+- 두 일간 오행 관계를 의사결정 속도·표현 방식·갈등 처리의 차이로 설명
+- 지지충이 있으면 대화가 어긋날 수 있는 주제와 멈춤 규칙을 구체적으로 제안
+- 한쪽이 다른 쪽을 지치게 하는 패턴을 **누가 누구를 어떻게** 지치게 하는지 명시
+- 관계의 지속 여부를 단정하지 말고 유지에 도움이 되는 조건과 부담 조건을 구분
+
+### 2. 친밀감 궁합 (intimacy)
+- 일지 관계와 수/화 표면 비율을 정서적 거리, 애정 표현 속도, 함께 쉬는 방식의 전통적 경향으로만 설명
+- 실제 성행동, 성욕 강도, 주도권, 외도 가능성을 추측하지 마세요.
+- 합은 편안함, 충은 리듬 차이가 두드러질 수 있다는 참고로 설명하고 동의·대화·경계 확인 방법을 제안하세요.
+
+### 3. 재물궁합 (finance)
+- 재성·토금 표면 수 차이를 예산 수립과 위험 선호의 전통적 경향으로 설명하되 실제 소비 습관을 단정하지 마세요.
+- 공동 계좌, 큰 계약, 가족 지원처럼 합의가 필요한 상황의 점검 질문을 제안하세요.
+- 투자 성과, 파산, 손실 규모를 예측하지 마세요.
+
+### 4. 현재 대운 궁합 (timing)
+- 전체 대운을 임의로 매핑하지 말고 현재 판별된 대운 두 개를 원국과 비교하세요.
+- 큰 결정을 금지하거나 관계 위기 연도를 예언하지 말고, 각자 우선순위가 달라질 수 있는 영역과 사전 합의 항목을 제안하세요.
+
+## 응답 형식 (JSON 엄수)
+반드시 아래 JSON 형식으로만 응답하세요. categories의 각 score는 0~100 정수:
+{
+  "summary": "(두 사람의 궁합을 한 문장으로 솔직하게. 50자 이내. 예: '초반 불타지만 3년 고비 못 넘길 조합' 같이 직설)",
+  "categories": {
+    "personality": { "score": 0, "desc": "(일간·합충 근거로 본 의사소통과 갈등 처리 5~7문장)" },
+    "intimacy": { "score": 0, "desc": "(일지·수화 표면 비율 근거로 본 정서적 친밀감과 애정 표현 5~7문장. 성행동 추정 금지)" },
+    "finance": { "score": 0, "desc": "(재성·토금 표면 수 근거로 본 공동 재무 의사결정 5~7문장. 실제 습관·성과 단정 금지)" },
+    "timing": { "score": 0, "desc": "(두 사람의 현재 대운 근거로 본 우선순위와 합의 포인트 5~7문장. 사건 예언 금지)" }
+  },
+  "strengths": ["이 커플 강점 3가지 (각각 2문장. 과장 금지, 진짜 빛나는 지점만)"],
+  "cautions": ["실제 조합 근거에서 나온 주의점 3가지. 시기·외도·이혼 예언 금지"],
+  "advice": "(이 조합에 맞는 대화·경계·재무 합의 행동 5~7문장. 결과 위협이나 미래 단정 금지)"
+}` + langInstruction(lang);
+
+  const user = `## Person A ${genderTextA ? `(${genderTextA})` : ''}
+${birthDateA ? `- 생년월일: ${birthDateA}` : ''}
+${sajuA.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${sajuA.ilgan} (${sajuA.ilganOhang}, ${yinYangA}) — ${ilganA.desc || ''}
+- 오행: 목${sajuA.ohangCount.목} 화${sajuA.ohangCount.화} 토${sajuA.ohangCount.토} 금${sajuA.ohangCount.금} 수${sajuA.ohangCount.수}
+${excessA.length ? `- 과다: ${excessA.join(', ')}` : ''}
+${lackA.length ? `- 부족: ${lackA.join(', ')}` : ''}
+- 역할별 표면 수: ${evidenceA.roleLine}
+- 원국 지문: ${evidenceA.fingerprint}
+- 현재 대운: ${activeDaeunA}
+${sajuA.daeun ? `- 대운: ${daeunInfoA}` : ''}
+
+## Person B ${genderTextB ? `(${genderTextB})` : ''}
+${birthDateB ? `- 생년월일: ${birthDateB}` : ''}
+${sajuB.pillars.map(p => `- ${p.name}: ${p.gan}${p.ji} (${CHEONGAN_OHANG[p.gan]}/${JIJI_OHANG[p.ji]})`).join('\n')}
+- 일간: ${sajuB.ilgan} (${sajuB.ilganOhang}, ${yinYangB}) — ${ilganB.desc || ''}
+- 오행: 목${sajuB.ohangCount.목} 화${sajuB.ohangCount.화} 토${sajuB.ohangCount.토} 금${sajuB.ohangCount.금} 수${sajuB.ohangCount.수}
+${excessB.length ? `- 과다: ${excessB.join(', ')}` : ''}
+${lackB.length ? `- 부족: ${lackB.join(', ')}` : ''}
+- 역할별 표면 수: ${evidenceB.roleLine}
+- 원국 지문: ${evidenceB.fingerprint}
+- 현재 대운: ${activeDaeunB}
+${sajuB.daeun ? `- 대운: ${daeunInfoB}` : ''}
+
+## 두 사주 간 합/충 분석 (코드로 계산된 결과)
+- 일간 오행 관계: ${relDesc.length ? relDesc.join(', ') : '특별한 관계 없음'}
+${rel.ganHap.length ? `- 천간합: ${rel.ganHap.join(', ')}` : '- 천간합: 없음'}
+${rel.jiHap.length ? `- 지지육합: ${rel.jiHap.join(', ')}` : '- 지지육합: 없음'}
+${rel.jiChung.length ? `- 지지충: ${rel.jiChung.join(', ')}` : '- 지지충: 없음'}
+${complementary.length ? `- 오행 보완: ${complementary.join(', ')}` : '- 오행 보완: 없음'}
+- 음양 조합: A(${yinYangA}) + B(${yinYangB}) — ${yinYangMatch ? '음양 조화 (이상적)' : '동일 음양 (에너지 충돌 가능)'}
+- 수화 비율: A(수${sajuA.ohangCount.수}/화${sajuA.ohangCount.화}), B(수${sajuB.ohangCount.수}/화${sajuB.ohangCount.화})
+- 재성: A=${SANGGEUK[sajuA.ilganOhang]}, B=${SANGGEUK[sajuB.ilganOhang]}
+- 토금 비율: A(토${sajuA.ohangCount.토}/금${sajuA.ohangCount.금}), B(토${sajuB.ohangCount.토}/금${sajuB.ohangCount.금})
+
+## 대운
+- A: ${daeunInfoA}
+- B: ${daeunInfoB}
+
+## 궁합 점수
+- ${score}/100 (${grade}급)
+
+## 조합 키 (반복 방지 기준)
+- A 원국 키: ${sajuA.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- B 원국 키: ${sajuB.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
+- 오행 차이 키: 목${sajuA.ohangCount.목}:${sajuB.ohangCount.목}-화${sajuA.ohangCount.화}:${sajuB.ohangCount.화}-토${sajuA.ohangCount.토}:${sajuB.ohangCount.토}-금${sajuA.ohangCount.금}:${sajuB.ohangCount.금}-수${sajuA.ohangCount.수}:${sajuB.ohangCount.수}
+- 관계 키: 일간=${relDesc.length ? relDesc.join('/') : '없음'}; 천간합=${rel.ganHap.length ? rel.ganHap.join('/') : '없음'}; 지지육합=${rel.jiHap.length ? rel.jiHap.join('/') : '없음'}; 지지충=${rel.jiChung.length ? rel.jiChung.join('/') : '없음'}; 보완=${complementary.length ? complementary.join('/') : '없음'}`;
+
+  return { system, user, lang };
+}
+
+// ============================================================
+// Route Handlers
+// ============================================================
+
+// --- Auth Routes (from routes/auth.js) ---
+
+async function handleRegister(request, env) {
+  const { user_id, password, nickname, gender, interest_gender, birth_date, birth_time } = await request.json();
+
+  if (!user_id || !password || !nickname || !gender || !interest_gender || !birth_date) {
+    return json({ error: '필수 항목을 모두 입력해주세요' }, 400);
+  }
+  if (!/^[a-zA-Z0-9]{3,20}$/.test(user_id)) {
+    return json({ error: 'ID는 영문/숫자 3~20자' }, 400);
+  }
+
+  const existingId = await env.DB.prepare('SELECT id FROM lm_profiles WHERE user_id = ?').bind(user_id).first();
+  if (existingId) return json({ error: '이미 사용 중인 ID입니다' }, 409);
+
+  const existingNick = await env.DB.prepare('SELECT id FROM lm_profiles WHERE nickname = ?').bind(nickname).first();
+  if (existingNick) return json({ error: '이미 사용 중인 닉네임입니다' }, 409);
+
+  const saju = calculateSaju(birth_date, birth_time || '');
+  const pw_hash = await hashPassword(password);
+
+  await env.DB.prepare(
+    `INSERT INTO lm_profiles (user_id, password_hash, nickname, gender, interest_gender, birth_date, birth_time, saju_ilgan, saju_ilgan_ohang, saju_summary)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(user_id, pw_hash, nickname, gender, interest_gender, birth_date, birth_time || '', saju.ilgan, saju.ilganOhang, saju.summary).run();
+
+  // 오행 커뮤니티 자동 가입
+  const community = await env.DB.prepare('SELECT id FROM lm_communities WHERE ohang_type = ?').bind(saju.ilganOhang).first();
+  if (community) {
+    await env.DB.prepare('INSERT OR IGNORE INTO lm_community_members (community_id, user_id) VALUES (?, ?)').bind(community.id, user_id).run();
+    await env.DB.prepare('UPDATE lm_communities SET member_count = member_count + 1 WHERE id = ?').bind(community.id).run();
+  }
+
+  return json({ success: true, user_id, nickname, saju_ohang: saju.ilganOhang });
+}
+
+async function handleLogin(request, env) {
+  const { user_id, password } = await request.json();
+  if (!user_id || !password) return json({ error: 'user_id, password 필수' }, 400);
+
+  const pw_hash = await hashPassword(password);
+  const user = await env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ? AND password_hash = ?`).bind(user_id, pw_hash).first();
+  if (!user) return json({ error: 'ID 또는 비밀번호가 틀립니다' }, 401);
+
+  return json({ success: true, profile: user });
+}
+
+async function handleUpdateProfile(request, env) {
+  const { user_id, password, nickname, bio, region } = await request.json();
+  if (!user_id || !password) return json({ error: 'user_id, password 필수' }, 400);
+
+  const pw_hash = await hashPassword(password);
+  const existing = await env.DB.prepare('SELECT id FROM lm_profiles WHERE user_id = ? AND password_hash = ?').bind(user_id, pw_hash).first();
+  if (!existing) return json({ error: 'ID 또는 비밀번호가 틀립니다' }, 401);
+
+  await env.DB.prepare("UPDATE lm_profiles SET nickname=?, bio=?, region=?, updated_at=datetime('now') WHERE user_id=?").bind(nickname || '', bio || '', region || '', user_id).run();
+  return json({ success: true });
+}
+
+async function handleDeleteProfile(request, env) {
+  const { user_id, password } = await request.json();
+  if (!user_id || !password) return json({ error: 'user_id, password 필수' }, 400);
+
+  const pw_hash = await hashPassword(password);
+  const result = await env.DB.prepare('DELETE FROM lm_profiles WHERE user_id = ? AND password_hash = ?').bind(user_id, pw_hash).run();
+  if (result.meta.changes === 0) return json({ error: 'ID 또는 비밀번호가 틀립니다' }, 401);
+  return json({ success: true });
+}
+
+// --- Saju Routes (from routes/saju.js) ---
+
+async function handleSajuAnalysis(request, env) {
+  const requestLang = /^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko';
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: getKarmaTextAnalysisMessage(requestLang, 'invalidRequest') }, 400);
+  }
+  if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(requestLang, 'invalidRequest') }, 400);
+  const { birth_date, birth_time, gender, lang, yajasi, birth_location } = body;
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
+
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
+
+  if (!env?.AI?.complete) return karmaAiServiceErrorResponse(new KarmaAiServiceError(responseLang));
+  const ai = await callKarmaTextAi(
+    buildSajuPrompt(saju, gender, responseLang, birth_date),
+    'saju', env, null, 'saju', {
+      hasTime: saju.hasTime,
+      daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
+    }
+  );
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ ...out, ai });
+}
+
+async function handleCompatQuick(request, env) {
+  const { personA, personB, lang } = await request.json();
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!personA?.birth_date || !personB?.birth_date) {
+    return json({ error: getKarmaTextAnalysisMessage(responseLang, 'bothBirthDatesRequired') }, 400);
+  }
+
+  const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '', !!personA.yajasi, personA.birth_location || '');
+  const sajuB = calculateSaju(personB.birth_date, personB.birth_time || '', personB.gender || '', !!personB.yajasi, personB.birth_location || '');
+  const score = ohangCompatibility(sajuA, sajuB);
+  const grade = getGrade(score);
+  const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
+
+  if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
+  const ai = await callKarmaTextAi(
+    buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, personA.birth_date, personB.birth_date),
+    'compat', env, null, 'compat'
+  );
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+
+  const outA = responseLang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = responseLang === 'en' ? translateSajuToEn(sajuB) : sajuB;
+  const outRelations = responseLang === 'en' ? {
+    sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+    sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+    same: relations.same,
+  } : relations;
+  return json({ score, grade, saju_a: outA, saju_b: outB, relations: outRelations, ai });
+}
+
+async function handleFortune(request, env) {
+  const { birth_date, birth_time, gender, year: reqYear, lang, yajasi, birth_location } = await request.json();
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
+
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
+  const year = reqYear || new Date().getFullYear();
+
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
+
+  const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, responseLang, birth_date), 'fortune', env, null, 'fortune');
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
+}
+
+async function handleDaily(request, env) {
+  const { birth_date, birth_time, gender, lang, yajasi, target_date, birth_location } = await request.json();
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
+
+  const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false, birth_location || '');
+  let todayStr;
+  if (target_date && /^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
+    todayStr = target_date;
+  } else {
+    const today = new Date();
+    todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  }
+
+  if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
+
+  const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, responseLang, birth_date), 'daily', env, null, 'daily');
+  if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
+  const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
+  return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
+}
+
+async function handleQuickSaju(request, env) {
+  const { birth_a, time_a, birth_b, time_b } = await request.json();
+  if (!birth_a || !birth_b) return json({ error: '생년월일은 필수입니다' }, 400);
+
+  const sajuA = calculateSaju(birth_a, time_a || '');
+  const sajuB = calculateSaju(birth_b, time_b || '');
+  const score = ohangCompatibility(sajuA, sajuB);
+  const grade = getGrade(score);
+
+  return json({ score, grade, saju_a: sajuA, saju_b: sajuB });
+}
+
+// --- Match Routes (from routes/match.js) ---
+
+async function handleMatchList(userId, env) {
+  const me = await env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(userId).first();
+  if (!me) return json({ error: '프로필을 찾을 수 없습니다' }, 404);
+
+  let query = `SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id != ? AND is_active = 1`;
+  const binds = [userId];
+
+  if (me.interest_gender !== 'all' && me.interest_gender !== 'both') {
+    query += ' AND gender = ?';
+    binds.push(me.interest_gender);
+  }
+
+  const { results: others } = await env.DB.prepare(query).bind(...binds).all();
+  const mySaju = calculateSaju(me.birth_date, me.birth_time || '');
+
+  const matches = others.map((other) => {
+    const otherSaju = calculateSaju(other.birth_date, other.birth_time || '');
+    const score = ohangCompatibility(mySaju, otherSaju);
+    return {
+      user_id: other.user_id,
+      nickname: other.nickname,
+      age: calcAge(other.birth_date),
+      gender: other.gender,
+      ohang: other.saju_ilgan_ohang || otherSaju.ilganOhang,
+      saju_score: score,
+      grade: getGrade(score),
+    };
+  });
+
+  matches.sort((a, b) => b.saju_score - a.saju_score);
+  return json({ my_id: userId, matches });
+}
+
+async function handleMatchDetail(idA, idB, env, lang) {
+  const responseLang = normalizeKarmaTextAnalysisLang(lang);
+  const [userA, userB] = await Promise.all([
+    env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idA).first(),
+    env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(idB).first(),
+  ]);
+  if (!userA || !userB) return json({ error: '프로필을 찾을 수 없습니다' }, 404);
+
+  const sajuA = calculateSaju(userA.birth_date, userA.birth_time || '', userA.gender || '');
+  const sajuB = calculateSaju(userB.birth_date, userB.birth_time || '', userB.gender || '');
+  const score = ohangCompatibility(sajuA, sajuB);
+  const grade = getGrade(score);
+  const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
+
+  const outA = responseLang === 'en' ? translateSajuToEn(sajuA) : sajuA;
+  const outB = responseLang === 'en' ? translateSajuToEn(sajuB) : sajuB;
+  const baseResult = {
+    user_a: { user_id: idA, nickname: userA.nickname, age: calcAge(userA.birth_date), gender: userA.gender, ohang: responseLang === 'en' ? (OHANG_EN[sajuA.ilganOhang]||sajuA.ilganOhang) : sajuA.ilganOhang },
+    user_b: { user_id: idB, nickname: userB.nickname, age: calcAge(userB.birth_date), gender: userB.gender, ohang: responseLang === 'en' ? (OHANG_EN[sajuB.ilganOhang]||sajuB.ilganOhang) : sajuB.ilganOhang },
+    score, grade, saju_a: outA, saju_b: outB,
+    relations: responseLang === 'en' ? {
+      sangsaeng: relations.sangsaeng.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+      sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
+      same: relations.same,
+    } : relations,
+  };
+
+  if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
+
+  let ai = null;
+  try {
+    ai = await callKarmaTextAi(
+      buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date),
+      'match-detail', env, null, 'compat'
+    );
+  } catch (error) {
+    if (!(error instanceof KarmaAiServiceError)) throw error;
+  }
+  return json({ ...baseResult, ai });
+}
+
+// --- Social Routes (from routes/social.js) ---
+
+async function handleLike(request, targetId, env) {
+  const { user_id } = await request.json();
+  if (!user_id) return json({ error: 'user_id 필수' }, 400);
+  if (user_id === targetId) return json({ error: '자기 자신에게 좋아요 불가' }, 400);
+
+  await env.DB.prepare('INSERT OR IGNORE INTO lm_likes (from_id, to_id) VALUES (?, ?)').bind(user_id, targetId).run();
+
+  // 상호 좋아요 → 매칭
+  const mutual = await env.DB.prepare('SELECT id FROM lm_likes WHERE from_id = ? AND to_id = ?').bind(targetId, user_id).first();
+
+  if (mutual) {
+    const [a, b] = [user_id, targetId].sort();
+    await env.DB.prepare('INSERT OR IGNORE INTO lm_matches (user_a, user_b) VALUES (?, ?)').bind(a, b).run();
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO lm_notifications (user_id, type, actor_id, content) VALUES (?, 'match', ?, '매칭이 성립되었어요!')").bind(user_id, targetId),
+      env.DB.prepare("INSERT INTO lm_notifications (user_id, type, actor_id, content) VALUES (?, 'match', ?, '매칭이 성립되었어요!')").bind(targetId, user_id),
+    ]);
+    return json({ success: true, matched: true });
+  }
+
+  await env.DB.prepare("INSERT INTO lm_notifications (user_id, type, actor_id, content) VALUES (?, 'like', ?, '누군가 관심을 보냈어요')").bind(targetId, user_id).run();
+  return json({ success: true, matched: false });
+}
+
+async function handleUnlike(request, targetId, env) {
+  const { user_id } = await request.json();
+  await env.DB.prepare('DELETE FROM lm_likes WHERE from_id = ? AND to_id = ?').bind(user_id, targetId).run();
+  return json({ success: true });
+}
+
+async function handleLikesReceived(userId, env) {
+  const { results } = await env.DB.prepare(
+    `SELECT p.user_id, p.nickname, p.birth_date, p.saju_ilgan_ohang, l.created_at
+     FROM lm_likes l JOIN lm_profiles p ON l.from_id = p.user_id
+     WHERE l.to_id = ? ORDER BY l.created_at DESC`
+  ).bind(userId).all();
+  return json({ likes: results.map((r) => ({ ...r, age: calcAge(r.birth_date) })) });
+}
+
+async function handleMatches(userId, env) {
+  const { results } = await env.DB.prepare(
+    `SELECT m.*, CASE WHEN m.user_a = ? THEN m.user_b ELSE m.user_a END as other_id
+     FROM lm_matches m WHERE (m.user_a = ? OR m.user_b = ?) AND m.status = 'active'`
+  ).bind(userId, userId, userId).all();
+
+  const matchList = [];
+  for (const m of results) {
+    const other = await env.DB.prepare(`SELECT ${SELECT_PROFILE} FROM lm_profiles WHERE user_id = ?`).bind(m.other_id).first();
+    if (!other) continue;
+
+    const lastMsg = await env.DB.prepare(
+      `SELECT content, created_at, sender_id FROM lm_messages
+       WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId, m.other_id, m.other_id, userId).first();
+
+    const unread = await env.DB.prepare(
+      'SELECT COUNT(*) as cnt FROM lm_messages WHERE sender_id = ? AND receiver_id = ? AND is_read = 0'
+    ).bind(m.other_id, userId).first();
+
+    matchList.push({
+      user_id: other.user_id,
+      nickname: other.nickname,
+      age: calcAge(other.birth_date),
+      ohang: other.saju_ilgan_ohang,
+      matched_at: m.matched_at,
+      last_message: lastMsg?.content || null,
+      last_message_at: lastMsg?.created_at || null,
+      unread_count: unread?.cnt || 0,
+    });
+  }
+
+  matchList.sort((a, b) => {
+    const ta = a.last_message_at || a.matched_at;
+    const tb = b.last_message_at || b.matched_at;
+    return tb.localeCompare(ta);
+  });
+
+  return json({ matches: matchList });
+}
+
+// --- Message Routes (from routes/message.js) ---
+
+async function handleGetMessages(userId, otherId, url, env) {
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50') || 50, 1), 200);
+  const before = url.searchParams.get('before');
+
+  let query = `SELECT * FROM lm_messages
+    WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))`;
+  const binds = [userId, otherId, otherId, userId];
+
+  if (before) {
+    query += ' AND created_at < ?';
+    binds.push(before);
+  }
+
+  query += ' ORDER BY created_at DESC LIMIT ?';
+  binds.push(limit);
+
+  const { results } = await env.DB.prepare(query).bind(...binds).all();
+  return json({ messages: results.reverse() });
+}
+
+async function handleSendMessage(request, otherId, env) {
+  const { user_id, content } = await request.json();
+  if (!user_id || !content?.trim()) return json({ error: 'user_id, content 필수' }, 400);
+
+  const [a, b] = [user_id, otherId].sort();
+  const match = await env.DB.prepare(
+    "SELECT id FROM lm_matches WHERE user_a = ? AND user_b = ? AND status = 'active'"
+  ).bind(a, b).first();
+  if (!match) return json({ error: '매칭된 상대에게만 쪽지를 보낼 수 있습니다' }, 403);
+
+  await env.DB.prepare(
+    'INSERT INTO lm_messages (sender_id, receiver_id, content) VALUES (?, ?, ?)'
+  ).bind(user_id, otherId, content.trim().slice(0, 500)).run();
+
+  await env.DB.prepare(
+    "INSERT INTO lm_notifications (user_id, type, actor_id, content) VALUES (?, 'message', ?, '새 쪽지가 도착했어요')"
+  ).bind(otherId, user_id).run();
+
+  return json({ success: true });
+}
+
+async function handleReadMessages(request, otherId, env) {
+  const { user_id } = await request.json();
+  await env.DB.prepare(
+    'UPDATE lm_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0'
+  ).bind(otherId, user_id).run();
+  return json({ success: true });
+}
+
+// --- Notification Routes (from routes/notification.js) ---
+
+async function handleGetNotifications(userId, env) {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM lm_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
+  ).bind(userId).all();
+  return json({ notifications: results });
+}
+
+async function handleUnreadCount(userId, env) {
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) as cnt FROM lm_notifications WHERE user_id = ? AND is_read = 0'
+  ).bind(userId).first();
+  return json({ count: row?.cnt || 0 });
+}
+
+async function handleReadNotifications(userId, env) {
+  await env.DB.prepare(
+    'UPDATE lm_notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0'
+  ).bind(userId).run();
+  return json({ success: true });
+}
+
+// --- Error Log Routes (from routes/error.js) ---
+
+function isIgnorableClientErrorLog(message, source, stack, page) {
+  const text = [message, source, stack, page].filter(Boolean).join('\n');
+  return /webkit-masked-url:\/\/hidden|(?:chrome|moz|safari-web)-extension:\/\//i.test(text);
+}
+
+async function handlePostErrorLog(request, env) {
+  const { message, source, line, col, stack, page, userAgent } = await request.json();
+
+  if (isIgnorableClientErrorLog(message, source, stack, page)) {
+    return json({ ok: true, ignored: true });
+  }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO error_logs (app_id, message, stack, url, user_agent)
+       VALUES ('karma', ?, ?, ?, ?)`
+    ).bind(
+      (message || '').slice(0, 500),
+      (stack || `${source}:${line}:${col}`).slice(0, 1000),
+      (page || '').slice(0, 200),
+      (userAgent || '').slice(0, 300)
+    ).run();
+  } catch {}
+
+  console.error(`[FRONT ERROR] ${page} | ${message} | ${source}:${line}:${col}`);
+  return json({ ok: true });
+}
+
+async function handleGetErrorLog(env) {
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT * FROM error_logs WHERE app_id = 'karma' ORDER BY created_at DESC LIMIT 50"
+    ).all();
+    return json({ errors: results });
+  } catch {
+    return json({ errors: [] });
+  }
+}
+
+// ============================================================
+// R2 Image Management
+// ============================================================
+
+async function handleR2List(url, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const prefix = url.searchParams.get('prefix') || 'karma/';
+  const cursor = url.searchParams.get('cursor') || undefined;
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+
+  const listed = await env.R2_BUCKET.list({ prefix, limit, cursor });
+  const items = listed.objects.map(obj => ({
+    key: obj.key,
+    size: obj.size,
+    uploaded: obj.uploaded,
+    type: obj.httpMetadata?.contentType || 'unknown',
+  }));
+
+  return json({
+    items,
+    cursor: listed.truncated ? listed.cursor : null,
+    total: items.length,
+  });
+}
+
+async function handleR2Get(url, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const key = url.searchParams.get('key');
+  if (!key) return json({ error: 'key required' }, 400);
+
+  const obj = await env.R2_BUCKET.get(key);
+  if (!obj) return json({ error: 'not found' }, 404);
+
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg',
+      'Cache-Control': 'no-cache',
+      ...CORS_HEADERS,
+    },
+  });
+}
+
+async function handleR2Delete(request, env) {
+  if (!env.R2_BUCKET) return json({ error: 'R2 not configured' }, 500);
+  const { key } = await request.json();
+  if (!key) return json({ error: 'key required' }, 400);
+
+  await env.R2_BUCKET.delete(key);
+  if (env?.DB) {
+    try {
+      await ensureKarmaImageAnalysesTable(env.DB);
+      await env.DB.prepare(
+        'DELETE FROM karma_image_analyses WHERE r2_key = ?'
+      ).bind(String(key)).run();
+      await ensureKarmaAnalysesTable(env.DB);
+      await env.DB.prepare(
+        'DELETE FROM karma_analyses WHERE r2_key = ?'
+      ).bind(String(key)).run();
+    } catch (error) {
+      console.error('[KarmaAnalysis] D1 delete failed:', error?.message || error);
+    }
+  }
+  return json({ ok: true, deleted: key });
+}
+
+// ============================================================
+// Share Result (KV)
+// ============================================================
+
+const SHARE_TTL_SECONDS = 60 * 60 * 24 * 365; // 1년
+const SHARE_ALLOWED_TYPES = new Set(['saju', 'fortune', 'daily', 'tarot', 'face', 'palm', 'compat']);
+const SHARE_MAX_BYTES = 100 * 1024; // 100 KB per share
+
+async function handleShareSave(request, env) {
+  if (!env.KARMA_SHARE) return json({ error: 'KV not configured' }, 500);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  const { type, lang, input, result } = body || {};
+  if (!type || !SHARE_ALLOWED_TYPES.has(type)) return json({ error: 'Invalid type' }, 400);
+  if (!result) return json({ error: 'Missing result' }, 400);
+
+  const payload = JSON.stringify({
+    type,
+    lang: normalizeKarmaTextAnalysisLang(lang),
+    input: input || null,
+    result,
+    createdAt: new Date().toISOString(),
+  });
+  if (payload.length > SHARE_MAX_BYTES) return json({ error: 'Payload too large' }, 413);
+
+  const id = crypto.randomUUID();
+  await env.KARMA_SHARE.put(id, payload, { expirationTtl: SHARE_TTL_SECONDS });
+  return json({ id });
+}
+
+async function handleShareGet(id, env) {
+  if (!env.KARMA_SHARE) return json({ error: 'KV not configured' }, 500);
+  if (!id) return json({ error: 'Missing id' }, 400);
+  const data = await env.KARMA_SHARE.get(id);
+  if (!data) return json({ error: 'Not found or expired' }, 404);
+  return new Response(data, {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS },
+  });
+}
+
+// ============================================================
+// Path Parameter Helpers
+// ============================================================
+
+function matchPath(pattern, path) {
+  // Convert pattern like "/api/match-list/:user_id" to regex
+  const paramNames = [];
+  const regexStr = pattern.replace(/:([a-zA-Z_]+)/g, (_, name) => {
+    paramNames.push(name);
+    return '([^/]+)';
+  });
+  const match = path.match(new RegExp(`^${regexStr}$`));
+  if (!match) return null;
+  const params = {};
+  paramNames.forEach((name, i) => { params[name] = match[i + 1]; });
+  return params;
+}
+
+// ============================================================
+// Worker Entry Point
+// ============================================================
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    // CORS preflight
+    if (method === 'OPTIONS') {
+      return new Response(null, { headers: CORS_HEADERS });
+    }
+
+    if (isLegacyAccountApi(path)) {
+      return json({
+        error: 'legacy_account_disabled',
+        message: '통합 계정 전환이 끝날 때까지 기존 매칭 계정 기능은 비활성화되어 있습니다.',
+      }, 410);
+    }
+
+    try {
+      // ---- Auth Routes ----
+      if (path === '/api/register' && method === 'POST') {
+        return handleRegister(request, env);
+      }
+      if (path === '/api/login' && method === 'POST') {
+        return handleLogin(request, env);
+      }
+      if (path === '/api/profile' && method === 'PUT') {
+        return handleUpdateProfile(request, env);
+      }
+      if (path === '/api/profile' && method === 'DELETE') {
+        return handleDeleteProfile(request, env);
+      }
+
+      // ---- Saju Routes ----
+      if (path === '/api/saju' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'saju', handleSajuAnalysis);
+      }
+      if (path === '/api/compat-quick' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'compat', handleCompatQuick);
+      }
+      if (path === '/api/fortune' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'fortune', handleFortune);
+      }
+      if (path === '/api/daily' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'daily', handleDaily);
+      }
+      if (path === '/api/quick-saju' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'compat', handleQuickSaju, 'LOCAL');
+      }
+      if (path === '/api/tarot' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'tarot', handleTarotReading);
+      }
+      if (path === '/api/face-reading' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'face', handleFaceReading);
+      }
+      if (path === '/api/palm-reading' && method === 'POST') {
+        return handleLoggedKarmaAnalysis(request, env, ctx, 'palm', handlePalmReading);
+      }
+
+      // ---- Match Routes ----
+      {
+        const params = matchPath('/api/match-list/:user_id', path);
+        if (params && method === 'GET') {
+          return handleMatchList(params.user_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/match/:id_a/:id_b', path);
+        if (params && method === 'GET') {
+          return handleMatchDetail(params.id_a, params.id_b, env, url.searchParams.get('lang'));
+        }
+      }
+
+      // ---- Social Routes ----
+      {
+        const params = matchPath('/api/like/:target_id', path);
+        if (params && method === 'POST') {
+          return handleLike(request, params.target_id, env);
+        }
+        if (params && method === 'DELETE') {
+          return handleUnlike(request, params.target_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/likes/received/:user_id', path);
+        if (params && method === 'GET') {
+          return handleLikesReceived(params.user_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/matches/:user_id', path);
+        if (params && method === 'GET') {
+          return handleMatches(params.user_id, env);
+        }
+      }
+
+      // ---- Message Routes ----
+      {
+        const params = matchPath('/api/messages/:user_id/:other_id', path);
+        if (params && method === 'GET') {
+          return handleGetMessages(params.user_id, params.other_id, url, env);
+        }
+      }
+      {
+        const params = matchPath('/api/messages/:other_id', path);
+        if (params && method === 'POST') {
+          return handleSendMessage(request, params.other_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/messages/:other_id/read', path);
+        if (params && method === 'PUT') {
+          return handleReadMessages(request, params.other_id, env);
+        }
+      }
+
+      // ---- Notification Routes ----
+      {
+        const params = matchPath('/api/notifications/:user_id/unread', path);
+        if (params && method === 'GET') {
+          return handleUnreadCount(params.user_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/notifications/:user_id/read', path);
+        if (params && method === 'PUT') {
+          return handleReadNotifications(params.user_id, env);
+        }
+      }
+      {
+        const params = matchPath('/api/notifications/:user_id', path);
+        if (params && method === 'GET') {
+          return handleGetNotifications(params.user_id, env);
+        }
+      }
+
+      // ---- Error Log Routes ----
+      if (path === '/api/error-log' && method === 'POST') {
+        return handlePostErrorLog(request, env);
+      }
+      if (path === '/api/error-log' && method === 'GET') {
+        const authError = getKarmaAdminAuthError(request, env);
+        if (authError) return authError;
+        return handleGetErrorLog(env);
+      }
+
+      // ---- Share Routes ----
+      if (path === '/api/share/save' && method === 'POST') {
+        return handleShareSave(request, env);
+      }
+      {
+        const params = matchPath('/api/share/:id', path);
+        if (params && method === 'GET') {
+          return handleShareGet(params.id, env);
+        }
+      }
+
+      // ---- R2 Routes ----
+      if (path === '/api/r2/list' && method === 'GET') {
+        const authError = getKarmaAdminAuthError(request, env);
+        if (authError) return authError;
+        return handleR2List(url, env);
+      }
+      if (path === '/api/r2/image' && method === 'GET') {
+        const authError = getKarmaAdminAuthError(request, env);
+        if (authError) return authError;
+        return handleR2Get(url, env);
+      }
+      if (path === '/api/r2/delete' && method === 'DELETE') {
+        const authError = getKarmaAdminAuthError(request, env);
+        if (authError) return authError;
+        return handleR2Delete(request, env);
+      }
+
+      // ---- 404 ----
+      return json({ error: 'Not Found' }, 404);
+
+    } catch (e) {
+      console.error('Worker error:', e.message || e, e.stack || '');
+      const logPromise = logErrorToCentral('karma-server', e.message || String(e), e.stack || '', url.pathname);
+      if (ctx?.waitUntil) ctx.waitUntil(logPromise);
+      else await logPromise;
+      return json({ error: 'Internal Server Error' }, 500);
+    }
+  },
+};
+
+async function logErrorToCentral(appId, message, stack, url) {
+  try {
+    await fetch('https://chatbot-api.yama5993.workers.dev/error-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, message: (message || '').substring(0, 500), stack: (stack || '').substring(0, 2000), url: (url || '').substring(0, 500) }),
+    });
+  } catch (_) {}
+}
