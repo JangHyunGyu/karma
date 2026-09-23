@@ -1421,7 +1421,13 @@ function normalizeFaceAiScores(value) {
 }
 
 function isAdultFaceAge(age) {
-  return ['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(age);
+  const value = String(age ?? '').trim();
+  if (['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(value)) {
+    return true;
+  }
+  // Accept numeric ages from API clients ("25", "30세") as well as decade labels.
+  const years = Number.parseInt(value, 10);
+  return Number.isFinite(years) && years >= 20 && years < 130;
 }
 
 function normalizeFaceAppearance(value, context = {}) {

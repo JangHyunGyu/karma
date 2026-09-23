@@ -454,6 +454,12 @@ function renderResult(d) {
   document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
 }
 
+function isAdultFaceAgeInput(age) {
+  const value = String(age ?? '').trim();
+  if (['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(value)) return true;
+  const years = Number.parseInt(value, 10);
+  return Number.isFinite(years) && years >= 20 && years < 130;
+}
 function renderAppearance(d) {
   const appearanceCard = document.getElementById('appearance');
   const colorCard = document.getElementById('personalColor');
@@ -466,7 +472,7 @@ function renderAppearance(d) {
   const row = (title, text) => typeof text === 'string' && text.trim()
     ? `<div class="appearance-row"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>` : '';
   const input = typeof window !== 'undefined' ? window._faceInput : null;
-  const adult = ['20\uB300', '30\uB300', '40\uB300', '50\uB300', '60\uB300 \uC774\uC0C1', '20s', '30s', '40s', '50s', '60s+'].includes(input?.age) && a?.adult_subject === true;
+  const adult = isAdultFaceAgeInput(input?.age) && a?.adult_subject === true;
   if (a && typeof a === 'object') {
     const style = a.style || {};
     appearanceCard.innerHTML = '<h2>' + _L('✨ 외모 매력 분석', '✨ Appearance & Appeal') + '</h2>'
