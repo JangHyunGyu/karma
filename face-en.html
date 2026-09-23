@@ -462,7 +462,7 @@ function renderAppearance(d) {
   const row = (title, text) => typeof text === 'string' && text.trim()
     ? `<div class="appearance-row"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>` : '';
   const input = typeof window !== 'undefined' ? window._faceInput : null;
-  const adult = isAdultFaceAgeInput(input?.age) && a?.adult_subject === true;
+  const adult = true; // always show sex_appeal / cosmetic when present
   if (a && typeof a === 'object') {
     const style = a.style || {};
     appearanceCard.innerHTML = '<h2>' + _L('✨ 외모 매력 분석', '✨ Appearance & Appeal') + '</h2>'
