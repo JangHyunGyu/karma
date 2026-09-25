@@ -1439,8 +1439,41 @@ function normalizeFaceAppearance(value, context = {}) {
     if (['여성', 'female'].includes(context.gender)) appearance.style.grooming = '';
   }
   // Keep sex_appeal / cosmetic_consultation for every reading; do not blank by age.
-  
+  if (Array.isArray(appearance.cosmetic_consultation) && appearance.cosmetic_consultation.length > 2) {
+    appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
+  }
+
   return { ...value, appearance };
+}
+
+const FACE_SEX_APPEAL_STYLE_ERROR = 'appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance';
+
+function faceSexAppealHasExplicitLanguage(text) {
+  return /섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(String(text || ''));
+}
+
+function repairGenericFaceSexAppeal(value, lang) {
+  if (!isPlainAiObject(value?.appearance) || typeof value.appearance.sex_appeal !== 'string') return value;
+  const original = value.appearance.sex_appeal.trim();
+  if (!original || faceSexAppealHasExplicitLanguage(original)) return value;
+  const feature = Array.isArray(value.appearance.highlights)
+    ? String(value.appearance.highlights.find(item => isNonEmptyAiText(item?.feature))?.feature || '').trim()
+    : '';
+  const english = normalizePhotoAnalysisLang(lang) === 'en';
+  const lead = feature
+    ? (english
+      ? `The sex appeal in this photo is centered on ${feature}. `
+      : `${feature} 쪽이 이 사진의 성적 매력 포인트입니다. `)
+    : (english
+      ? 'The sex appeal in this photo comes from the expression rather than one exaggerated feature. '
+      : '이 사진의 성적 매력은 한 부위를 과장하기보다 표정에서 읽힙니다. ');
+  const tail = english
+    ? ' Showing that point straight on with a relaxed expression can look more sensual.'
+    : ' 그 포인트를 정면으로 보여 주고 힘을 빼면 더 섹시한 인상으로 보일 수 있습니다.';
+  return {
+    ...value,
+    appearance: { ...value.appearance, sex_appeal: `${lead}${original}${tail}` },
+  };
 }
 
 function validateFaceAppearance(value, errors, context) {
@@ -1491,11 +1524,11 @@ function validateFaceAppearance(value, errors, context) {
         }
       });
     }
-          addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
-      if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
-          && !/섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(appearance.sex_appeal)) {
-        errors.push('appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance');
-      }
+    addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
+    if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
+        && !faceSexAppealHasExplicitLanguage(appearance.sex_appeal)) {
+      errors.push(FACE_SEX_APPEAL_STYLE_ERROR);
+    }
 
   }
   const color = value.personal_color;
@@ -1599,7 +1632,7 @@ const KARMA_LATIN_WORD_PATTERN = /[A-Za-z]{2,}/;
 
 function addKarmaAiLanguageErrors(value, lang, errors, path = '') {
   if (typeof value === 'string') {
-    if (/^personal_color\.(season|undertone)$|^personal_color\.colors\[\d+\]\.hex$/.test(path)) return;
+    if (/(?:^|\.)personal_color\.(?:season|undertone)$|(?:^|\.)personal_color\.colors\[\d+\]\.hex$/.test(path)) return;
     const errorPath = path || 'root';
     if (lang === 'en' && KARMA_CJK_TEXT_PATTERN.test(value)) {
       errors.push(`${errorPath}:english_only`);
@@ -2357,6 +2390,15 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
       lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
+      if (contractType === 'face'
+          && attempt === maxAttempts - 1
+          && contractErrors.length > 0
+          && contractErrors.every(error => error === FACE_SEX_APPEAL_STYLE_ERROR)) {
+        if (!isAdultFaceAge(contractContext.age)) return accumulated;
+        const repaired = repairGenericFaceSexAppeal(accumulated, responseLang);
+        const repairedContract = validateKarmaAiContract(contractType, repaired, { ...contractContext, lang: responseLang });
+        if (repairedContract.ok) return repaired;
+      }
     } catch (error) {
       lastError = error;
       if (!isRetryableKarmaAiError(error)) break;

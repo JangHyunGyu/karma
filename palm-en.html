@@ -157,7 +157,7 @@
 .fort-text { font-size: 0.8rem; color: #bbb; line-height: 1.5; }
 </style>
 <script src="/js/browser-check.js?v=1.1.0"></script>
-<script src="/js/components.js?v=10"></script>
+<script src="/js/components.js?v=11"></script>
 <script>
 window.KarmaShare = window.KarmaShare || {
   _pendingInit: null,
@@ -249,8 +249,10 @@ window.KarmaShare = window.KarmaShare || {
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">Analyzing your palm lines...</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">The analysis engine is reading your palm lines...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px;text-align:center">Analyzing your palm lines...</p>
+    <p style="color:#ddd;font-size:0.92rem;font-weight:600;margin-top:10px;text-align:center;max-width:320px;line-height:1.55">This usually takes 1 to 2 minutes, and can take up to 3 minutes. Keep this screen open until it finishes.</p>
+    <p id="loadingElapsed" style="color:#c9a044;font-size:0.95rem;font-weight:700;margin-top:12px;text-align:center">Elapsed 0:00</p>
+    <p id="loadingStatus" style="color:#888;font-size:0.8rem;margin-top:8px;text-align:center;max-width:320px;line-height:1.5">Reading the palm lines.</p>
   </div>
 
   <div class="error" id="error"></div>
@@ -357,6 +359,7 @@ analyzeBtn.addEventListener('click', async () => {
   if (!imageData) return;
   analyzeBtn.disabled = true;
   document.getElementById('loading').style.display = 'flex';
+  startKarmaPhotoWait('palm');
   document.getElementById('result').style.display = 'none';
   document.getElementById('error').style.display = 'none';
 
@@ -388,7 +391,7 @@ analyzeBtn.addEventListener('click', async () => {
     err.textContent = e.message || 'An error occurred during analysis';
     err.style.display = 'block';
   } finally {
-    document.getElementById('loading').style.display = 'none';
+    stopKarmaPhotoWait();
     analyzeBtn.disabled = false;
   }
 });

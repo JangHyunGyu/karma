@@ -74,6 +74,52 @@ function changeLang(lang) {
 // ===== 언어 헬퍼 =====
 function _L(ko, en) { return (document.documentElement.lang || 'ko') === 'en' ? en : ko; }
 
+let karmaPhotoWaitTimer = null;
+
+function startKarmaPhotoWait(kind) {
+  const elapsedEl = document.getElementById('loadingElapsed');
+  const statusEl = document.getElementById('loadingStatus');
+  if (!elapsedEl) return;
+  const started = Date.now();
+  const face = kind !== 'palm';
+  const tick = () => {
+    const seconds = Math.floor((Date.now() - started) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const rest = String(seconds % 60).padStart(2, '0');
+    elapsedEl.textContent = _L('경과 ' + minutes + ':' + rest, 'Elapsed ' + minutes + ':' + rest);
+    if (!statusEl) return;
+    const longAt = face ? 60 : 120;
+    const lateAt = face ? 120 : 180;
+    let ko;
+    let en;
+    if (seconds >= lateAt) {
+      ko = '거의 다 됐어요. 잠시만 더 기다려 주세요.';
+      en = 'Almost done. Please wait a little longer.';
+    } else if (seconds >= longAt) {
+      ko = face
+        ? '평소보다 조금 더 걸리고 있어요. 2분 안쪽이면 정상입니다.'
+        : '평소보다 조금 더 걸리고 있어요. 3분 안쪽이면 정상입니다.';
+      en = face
+        ? 'This is taking a little longer than usual. Up to 2 minutes is normal.'
+        : 'This is taking a little longer than usual. Up to 3 minutes is normal.';
+    } else {
+      ko = face ? '사진을 읽고 있습니다.' : '손금을 읽고 있습니다.';
+      en = face ? 'Reading the photo.' : 'Reading the palm lines.';
+    }
+    statusEl.textContent = _L(ko, en);
+  };
+  tick();
+  clearInterval(karmaPhotoWaitTimer);
+  karmaPhotoWaitTimer = setInterval(tick, 1000);
+}
+
+function stopKarmaPhotoWait() {
+  clearInterval(karmaPhotoWaitTimer);
+  karmaPhotoWaitTimer = null;
+  const loading = document.getElementById('loading');
+  if (loading) loading.style.display = 'none';
+}
+
 // ===== 야자시 토글 활성/비활성 =====
 function updateYajasiState(timeSelectId, yajasiWrapperId) {
   const timeEl = document.getElementById(timeSelectId);

@@ -17,7 +17,7 @@ const context = {
   fetch: async () => new Response('{}'),
 };
 vm.runInNewContext(source.replace('export default {', 'const worker = {') + `
-globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading };
+globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading, repairGenericFaceSexAppeal };
 `, context);
 const api = context.api;
 
@@ -267,6 +267,118 @@ test('vision rewrites generic elegance as explicit adult appeal while preserving
   assert.match(requests[1].prompt, /explicit_sex_appeal_not_generic_elegance/);
   assert.equal(result.appearance.sex_appeal, face().appearance.sex_appeal);
   assert.deepEqual(JSON.parse(JSON.stringify(result.appearance.cosmetic_consultation)), partial.appearance.cosmetic_consultation);
+});
+
+test('vision still returns an adult face reading when every retry stays generically elegant', async () => {
+  const partial = face(undefined, 'ko');
+  partial.appearance.sex_appeal = '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.';
+  let calls = 0;
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() {
+      calls += 1;
+      return { text: JSON.stringify(partial) };
+    } },
+  }, 'ko', 'face', { gender: '여성', age: '50대' });
+  assert.equal(calls, 3);
+  assert.equal(result._apiError, undefined);
+  assert.match(result.appearance.sex_appeal, /눈매/);
+  assert.match(result.appearance.sex_appeal, /성적 매력/);
+  assert.match(result.appearance.sex_appeal, /우아함/);
+  assert.equal(result.overall_score, 81);
+});
+
+test('generic elegance for teens is returned without added sexual wording', async () => {
+  const partial = face(undefined, 'ko');
+  const original = '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.';
+  partial.appearance.sex_appeal = original;
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() { return { text: JSON.stringify(partial) }; } },
+  }, 'ko', 'face', { gender: '여성', age: '10대' });
+  assert.equal(result.appearance.sex_appeal, original);
+  assert.equal(result._apiError, undefined);
+});
+
+test('english personal-color enums nested under appearance are not Korean-language errors', () => {
+  const value = api.normalizeFaceAiScores(face(undefined, 'ko'));
+  value.appearance.personal_color = {
+    season: 'summer',
+    undertone: 'cool',
+    colors: [{ hex: '#AABBCC' }],
+  };
+  const contract = api.validateKarmaAiContract('face', value, { lang: 'ko', gender: '여성', age: '50대' });
+  assert.equal(contract.errors.some(error => String(error).includes('korean_only')), false);
+});
+
+test('more than two cosmetic suggestions are trimmed instead of failing the reading', () => {
+  const value = face(undefined, 'ko');
+  const item = value.appearance.cosmetic_consultation[0];
+  value.appearance.cosmetic_consultation = [item, item, item];
+  const normalized = api.normalizeFaceAppearance(api.normalizeFaceAiScores(value), { gender: '여성', age: '30대' });
+  assert.equal(normalized.appearance.cosmetic_consultation.length, 2);
+  assert.equal(api.validateKarmaAiContract('face', normalized, { lang: 'ko', gender: '여성', age: '30대' }).ok, true);
+});
+
+test('photo pages tell users how long face and palm analysis usually takes', () => {
+  const pages = {
+    'face.html': ['보통 30초~1분', '길면 2분', 'loadingElapsed', "startKarmaPhotoWait('face')"],
+    'face-en.html': ['30 seconds to 1 minute', 'up to 2 minutes', 'Elapsed 0:00', "startKarmaPhotoWait('face')"],
+    'palm.html': ['보통 1~2분', '길면 3분', 'loadingElapsed', "startKarmaPhotoWait('palm')"],
+    'palm-en.html': ['1 to 2 minutes', 'up to 3 minutes', 'Elapsed 0:00', "startKarmaPhotoWait('palm')"],
+  };
+  for (const [page, parts] of Object.entries(pages)) {
+    const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
+    for (const part of parts) assert.ok(html.includes(part), `${page} missing ${part}`);
+    assert.match(html, /components\.js\?v=11/);
+  }
+  const helper = fs.readFileSync(path.join(__dirname, '../js/components.js'), 'utf8');
+  assert.match(helper, /function startKarmaPhotoWait/);
+  assert.match(helper, /2분 안쪽이면 정상입니다/);
+  assert.match(helper, /3분 안쪽이면 정상입니다/);
+
+  const elements = new Map();
+  const elapsed = { textContent: '' };
+  const status = { textContent: '' };
+  const loading = { style: { display: 'flex' } };
+  elements.set('loadingElapsed', elapsed);
+  elements.set('loadingStatus', status);
+  elements.set('loading', loading);
+  let now = 0;
+  let intervalFn = null;
+  const documentElement = { lang: 'ko' };
+  const timerContext = {
+    document: {
+      documentElement,
+      getElementById(id) { return elements.get(id) || null; },
+    },
+    Date: class extends Date { static now() { return now; } },
+    setInterval(fn) { intervalFn = fn; return 1; },
+    clearInterval() { intervalFn = null; },
+  };
+  const start = helper.indexOf('function _L');
+  const end = helper.indexOf('// ===== 야자시');
+  vm.runInNewContext(helper.slice(start, end), timerContext);
+  timerContext.startKarmaPhotoWait('face');
+  assert.equal(elapsed.textContent, '경과 0:00');
+  assert.equal(status.textContent, '사진을 읽고 있습니다.');
+  now = 61000;
+  intervalFn();
+  assert.equal(elapsed.textContent, '경과 1:01');
+  assert.match(status.textContent, /2분 안쪽이면 정상입니다/);
+  now = 121000;
+  intervalFn();
+  assert.match(status.textContent, /거의 다 됐어요/);
+  timerContext.startKarmaPhotoWait('palm');
+  now += 121000;
+  intervalFn();
+  assert.match(status.textContent, /3분 안쪽이면 정상입니다/);
+  documentElement.lang = 'en';
+  now = 0;
+  timerContext.startKarmaPhotoWait('face');
+  assert.equal(elapsed.textContent, 'Elapsed 0:00');
+  assert.equal(status.textContent, 'Reading the photo.');
+  timerContext.stopKarmaPhotoWait();
+  assert.equal(loading.style.display, 'none');
+  assert.equal(intervalFn, null);
 });
 
 test('adult content is removed for teens, unknown ages, or uncertain subjects without mutating the response', () => {
