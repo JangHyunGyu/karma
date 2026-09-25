@@ -1446,36 +1446,6 @@ function normalizeFaceAppearance(value, context = {}) {
   return { ...value, appearance };
 }
 
-const FACE_SEX_APPEAL_STYLE_ERROR = 'appearance.sex_appeal:describe_visible_feature_and_explicit_sex_appeal_not_generic_elegance';
-
-function faceSexAppealHasExplicitLanguage(text) {
-  return /섹시|섹슈얼|성적\s*매력|이성(?:적)?\s*(?:매력|끌림)|\b(?:sexy|sexual|sex[ -]appeal|sensual|seductive|romantic)\b/i.test(String(text || ''));
-}
-
-function repairGenericFaceSexAppeal(value, lang) {
-  if (!isPlainAiObject(value?.appearance) || typeof value.appearance.sex_appeal !== 'string') return value;
-  const original = value.appearance.sex_appeal.trim();
-  if (!original || faceSexAppealHasExplicitLanguage(original)) return value;
-  const feature = Array.isArray(value.appearance.highlights)
-    ? String(value.appearance.highlights.find(item => isNonEmptyAiText(item?.feature))?.feature || '').trim()
-    : '';
-  const english = normalizePhotoAnalysisLang(lang) === 'en';
-  const lead = feature
-    ? (english
-      ? `The sex appeal in this photo is centered on ${feature}. `
-      : `${feature} 쪽이 이 사진의 성적 매력 포인트입니다. `)
-    : (english
-      ? 'The sex appeal in this photo comes from the expression rather than one exaggerated feature. '
-      : '이 사진의 성적 매력은 한 부위를 과장하기보다 표정에서 읽힙니다. ');
-  const tail = english
-    ? ' Showing that point straight on with a relaxed expression can look more sensual.'
-    : ' 그 포인트를 정면으로 보여 주고 힘을 빼면 더 섹시한 인상으로 보일 수 있습니다.';
-  return {
-    ...value,
-    appearance: { ...value.appearance, sex_appeal: `${lead}${original}${tail}` },
-  };
-}
-
 function validateFaceAppearance(value, errors, context) {
   const appearance = value.appearance;
   if (!isPlainAiObject(appearance)) {
@@ -1525,10 +1495,6 @@ function validateFaceAppearance(value, errors, context) {
       });
     }
     addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
-    if (typeof appearance.sex_appeal === 'string' && appearance.sex_appeal.trim()
-        && !faceSexAppealHasExplicitLanguage(appearance.sex_appeal)) {
-      errors.push(FACE_SEX_APPEAL_STYLE_ERROR);
-    }
 
   }
   const color = value.personal_color;
@@ -2390,15 +2356,6 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
       lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
-      if (contractType === 'face'
-          && attempt === maxAttempts - 1
-          && contractErrors.length > 0
-          && contractErrors.every(error => error === FACE_SEX_APPEAL_STYLE_ERROR)) {
-        if (!isAdultFaceAge(contractContext.age)) return accumulated;
-        const repaired = repairGenericFaceSexAppeal(accumulated, responseLang);
-        const repairedContract = validateKarmaAiContract(contractType, repaired, { ...contractContext, lang: responseLang });
-        if (repairedContract.ok) return repaired;
-      }
     } catch (error) {
       lastError = error;
       if (!isRetryableKarmaAiError(error)) break;
@@ -2904,10 +2861,7 @@ ${faceExpertRubric()}
 ## 성인 항목
 - 나이대와 무관하게 항상 adult_subject는 true로 두고, sex_appeal과 cosmetic_consultation을 채우세요. 나이·성인 여부로 이 항목을 비우지 마세요.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
-- adult_subject가 true일 때 sex_appeal은 이성에게 어필할 수 있는 섹슈얼한 얼굴 매력을 직접 설명합니다. 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 왜 시선을 끌거나 섹시하게 보일 수 있는지와 그 매력을 살릴 표정·시선·각도를 2~3문장으로 쓰세요. "성숙하고 우아하다"는 총평으로 대체하지 마세요. 실제 사진이 밋밋하면 과장하지 말고 강조할 포인트를 말하세요. 노골적인 성적 묘사, 성적 행동·경험·취향·지향 추정, 점수나 상대의 욕망·호감 단정은 금지합니다.
-- sex_appeal의 첫 문장은 "깊고 그윽한 눈빛", "고혹적인 분위기"가 아니라 실제 눈꼬리 방향·눈의 가로 길이·입술의 볼륨·입꼬리 곡선처럼 형태를 짚습니다. 그 형태가 만드는 섹시함을 직접 말한 뒤 어느 표정을 지으면 강조되는지 설명하세요. "시선을 자연스럽게 사로잡는다"만으로 매력의 이유를 대신하지 마세요. 다른 사진에도 붙일 수 있는 형용사 문장은 삭제합니다.
-- 성인 sex_appeal에서는 "섹시하다", "성적 매력", "이성적 끌림"이라는 표현을 우아함·고혹적 분위기로 돌려 말하지 마세요. 눈꼬리가 올라갔는지, 입꼬리가 한쪽으로 올라갔는지, 어떤 입술선이 도드라지는지처럼 실제 형태를 이유로 들고, 그 포인트가 왜 섹시하게 보일 수 있는지 짧게 답하세요. 상대가 반드시 끌린다는 확언은 하지 마세요.
-- sex_appeal의 구체성 예: "성적 매력 포인트는 도톰한 아랫입술입니다. 입을 꼭 다물 때보다 힘을 빼고 살짝 웃을 때 입술의 곡선이 드러나 더 섹시한 인상을 줍니다." 이 문장이나 특징을 복사하지 말고, 사진에서 가장 두드러지는 부위에 맞게 같은 수준으로 직접 쓰세요. 영문도 sex appeal 또는 sexy라는 뜻을 일반적인 elegance로 바꾸지 마세요.
+- adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
 - cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위만 최대 2개 쓰고, 없으면 빈 배열로 두세요.
 - 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
 - question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.
@@ -2981,7 +2935,7 @@ ${faceExpertRubric()}
     "first_impression": "(사진 속 표정과 형태가 만드는 분위기)",
     "style": {"hair": "(가르마·기장·볼륨 위치와 얼굴 비율상의 이유)", "accessories": "(어울리는 액세서리의 종류·크기·형태와 이유. 안경은 어울릴 때만 포함. 제안 근거가 없으면 빈 문자열)", "photo": "(시선·턱 방향·입매 중 바꿔 볼 행동과 강조되는 특징)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
     "adult_subject": null,
-    "sex_appeal": "(항상 작성: 가장 섹시하게 보일 수 있는 부위 하나를 직접 고르고, 실제 형태가 주는 성적 매력의 이유와 그 부위를 강조할 표정·시선 행동을 2~3문장으로. 우아함·고혹적 분위기로 대체 금지. )",
+    "sex_appeal": "(항상 작성: 가장 눈에 띄는 부위 하나의 실제 형태, 그 형태가 만드는 인상, 그 부위를 살릴 표정·시선·각도를 2~3문장으로.)",
     "cosmetic_consultation": '[{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]'
   },
   "personal_color": {

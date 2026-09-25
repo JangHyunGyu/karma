@@ -17,7 +17,7 @@ const context = {
   fetch: async () => new Response('{}'),
 };
 vm.runInNewContext(source.replace('export default {', 'const worker = {') + `
-globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading, repairGenericFaceSexAppeal };
+globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarmaAiContract, callKarmaVisionAi, handleFaceReading };
 `, context);
 const api = context.api;
 
@@ -212,7 +212,6 @@ test('new face sections validate both languages and reject missing evidence or u
       d => { d.appearance.cosmetic_consultation[0].options[0].caution = ''; },
       d => { delete d.appearance.style.accessories; },
       d => { d.appearance.sex_appeal = ''; },
-      d => { d.appearance.sex_appeal = lang === 'en' ? 'Your eyes create an elegant and refined aura.' : '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.'; },
       d => { d.personal_color.colors[0].hex = 'red;background:url(https://example.com)'; },
       d => { d.personal_color.season = 'certain'; },
       d => { d.personal_color.limitation = ''; },
@@ -251,40 +250,25 @@ test('vision repairs a vague cosmetic question into named options without losing
   assert.equal(result.appearance.cosmetic_consultation[0].observation, partial.appearance.cosmetic_consultation[0].observation);
 });
 
-test('vision rewrites generic elegance as explicit adult appeal while preserving the other fields', async () => {
-  const partial = face();
-  partial.appearance.sex_appeal = 'Your eyes create an elegant and refined aura.';
-  const requests = [];
-  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
-    AI: { async analyze(input) {
-      requests.push(input);
-      return { text: JSON.stringify(requests.length === 1 ? partial : {
-        appearance: { sex_appeal: face().appearance.sex_appeal },
-      }) };
-    } },
-  }, 'en', 'face', { age: '30s' });
-  assert.equal(requests.length, 2);
-  assert.match(requests[1].prompt, /explicit_sex_appeal_not_generic_elegance/);
-  assert.equal(result.appearance.sex_appeal, face().appearance.sex_appeal);
-  assert.deepEqual(JSON.parse(JSON.stringify(result.appearance.cosmetic_consultation)), partial.appearance.cosmetic_consultation);
-});
-
-test('vision still returns an adult face reading when every retry stays generically elegant', async () => {
-  const partial = face(undefined, 'ko');
-  partial.appearance.sex_appeal = '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.';
-  let calls = 0;
-  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
-    AI: { async analyze() {
-      calls += 1;
-      return { text: JSON.stringify(partial) };
-    } },
-  }, 'ko', 'face', { gender: '여성', age: '50대' });
-  assert.equal(calls, 3);
-  assert.equal(result._apiError, undefined);
-  assert.match(result.appearance.sex_appeal, /눈매/);
-  assert.match(result.appearance.sex_appeal, /성적 매력/);
-  assert.match(result.appearance.sex_appeal, /우아함/);
-  assert.equal(result.overall_score, 81);
+test('ordinary appeal wording is accepted without a retry or a server rejection', async () => {
+  for (const [lang, age, text] of [
+    ['en', '30s', 'Your eyes create an elegant and refined aura.'],
+    ['ko', '50대', '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.'],
+  ]) {
+    const partial = face(undefined, lang);
+    partial.appearance.sex_appeal = text;
+    const requests = [];
+    const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+      AI: { async analyze(input) {
+        requests.push(input);
+        return { text: JSON.stringify(partial) };
+      } },
+    }, lang, 'face', { gender: lang === 'ko' ? '여성' : 'female', age });
+    assert.equal(requests.length, 1);
+    assert.equal(result._apiError, undefined);
+    assert.equal(result.appearance.sex_appeal, text);
+    assert.doesNotMatch(requests[0].prompt, /섹시|성적 매력|섹슈얼|sexy|sexual|explicit_sex_appeal/i);
+  }
 });
 
 test('generic elegance for teens is returned without added sexual wording', async () => {
@@ -439,7 +423,8 @@ test('face handler uses the selected gender and age and persists only age-approp
     assert.match(prompt, female ? /여성 선택: style.makeup/ : /남성 선택: style.grooming/);
     assert.match(prompt, /style.accessories/);
     assert.doesNotMatch(prompt, /"glasses"\s*:/);
-    assert.match(prompt, /왜 시선을 끌거나 섹시하게 보일 수 있는지/);
+    assert.match(prompt, /가장 눈에 띄는 눈빛·눈매·입술선·미소/);
+    assert.doesNotMatch(prompt, /섹시|성적 매력|섹슈얼|sexy|sexual|explicit_sex_appeal/i);
     assert.match(prompt, /실제 수술·시술 명칭/);
     assert.ok(result.appearance.style[female ? 'makeup' : 'grooming']);
     assert.equal(result.appearance.style[female ? 'grooming' : 'makeup'], '');
