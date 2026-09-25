@@ -5,11 +5,9 @@ All Karma AI features use the single provider-neutral `AI` service binding in
 `openrouter-api` Worker, which exposes both text completion and image analysis.
 
 Saju, compatibility, fortune, daily, and tarot text stays on OpenRouter Gemma.
-Face and palm images use OpenRouter `google/gemini-3.5-flash-lite` on Google
-AI Studio and Google Vertex Global. Image retries stay on Flash Lite and do
-not fall back to Gemma or DeepSeek. The adapter requests JSON and the
-supported `minimal` thinking level, and omits temperature for Vertex
-compatibility.
+Face and palm images use OpenRouter `deepseek/deepseek-v4.1-flash` on
+DeepInfra. Image retries stay on that model with thinking disabled and do not
+fall back to Gemma or Gemini. The adapter requests JSON.
 
 Model selection is centralized in the shared router's
 `wrangler.openrouter.toml`:
@@ -19,8 +17,8 @@ KARMA_TEXT_MODEL_PRESET = "openrouter-gemma"
 KARMA_OPENROUTER_PROVIDER_ORDER = "deepinfra/turbo,venice/fp4"
 KARMA_OPENROUTER_SUMMARY_PROVIDER_ORDER = "deepinfra/turbo,venice/fp4"
 KARMA_OPENROUTER_ALLOW_FALLBACKS = "false"
-KARMA_MEDIA_MODEL = "google/gemini-3.5-flash-lite"
-KARMA_MEDIA_PROVIDER = "google-ai-studio,google-vertex/global"
+KARMA_MEDIA_MODEL = "deepseek/deepseek-v4.1-flash"
+KARMA_MEDIA_PROVIDER = "deepinfra"
 KARMA_VIDEO_PROVIDER = "deepinfra/turbo,coreweave,novita,together"
 ```
 
@@ -43,7 +41,7 @@ each request contains unique image data and runs on the separate media route.
 Valid photos are saved in private R2 before AI calls, and every analysis outcome
 keeps its R2 link in D1.
 
-Flash Lite accepts image input and returns textual face/palm analysis; it is not an
+DeepSeek V4.1 Flash accepts image input and returns textual face/palm analysis; it is not an
 image-generation model.
 
 Deploy `openrouter-api` before `karma-api` whenever the entrypoint contract
