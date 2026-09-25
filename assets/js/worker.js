@@ -2349,13 +2349,19 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         continue;
       }
       const parsed = parseAiJsonResponse(result.text);
-      accumulated = mergeAiContractPatch(accumulated, parsed);
-      if (contractType === 'face') accumulated = normalizeFaceAppearance(normalizeFaceAiScores(accumulated), contractContext);
-      if (contractType === 'palm') accumulated = normalizePalmAiGrade(accumulated);
-      const contract = validateKarmaAiContract(contractType, accumulated, { ...contractContext, lang: responseLang });
-      if (contract.ok) return accumulated;
-      contractErrors = contract.errors;
-      lastError = new Error(`AI JSON contract mismatch: ${contractErrors.join(', ')}`);
+      let candidate = mergeAiContractPatch(accumulated, parsed);
+      if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), contractContext);
+      if (contractType === 'palm') candidate = normalizePalmAiGrade(candidate);
+      const contract = validateKarmaAiContract(contractType, candidate, { ...contractContext, lang: responseLang });
+      if (contract.ok) return candidate;
+      const previousErrors = accumulated
+        ? validateKarmaAiContract(contractType, accumulated, { ...contractContext, lang: responseLang }).errors
+        : null;
+      if (!previousErrors || contract.errors.length < previousErrors.length) {
+        accumulated = candidate;
+        contractErrors = contract.errors;
+      }
+      lastError = new Error(`AI JSON contract mismatch: ${(contractErrors.length ? contractErrors : contract.errors).join(', ')}`);
     } catch (error) {
       lastError = error;
       if (!isRetryableKarmaAiError(error)) break;
@@ -2365,7 +2371,9 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
     endpoint: 'worker/karma-ai-media',
     contractType,
   });
-  return { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
+  const failure = { _apiError: getPhotoAnalysisMessage(lang, 'callFailed') };
+  if (isPlainAiObject(accumulated)) failure._keptResponse = accumulated;
+  return failure;
 }
 
 async function saveKarmaAnalysisImageToR2(env, {
@@ -2970,7 +2978,7 @@ ${faceExpertRubric()}
       analysisType: 'face',
       status: 'error',
       input: analysisInput,
-      result: { error: result._apiError },
+      result: isPlainAiObject(result._keptResponse) ? result._keptResponse : { error: result._apiError },
       errorMessage: result._apiError,
     });
     return json({ error: result._apiError }, 500);
@@ -3147,7 +3155,7 @@ ${palmExpertRubric()}
       analysisType: 'palm',
       status: 'error',
       input: analysisInput,
-      result: { error: result._apiError },
+      result: isPlainAiObject(result._keptResponse) ? result._keptResponse : { error: result._apiError },
       errorMessage: result._apiError,
     });
     return json({ error: result._apiError }, 500);

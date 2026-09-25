@@ -53,6 +53,52 @@ test('palm grades use the shared score thresholds even when AI supplies the wron
   }
 });
 
+test('a failed inspection does not replace the kept reading and is not returned', async () => {
+  const { api } = loadWorker();
+  const first = palm(76, 'A');
+  delete first.advice;
+  const worse = palm(101, 'A');
+  const calls = [];
+  const result = await api.callKarmaVisionAi('Inspect the palm.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() {
+      calls.push(calls.length + 1);
+      const payload = calls.length === 1 ? first : calls.length === 2 ? worse : { advice: 'Visible palm line.' };
+      return { text: JSON.stringify(payload) };
+    } },
+  }, 'en', 'palm');
+  assert.equal(calls.length, 3);
+  assert.equal(result._apiError, undefined);
+  assert.equal(result.overall_score, 76);
+  assert.equal(result.advice, 'Visible palm line.');
+});
+
+test('an inspection that never passes is stored but not returned to the user', async () => {
+  const { worker } = loadWorker();
+  const writes = [];
+  const pending = [];
+  const image = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]).toString('base64');
+  const response = await worker.fetch(new Request('https://example.com/api/palm-reading', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, mimeType: 'image/jpeg', lang: 'ko' }),
+  }), {
+    KARMA_IMAGE_BUCKET: { async put() {} },
+    AI: { async analyze() { return { text: JSON.stringify(palm(101, 'A', 'ko')) }; } },
+    DB: { prepare(sql) {
+      return { async run() {}, bind(...values) {
+        return { async run() { writes.push({ sql, values }); } };
+      } };
+    } },
+  }, { waitUntil(promise) { pending.push(promise); } });
+  await Promise.all(pending);
+  assert.equal(response.status, 500);
+  const body = await response.json();
+  assert.equal(body.overall_score, undefined);
+  assert.match(body.error, /실패/);
+  const imageWrite = writes.find(write => write.sql.includes('INSERT INTO karma_image_analyses'));
+  assert.equal(imageWrite.values[3], 'error');
+  assert.equal(JSON.parse(imageWrite.values[5]).overall_score, 101);
+});
+
 test('invalid palm scores are rejected and non-palm photos retain their rejection', async () => {
   const { api } = loadWorker();
   for (const score of [null, '76', -1, 101, 76.5]) {
