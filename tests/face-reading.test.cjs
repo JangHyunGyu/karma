@@ -271,14 +271,17 @@ test('ordinary appeal wording is accepted without a retry or a server rejection'
   }
 });
 
-test('generic elegance for teens is returned without added sexual wording', async () => {
+test('teen readings succeed without retries while excluding adult-only fields', async () => {
   const partial = face(undefined, 'ko');
   const original = '차분한 눈빛에서 성숙하고 깊이 있는 우아함이 배어 나옵니다.';
   partial.appearance.sex_appeal = original;
+  let calls = 0;
   const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
-    AI: { async analyze() { return { text: JSON.stringify(partial) }; } },
+    AI: { async analyze() { calls++; return { text: JSON.stringify(partial) }; } },
   }, 'ko', 'face', { gender: '여성', age: '10대' });
-  assert.equal(result.appearance.sex_appeal, original);
+  assert.equal(result.appearance.sex_appeal, '');
+  assert.deepEqual(Array.from(result.appearance.cosmetic_consultation), []);
+  assert.equal(calls, 1);
   assert.equal(result._apiError, undefined);
 });
 

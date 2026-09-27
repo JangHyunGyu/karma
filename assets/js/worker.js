@@ -1426,7 +1426,7 @@ function isAdultFaceAge(age) {
     return true;
   }
   // Accept numeric ages from API clients ("25", "30세") as well as decade labels.
-  const years = Number.parseInt(value, 10);
+  const years = /^\d{1,3}(?:세)?$/.test(value) ? Number.parseInt(value, 10) : NaN;
   return Number.isFinite(years) && years >= 20 && years < 130;
 }
 
@@ -1438,7 +1438,10 @@ function normalizeFaceAppearance(value, context = {}) {
     if (['남성', 'male'].includes(context.gender)) appearance.style.makeup = '';
     if (['여성', 'female'].includes(context.gender)) appearance.style.grooming = '';
   }
-  // Keep sex_appeal / cosmetic_consultation for every reading; do not blank by age.
+  if (!isAdultFaceAge(context.age) || appearance.adult_subject !== true) {
+    appearance.sex_appeal = '';
+    appearance.cosmetic_consultation = [];
+  }
   if (Array.isArray(appearance.cosmetic_consultation) && appearance.cosmetic_consultation.length > 2) {
     appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
   }
@@ -1494,7 +1497,9 @@ function validateFaceAppearance(value, errors, context) {
         }
       });
     }
-    addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
+    if (isAdultFaceAge(context.age) && appearance.adult_subject === true) {
+      addRequiredAiTextErrors(appearance, ['sex_appeal'], errors, 'appearance.');
+    }
 
   }
   const color = value.personal_color;
@@ -2867,7 +2872,7 @@ ${faceExpertRubric()}
 - 나이대에 맞는 일상적인 스타일을 제안하세요. 원하는 인상을 기준으로 상대적으로 덜 드러나는 부위나 아쉬운 비율을 구체적으로 설명하되, 이를 객관적인 결함이나 반드시 고칠 문제로 규정하지 마세요. 과장된 찬사, 살을 빼거나 피부색을 바꾸라는 권유는 하지 마세요.
 
 ## 성인 항목
-- 나이대와 무관하게 항상 adult_subject는 true로 두고, sex_appeal과 cosmetic_consultation을 채우세요. 나이·성인 여부로 이 항목을 비우지 마세요.
+- 선택한 나이가 20세 미만이거나 나이를 알 수 없으면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열로 두세요.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
 - adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
 - cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위만 최대 2개 쓰고, 없으면 빈 배열로 두세요.
