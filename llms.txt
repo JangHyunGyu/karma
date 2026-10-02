@@ -39,5 +39,12 @@ AI Fortune, Saju, Tarot, Compatibility, Korean Astrology, Entertainment
 ## Service guide (what it is, pricing, how to use, FAQ)
 - Korean: https://karma.archerlab.dev/seo/karma-about
 - English: https://karma.archerlab.dev/seo/karma-about-en
+- Saju compatibility calculator: https://karma.archerlab.dev/seo/saju-compatibility-calculator
+- Free face reading by photo (AI face reader): https://karma.archerlab.dev/seo/free-face-reading-by-photo
+- Free face analysis online: https://karma.archerlab.dev/seo/free-face-analysis-online
+- Free palm reading online (AI palm reading): https://karma.archerlab.dev/seo/free-palm-reading-online
+- 무료 관상 테스트 (AI 관상): https://karma.archerlab.dev/seo/ai-gwansang-test-free
+- 무료 AI 손금 보기: https://karma.archerlab.dev/seo/muryo-ai-songeum-bogi
+- 사주 궁합 계산기: https://karma.archerlab.dev/seo/saju-gunghap-calculator-muryo
 - Full text for AI systems: https://karma.archerlab.dev/llms-full.txt
 - Last updated: 2026-10-02

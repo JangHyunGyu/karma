@@ -226,5 +226,47 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/seo/karma-about-en"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/seo/karma-about-en"/>
   </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/saju-compatibility-calculator</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/free-face-reading-by-photo</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/free-face-analysis-online</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/free-palm-reading-online</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/ai-gwansang-test-free</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/muryo-ai-songeum-bogi</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/saju-gunghap-calculator-muryo</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 <!-- about-pages:end -->
 </urlset>
