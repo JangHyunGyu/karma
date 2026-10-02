@@ -40,7 +40,7 @@ Karma(카르마)는 생년월일을 입력하면 사주팔자, 오늘의 운세,
 
 ### Notes / 알아 둘 점
 - Karma의 풀이는 전통 해석을 바탕으로 한 오락용 참고 자료입니다. 미래를 확정하거나 건강·법률·재무·심리 판단을 대신하지 않습니다.
-- 관상과 손금 사진은 분석 요청에만 쓰이고 결과를 공유할 때는 포함되지 않습니다. 타인의 사진은 본인 동의 없이 올리지 마세요.
+- 관상과 손금 사진은 분석 요청에만 사용됩니다. 결과를 공유할 때 사진은 포함되지 않습니다. 타인의 사진은 본인 동의 없이 올리지 마세요.
 - 프로필 매칭 메뉴는 현재 준비 중입니다.
 
 ### FAQ
@@ -58,7 +58,7 @@ Karma(카르마)는 생년월일을 입력하면 사주팔자, 오늘의 운세,
 사주와 타로는 전통 해석 방식이고 관상·손금은 사진에서 보이는 특징을 바탕으로 한 오락용 풀이입니다. 미래를 확정하는 예측이 아니라 참고용으로 보세요.
 
 **관상·손금 사진은 어떻게 쓰이나요?**
-사진은 분석 요청에만 사용되고, 결과를 공유할 때 함께 공개되지 않습니다.
+사진은 분석 요청에만 사용됩니다. 결과를 공유할 때 사진은 포함되지 않습니다.
 
 **영어로도 쓸 수 있나요?**
 네. 한국어와 영어 화면을 지원합니다. 영어 안내는 Karma Service Guide 페이지에서 볼 수 있습니다.
@@ -103,7 +103,7 @@ Karma is a free browser-based AI fortune service. Enter a birth date to get a Ko
 
 ### Notes / 알아 둘 점
 - Readings follow traditional interpretation and are for entertainment. They do not predict the future and are not medical, legal, financial or psychological advice.
-- Face and palm photos are used only for the analysis request and are not included when you share a result. Do not upload someone else's photo without consent.
+- Face and palm photos are used only for the analysis request. They are not included when you share a result. Do not upload someone else's photo without consent.
 - The profile matching menu is not open yet.
 
 ### FAQ
@@ -121,7 +121,7 @@ Yes. Choose "unknown" and the reading focuses on the year, month and day pillars
 Saju and tarot are traditional interpretation systems, and face and palm readings are entertainment readings based on what is visible in the photo. Treat them as reference, not prediction.
 
 **What happens to my face or palm photo?**
-It is used only for the analysis request and is not shared when you share the result.
+Photos are used only for the analysis request. They are not included when you share a result.
 
 **Is there a Korean version?**
 Yes. Karma works in Korean and English. The Korean guide is on the Karma 서비스 안내 page.
@@ -216,7 +216,7 @@ Face reading is a traditional practice of linking facial features to character a
 
 ### Good to know
 Readings follow traditional interpretation and are for entertainment. They do not predict the future and are not medical, legal, financial or psychological advice.
-The photo is not included when you share a result. Do not upload another person's photo without their consent.
+Photos are used only for the analysis request. They are not included when you share a result. Do not upload another person's photo without their consent.
 
 ### FAQ
 
@@ -275,7 +275,7 @@ Each zone gets a score, and the overall score is their average. It is an enterta
 - Pick gender and age group, then press Analyze.
 - Read the zone notes, fortune reading and advice.
 Readings follow traditional interpretation and are for entertainment. They do not predict the future and are not medical, legal, financial or psychological advice.
-The photo is not included when you share a result. Do not upload another person's photo without their consent.
+Photos are used only for the analysis request. They are not included when you share a result. Do not upload another person's photo without their consent.
 
 ### FAQ
 
@@ -332,7 +332,7 @@ In the tradition Karma follows, the dominant hand shows what you have built thro
 - Press Analyze and keep the screen open while it works.
 - Read the hand shape, fortune reading and advice. You can share the result on KakaoTalk.
 Readings follow traditional interpretation and are for entertainment. They do not predict the future and are not medical, legal, financial or psychological advice.
-The photo is not included when you share a result. Do not upload another person's photo without their consent.
+Photos are used only for the analysis request. They are not included when you share a result. Do not upload another person's photo without their consent.
 
 ### FAQ
 
@@ -390,7 +390,7 @@ Karma의 AI 관상 테스트는 가입 없이 무료로 이용할 수 있습니�
 
 ### 알아 둘 점
 풀이는 전통 해석을 바탕으로 한 오락용 참고 자료입니다. 미래를 확정하거나 의료·법률·재무·심리 판단을 대신하지 않습니다.
-분석 결과를 공유할 때 사진은 포함되지 않습니다. 다른 사람의 사진은 본인 동의 없이 올리지 마세요.
+사진은 분석 요청에만 사용됩니다. 결과를 공유할 때 사진은 포함되지 않습니다. 다른 사람의 사진은 본인 동의 없이 올리지 마세요.
 
 ### FAQ
 
@@ -450,7 +450,7 @@ Karma가 따르는 해석에서는 주로 쓰는 손이 노력으로 만든 흐�
 - 분석 버튼을 누르고 결과가 나올 때까지 화면을 닫지 않습니다.
 - 손의 형태, 운세 풀이, 조언을 읽습니다. 결과는 카카오톡으로 공유할 수 있습니다.
 풀이는 전통 해석을 바탕으로 한 오락용 참고 자료입니다. 미래를 확정하거나 의료·법률·재무·심리 판단을 대신하지 않습니다.
-분석 결과를 공유할 때 사진은 포함되지 않습니다. 다른 사람의 사진은 본인 동의 없이 올리지 마세요.
+사진은 분석 요청에만 사용됩니다. 결과를 공유할 때 사진은 포함되지 않습니다. 다른 사람의 사진은 본인 동의 없이 올리지 마세요.
 
 ### FAQ
 
