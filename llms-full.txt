@@ -1,0 +1,127 @@
+# Karma — full service description
+
+---
+
+## Karma란? 가입 없이 보는 무료 AI 사주·운세 서비스 (ko)
+
+URL: https://karma.archerlab.dev/seo/karma-about
+Last updated: 2026-10-02
+
+Karma(카르마)는 생년월일을 입력하면 사주팔자, 오늘의 운세, 올해의 운세, 두 사람의 궁합을 계산해 풀이하고, 타로 카드 3장과 얼굴·손바닥 사진을 읽는 관상·손금까지 한곳에서 볼 수 있는 무료 AI 운세 서비스입니다. 앱 설치와 회원가입 없이 브라우저에서 바로 쓰며, 결과는 재미와 자기 이해를 위한 참고용입니다.
+
+### 한눈에 보기
+- 서비스: Karma(카르마) — AI 사주·운세 웹 서비스
+- 이용 요금: 무료
+- 가입·설치: 회원가입과 앱 설치 없이 브라우저에서 이용
+- 제공 메뉴: 사주, 오늘의 운세, 올해의 운세(2026 신년운세), 궁합, 타로, 관상, 손금
+- 언어: 한국어, 영어
+- 운영: ArcherLab (장현규)
+- 성격: 엔터테인먼트와 문화적 해석. 의료·법률·재무·심리 조언이 아닙니다.
+
+### Who it is for / 대상
+- 생년월일만으로 내 사주팔자와 오행 분포를 가볍게 확인해 보고 싶은 분
+- 오늘이나 올해의 흐름을 하루 점검용 질문으로 참고하고 싶은 분
+- 두 사람의 사주를 비교해 궁합을 보고 싶은 분
+- 타로, 관상, 손금처럼 서로 다른 방식의 풀이를 비교해 보고 싶은 분
+
+### How to use / 이용 방법
+1. Karma 메인에서 보고 싶은 메뉴(사주, 오늘의 운세, 올해의 운세, 궁합, 타로, 관상, 손금)를 고릅니다.
+2. 사주·운세·궁합은 양력 생년월일, 성별, 태어난 시를 입력합니다. 태어난 시를 모르면 "모름"을 선택합니다.
+3. 타로는 질문을 적고 카드 3장을 고릅니다. 관상과 손금은 안내에 맞춰 찍은 사진을 올립니다.
+4. 분석 버튼을 누르고 결과가 나올 때까지 화면을 닫지 말고 기다립니다. 결과는 카카오톡으로 공유할 수 있습니다.
+
+### Features / 기능
+- 사주: 연주·월주·일주·시주, 오행 분포, 10년 단위 대운을 계산해 성격·연애·적성을 풀이합니다.
+- 오늘의 운세: 내 사주와 선택한 날짜의 일진을 비교해 총운, 연애운, 금전운, 직장운 등을 보여 줍니다.
+- 올해의 운세와 2026 병오년 신년운세: 올해의 흐름을 연애·재물·직업·건강 영역으로 나눠 풀이합니다.
+- 궁합: 두 사람의 사주 오행을 비교합니다.
+- 타로: 메이저 아르카나 22장 중 카드 3장을 과거·현재·미래 순으로 읽습니다.
+- 관상과 손금: 사진에서 확인되는 특징을 먼저 설명한 뒤 전통 해석을 연결합니다.
+
+### Notes / 알아 둘 점
+- Karma의 풀이는 전통 해석을 바탕으로 한 오락용 참고 자료입니다. 미래를 확정하거나 건강·법률·재무·심리 판단을 대신하지 않습니다.
+- 관상과 손금 사진은 분석 요청에만 쓰이고 결과를 공유할 때는 포함되지 않습니다. 타인의 사진은 본인 동의 없이 올리지 마세요.
+- 프로필 매칭 메뉴는 현재 준비 중입니다.
+
+### FAQ
+
+**Karma는 무료인가요?**
+네. 사주, 운세, 궁합, 타로, 관상, 손금을 모두 무료로 볼 수 있습니다.
+
+**회원가입이나 앱 설치가 필요한가요?**
+아니요. 브라우저에서 바로 쓸 수 있고 가입이나 설치는 필요하지 않습니다.
+
+**태어난 시를 모르면 사주를 볼 수 없나요?**
+볼 수 있습니다. 시간을 "모름"으로 선택하면 연주·월주·일주를 중심으로 풀이합니다. 시주가 빠지므로 시간 기둥과 관련된 해석은 참고 범위가 줄어듭니다.
+
+**결과가 정확한가요?**
+사주와 타로는 전통 해석 방식이고 관상·손금은 사진에서 보이는 특징을 바탕으로 한 오락용 풀이입니다. 미래를 확정하는 예측이 아니라 참고용으로 보세요.
+
+**관상·손금 사진은 어떻게 쓰이나요?**
+사진은 분석 요청에만 사용되고, 결과를 공유할 때 함께 공개되지 않습니다.
+
+**영어로도 쓸 수 있나요?**
+네. 한국어와 영어 화면을 지원합니다. 영어 안내는 Karma Service Guide 페이지에서 볼 수 있습니다.
+
+---
+
+## What is Karma? A free AI saju and fortune service with no signup (en)
+
+URL: https://karma.archerlab.dev/seo/karma-about-en
+Last updated: 2026-10-02
+
+Karma is a free browser-based AI fortune service. Enter a birth date to get a Korean saju (Four Pillars) reading, a daily or yearly fortune and a compatibility check for two people. You can also draw three tarot cards, or upload a photo for face and palm reading. No account or app install is needed, and results are meant for entertainment and self-reflection.
+
+### At a glance
+- Service: Karma — AI saju and fortune web service
+- Price: Free
+- Signup / install: No signup and no app install; runs in the browser
+- Menus: Saju, daily fortune, yearly fortune (2026), compatibility, tarot, face reading, palm reading
+- Languages: Korean, English
+- Operator: ArcherLab (Hyungyu Jang)
+- Nature: Entertainment and cultural interpretation. Not medical, legal, financial or psychological advice.
+
+### Who it is for / 대상
+- People who want a quick look at their saju chart and five-element balance from a birth date
+- People who use a daily or yearly fortune as a prompt for reflection
+- People who want to compare two saju charts for compatibility
+- People curious about tarot, face reading and palm reading side by side
+
+### How to use / 이용 방법
+1. Open Karma and pick a menu: saju, daily fortune, yearly fortune, compatibility, tarot, face or palm.
+2. For saju, fortune and compatibility, enter a solar-calendar birth date, gender and birth hour. Choose "unknown" if you do not know the hour.
+3. For tarot, write a question and pick three cards. For face or palm reading, upload a photo taken as the instructions describe.
+4. Start the analysis and keep the page open until the result appears. You can share the result through KakaoTalk.
+
+### Features / 기능
+- Saju: calculates the year, month, day and hour pillars, the five-element balance and ten-year luck cycles.
+- Daily fortune: compares your chart with the day you choose.
+- Yearly fortune and 2026 New Year fortune: love, wealth, career and health outlooks for the year.
+- Compatibility: compares the five elements of two people.
+- Tarot: three cards from the 22 major arcana, read as past, present and future.
+- Face reading and palm reading: describes what is visible in the photo, then links it to traditional interpretation.
+
+### Notes / 알아 둘 점
+- Readings follow traditional interpretation and are for entertainment. They do not predict the future and are not medical, legal, financial or psychological advice.
+- Face and palm photos are used only for the analysis request and are not included when you share a result. Do not upload someone else's photo without consent.
+- The profile matching menu is not open yet.
+
+### FAQ
+
+**Is Karma free?**
+Yes. Saju, fortune, compatibility, tarot, face reading and palm reading are all free to use.
+
+**Do I need to sign up or install an app?**
+No. Karma runs in the browser without an account or installation.
+
+**Can I get a saju reading without my birth hour?**
+Yes. Choose "unknown" and the reading focuses on the year, month and day pillars. Interpretations that depend on the hour pillar are less complete.
+
+**How accurate are the results?**
+Saju and tarot are traditional interpretation systems, and face and palm readings are entertainment readings based on what is visible in the photo. Treat them as reference, not prediction.
+
+**What happens to my face or palm photo?**
+It is used only for the analysis request and is not shared when you share the result.
+
+**Is there a Korean version?**
+Yes. Karma works in Korean and English. The Korean guide is on the Karma 서비스 안내 page.

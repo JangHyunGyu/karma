@@ -35,3 +35,9 @@ Karma provides entertainment and cultural interpretation. It is not professional
 
 ## Category
 AI Fortune, Saju, Tarot, Compatibility, Korean Astrology, Entertainment
+
+## Service guide (what it is, pricing, how to use, FAQ)
+- Korean: https://karma.archerlab.dev/seo/karma-about
+- English: https://karma.archerlab.dev/seo/karma-about-en
+- Full text for AI systems: https://karma.archerlab.dev/llms-full.txt
+- Last updated: 2026-10-02

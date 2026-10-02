@@ -207,4 +207,24 @@
     <lastmod>2026-08-28</lastmod>
   </url>
 <!-- traffic-pages:end -->
+<!-- about-pages:start -->
+  <url>
+    <loc>https://karma.archerlab.dev/seo/karma-about</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/seo/karma-about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/seo/karma-about-en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/seo/karma-about-en"/>
+  </url>
+  <url>
+    <loc>https://karma.archerlab.dev/seo/karma-about-en</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://karma.archerlab.dev/seo/karma-about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://karma.archerlab.dev/seo/karma-about-en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://karma.archerlab.dev/seo/karma-about-en"/>
+  </url>
+<!-- about-pages:end -->
 </urlset>
