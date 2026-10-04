@@ -155,7 +155,7 @@ check(
   api.validateKarmaAiContract('palm', mixedEnglishPalm, { lang: 'en' }).errors.includes('hand_shape.type:english_only'),
   '영문 손금 응답의 한글 유형명을 계약 오류로 거절',
 );
-check(workerSource.includes('accumulated = mergeAiContractPatch(accumulated, parsed)'), '사진 분석 재시도도 언어 오류 필드 패치를 병합');
+check(workerSource.includes('getKarmaDisplayIssue(candidate, contractType)') && !workerSource.includes('targetedPatchRetry'), 'Only display-blocking photo and text failures may regenerate');
 check(workerSource.includes('const proseGuard = karmaResponseStyleGuide(responseLang);'), '텍스트 분석에 언어별 쉬운 문체 가드를 전달');
 check(workerSource.includes('const proseGuard = karmaResponseStyleGuide(normalizePhotoAnalysisLang(lang));'), '사진 분석에 언어별 쉬운 문체 가드를 전달');
 for (const page of ['face', 'face-en', 'palm', 'palm-en']) {

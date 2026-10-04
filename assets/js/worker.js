@@ -1639,6 +1639,39 @@ function validateKarmaAiContract(contractType, value, context = {}) {
   return { ok: contract.errors.length === 0, errors: contract.errors };
 }
 
+// Completeness and language are prompt goals, not reasons to regenerate visible results.
+function normalizeKarmaDisplayResponse(value, contractType) {
+  if (!isPlainAiObject(value)) return value;
+  const result = { ...value };
+  for (const key of ['strengths', 'cautions', 'daeun_reading', 'keywords', 'visual_evidence']) {
+    if (key in result) result[key] = Array.isArray(result[key]) ? result[key].filter(isNonEmptyAiText) : [];
+  }
+  const collection = contractType === 'face' ? 'categories' : contractType === 'palm' ? 'lines' : contractType === 'tarot' ? 'cards' : '';
+  if (collection) result[collection] = Array.isArray(result[collection]) ? result[collection].filter(isPlainAiObject) : [];
+  if (contractType === 'compat' && !isPlainAiObject(result.categories)) result.categories = {};
+  return result;
+}
+
+function getKarmaDisplayIssue(value, contractType) {
+  if (!isPlainAiObject(value)) return { ok: false, errors: ['root:object'] };
+  if (['face', 'palm'].includes(contractType) && isNonEmptyAiText(value.error)) return { ok: true, errors: [] };
+  const textKeys = new Set(['summary', 'advice', 'personality', 'love_style', 'career', 'year_summary',
+    'overall', 'love', 'money', 'health', 'study', 'social', 'wealth', 'desc', 'interpretation',
+    'year', 'month', 'day', 'hour', 'quality_assessment', 'celebrity_resemblance', 'caution',
+    'description', 'harmony', 'first_impression', 'hair', 'accessories', 'glasses', 'photo', 'makeup',
+    'grooming', 'sex_appeal', 'observation', 'styling_tip', 'limitation', 'goal', 'purpose',
+    'question', 'alternative', 'color', 'direction', 'type', 'season', 'undertone']);
+  const textArrays = new Set(['strengths', 'cautions', 'daeun_reading', 'keywords', 'visual_evidence', 'types']);
+  const hasText = (node, key = '') => {
+    if (typeof node === 'string') return (textKeys.has(key) || key === 'overall_grade') && isNonEmptyAiText(node);
+    if (typeof node === 'number') return ['overall_score', 'score', 'number'].includes(key) && Number.isFinite(node);
+    if (Array.isArray(node)) return textArrays.has(key)
+      ? node.some(isNonEmptyAiText) : node.some(item => hasText(item));
+    return isPlainAiObject(node) && Object.entries(node).some(([name, item]) => hasText(item, name));
+  };
+  return hasText(value) ? { ok: true, errors: [] } : { ok: false, errors: ['root:no_displayable_text'] };
+}
+
 function mergeAiContractPatch(base, patch) {
   if (!isPlainAiObject(patch)) return isPlainAiObject(base) ? base : patch;
   if (!isPlainAiObject(base)) return { ...patch };
@@ -1870,27 +1903,17 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
   }
 
   try {
-    const targetedPatchRetry = contractType === 'saju' || contractType === 'tarot';
     const maxAttempts = KARMA_AI_MAX_ATTEMPTS;
     let contractErrors = [];
     let accumulated = null;
     let lastParseError = null;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) await waitForKarmaAiRetry(attempt);
-      const hasPartialResponse = isPlainAiObject(accumulated);
-      const needsResponseRepair = contractErrors.length > 0;
-      const usePatchRetry = targetedPatchRetry && needsResponseRepair && hasPartialResponse;
-      const retryInstruction = needsResponseRepair
-        ? (hasPartialResponse
-          ? aiContractRetryInstruction(contractType, contractErrors, validationContext)
-          : 'The previous response was not a valid JSON object. Return the COMPLETE response matching the original schema, with every required field. Do not return a patch or an error object.')
+      const retryInstruction = contractErrors.length
+        ? 'The previous response could not be displayed. Return one valid JSON object matching the original schema with actual reading text. Do not return a patch.'
         : '';
-      const attemptSystem = usePatchRetry
-        ? [proseGuard, retryInstruction].filter(Boolean).join('\n\n')
-        : [systemText, retryInstruction].filter(Boolean).join('\n\n');
-      const attemptPrompt = usePatchRetry
-        ? `Use the following original request only as factual reference. Ignore any full response schema in it and return exactly the JSON patch required by the system message.\n\n${promptText}`
-        : promptText;
+      const attemptSystem = [systemText, retryInstruction].filter(Boolean).join('\n\n');
+      const attemptPrompt = promptText;
       const messages = attemptSystem
         ? [
           { role: 'system', content: attemptSystem },
@@ -1940,8 +1963,8 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         if (!contractErrors.length) contractErrors = ['root:valid_json_object'];
         continue;
       }
-      accumulated = mergeAiContractPatch(accumulated, parsed);
-      const contract = validateKarmaAiContract(contractType, accumulated, validationContext);
+      accumulated = normalizeKarmaDisplayResponse(parsed, contractType);
+      const contract = getKarmaDisplayIssue(accumulated, contractType);
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
     }
@@ -2337,9 +2360,9 @@ function formatPhotoAiCautions(value, contractType, lang) {
   if (!key || value?.error || !Array.isArray(value?.[key])) return value;
   const label = lang === 'en' ? 'Watch out for' : '주의할 점';
   return { ...value, [key]: value[key].map(item => {
-    if (!isNonEmptyAiText(item.caution)) return item;
+    if (!isNonEmptyAiText(item?.caution)) return item;
     const suffix = `${label}: ${item.caution.trim()}`;
-    const desc = item.desc.trim();
+    const desc = typeof item.desc === 'string' ? item.desc.trim() : '';
     return { ...item, desc: desc.endsWith(suffix) ? desc : `${desc}\n\n${suffix}` };
   }) };
 }
@@ -2366,7 +2389,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
     try {
       const modelPrompt = [
         basePrompt,
-        contractErrors.length ? aiContractRetryInstruction(contractType, contractErrors, { lang: responseLang }) : '',
+        contractErrors.length ? 'The previous response could not be displayed. Return the complete original JSON schema with actual photo analysis text. Do not return a patch.' : '',
       ].filter(Boolean).join('\n\n');
       analysisContext.aiCalled = true;
       const result = await env.AI.analyze({
@@ -2384,18 +2407,14 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         continue;
       }
       const parsed = parseAiJsonResponse(result.text);
-      let candidate = mergeAiContractPatch(accumulated, parsed);
+      let candidate = parsed;
       if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), contractContext);
       if (contractType === 'palm') candidate = normalizePalmAiGrade(candidate);
-      const contract = validateKarmaAiContract(contractType, candidate, { ...contractContext, lang: responseLang });
+      candidate = normalizeKarmaDisplayResponse(candidate, contractType);
+      const contract = getKarmaDisplayIssue(candidate, contractType);
       if (contract.ok) return formatPhotoAiCautions(candidate, contractType, responseLang);
-      const previousErrors = accumulated
-        ? validateKarmaAiContract(contractType, accumulated, { ...contractContext, lang: responseLang }).errors
-        : null;
-      if (!previousErrors || contract.errors.length < previousErrors.length) {
-        accumulated = candidate;
-        contractErrors = contract.errors;
-      }
+      accumulated = candidate;
+      contractErrors = contract.errors;
       lastError = new Error(`AI JSON contract mismatch: ${(contractErrors.length ? contractErrors : contract.errors).join(', ')}`);
     } catch (error) {
       lastError = error;

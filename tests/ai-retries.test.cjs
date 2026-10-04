@@ -31,6 +31,59 @@ const reading = {
 const prompt = { system: 'Return the full reading schema.', user: 'Chart facts.', lang: 'en' };
 const image = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]).toString('base64');
 
+test('every text analysis keeps visible partial foreign-language content after one call', async () => {
+  for (const [type, first] of Object.entries({
+    saju: { personality: text, strengths: 'wrong collection type' },
+    tarot: { overall: text, cards: null, keywords: [null, text] },
+    fortune: { year_summary: text }, daily: { overall: text },
+    compat: { summary: text, categories: [], cautions: 'wrong collection type' },
+  })) {
+    const { api, delays } = loadWorker();
+    let calls = 0;
+    const result = await api.callKarmaTextAi({ ...prompt, lang: 'ko' }, type, {
+      AI: { async complete() { calls++; return { text: JSON.stringify(first) }; } },
+    }, null, type);
+    assert.equal(calls, 1, type);
+    assert.deepEqual(delays, []);
+    assert.equal(result.personality || result.overall || result.year_summary || result.summary, text);
+    assert.equal(result.advice, undefined, 'missing advice must not be invented');
+    if (type === 'tarot') assert.equal(result.cards.length, 0);
+    if (type === 'compat') assert.equal(Object.keys(result.categories).length, 0);
+  }
+});
+
+test('partial face and palm responses normalize broken collections locally without another request', async () => {
+  for (const type of ['face', 'palm']) {
+    const { api } = loadWorker();
+    const key = type === 'face' ? 'categories' : 'lines';
+    const first = { summary: text, [key]: [null, { name: 'Visible feature', caution: 'Keep a practical limit.' }], visual_evidence: 8 };
+    let calls = 0;
+    const result = await api.callKarmaVisionAi('Inspect this photo.', 'https://image.test/photo.jpg', {
+      AI: { async analyze() { calls++; return { text: JSON.stringify(first) }; } },
+    }, 'ko', type);
+    assert.equal(calls, 1);
+    assert.equal(result.summary, text);
+    assert.equal(result[key].length, 1);
+    assert.match(result[key][0].desc, /Keep a practical limit/);
+    assert.equal(result.visual_evidence.length, 0);
+    assert.equal(result.advice, undefined);
+  }
+});
+
+test('visible appearance or color content is sufficient without an overall reading', async () => {
+  for (const first of [{ appearance: { harmony: text } }, { personal_color: { season: 'winter', undertone: 'cool' } }]) {
+    const { api } = loadWorker();
+    let calls = 0;
+    const result = await api.callKarmaVisionAi('Inspect this face.', 'https://image.test/photo.jpg', {
+      AI: { async analyze() { calls++; return { text: JSON.stringify(first) }; } },
+    }, 'ko', 'face');
+    assert.equal(calls, 1);
+    assert.equal(result._apiError, undefined);
+    assert.equal(result.summary, undefined);
+    assert.equal(result.categories.length, 0);
+  }
+});
+
 function photo(type) {
   const common = {
     quality_assessment: text, visual_evidence: Array(8).fill(text), summary: text, advice: text,
@@ -111,7 +164,7 @@ test('text analysis recovers on the second or third attempt after transient prov
   }
 });
 
-test('response repairs and transport failures share three attempts and preserve partial readings', async () => {
+test('displayable partial readings stop immediately while fatal errors retain a bounded retry budget', async () => {
   const { api, delays } = loadWorker();
   const { advice, ...partial } = reading;
   const requests = [];
@@ -122,11 +175,10 @@ test('response repairs and transport failures share three attempts and preserve 
       return { text: JSON.stringify(requests.length === 1 ? partial : { advice }) };
     } },
   }, null, 'saju', { hasTime: true, daeunCount: 8 });
-  assert.equal(requests.length, 3);
+  assert.equal(requests.length, 1);
   assert.equal(result.personality, text);
-  assert.equal(result.advice, advice);
-  assert.equal(JSON.stringify(requests[1].messages), JSON.stringify(requests[2].messages));
-  assert.deepEqual(delays, [1000, 2000]);
+  assert.equal(result.advice, undefined);
+  assert.deepEqual(delays, []);
 
   const exhausted = loadWorker();
   let calls = 0;

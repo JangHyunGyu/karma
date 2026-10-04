@@ -210,8 +210,9 @@ async function testContractRetry(type, partial, complete, contractContext = {}) 
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     type, env, null, type, contractContext
   );
-  check(calls === 2, `${type} 불완전 응답을 한 번 재시도`);
-  check(result?.advice === text, `${type} 재시도 후 완전한 응답만 반환`);
+  const visible = type === 'fortune';
+  check(calls === (visible ? 1 : 2), `${type} retries only an undisplayable first response`);
+  check(visible ? result?.year_summary === text && result.advice === undefined : result?.advice === text, `${type} preserves visible first content or recovers a fatal response`);
 }
 
 async function testPersistentContractFailure() {
@@ -313,10 +314,10 @@ async function testContractPatchRetry(type, partial, patch, contractContext, ver
     { system: 'Return JSON.', user: 'Test.', lang: 'ko' },
     type, env, null, type, contractContext
   );
-  check(calls === 2, `${type} 재시도가 누락 필드 패치를 요청`);
-  check(retrySystem.includes('ONLY the missing or invalid fields'), `${type} 재시도가 전체 응답을 반복하지 않음`);
-  check(retrySystem.includes('어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지'), `${type} 보완 요청도 구체적인 해석 지시를 유지`);
-  check(verify(result), `${type} 기존 필드와 재시도 패치를 병합`);
+  check(calls === 1, `${type} displayable partial response uses one AI call`);
+  check(retrySystem === '', `${type} missing optional fields do not request a patch`);
+  check(JSON.stringify(result) === JSON.stringify(partial), `${type} preserves the first response without invented fields`);
+
 }
 
 async function testConcreteGuidanceOnEveryRoute() {

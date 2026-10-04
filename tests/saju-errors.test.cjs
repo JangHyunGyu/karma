@@ -43,7 +43,7 @@ test('malformed AI JSON is retried with the original schema and successful attem
   }
 });
 
-test('a malformed patch does not discard earlier valid fields', async () => {
+test('missing advice returns the first reading before any unnecessary patch', async () => {
   const { api } = loadWorker();
   let calls = 0;
   const { advice, ...partial } = reading;
@@ -51,8 +51,8 @@ test('a malformed patch does not discard earlier valid fields', async () => {
   const result = await api.callKarmaTextAi(prompt, 'saju', { AI: { async complete() {
     return { text: outputs[calls++] };
   } } }, null, 'saju', { hasTime: true, daeunCount: 8 });
-  assert.equal(calls, 3);
-  assert.equal(result.advice, text);
+  assert.equal(calls, 1);
+  assert.equal(result.advice, undefined);
   assert.equal(result.personality, text);
 });
 

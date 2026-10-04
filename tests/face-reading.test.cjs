@@ -140,7 +140,7 @@ test('missing or blank feature cautions do not invalidate otherwise complete rea
   }
 });
 
-test('vision retries missing forehead evidence and preserves the uploaded image and valid scores', async () => {
+test('missing forehead metadata preserves visible first-response text and valid scores without retry', async () => {
   const complete = face();
   const partial = { ...complete };
   delete partial.forehead_observation;
@@ -153,14 +153,14 @@ test('vision retries missing forehead evidence and preserves the uploaded image 
     }) };
   } } };
   const result = await api.callKarmaVisionAi('Inspect the photo.', imageUrl, env, 'en', 'face');
-  assert.equal(requests.length, 2);
-  assert.match(requests[1].prompt, /forehead_observation/);
+  assert.equal(requests.length, 1);
   assert.ok(requests.every(request => request.prompt.includes('60~74점') && request.prompt.includes('60점 미만')),
     'score interpretation rules must survive contract repair retries');
   assert.ok(requests.every(request => request.media[0].url === imageUrl));
   assert.equal(result.overall_score, 81);
   assert.equal(result.categories[5].score, 81);
-  assert.equal(api.validateKarmaAiContract('face', result, { lang: 'en' }).ok, true);
+  assert.equal(result.forehead_observation, undefined);
+  assert.equal(result.summary, complete.summary);
 });
 
 test('non-face rejection remains a rejection without invented scores', async () => {
@@ -274,7 +274,7 @@ test('accessories and cosmetic changes are not forced when there is no grounded 
   assert.equal(result.appearance.style.glasses, undefined);
 });
 
-test('vision repairs a vague cosmetic question into named options without losing the observation', async () => {
+test('missing cosmetic options preserve the first observation without regenerating', async () => {
   const partial = face();
   delete partial.appearance.cosmetic_consultation[0].options;
   const requests = [];
@@ -286,9 +286,8 @@ test('vision repairs a vague cosmetic question into named options without losing
       }) };
     } },
   }, 'en', 'face', { age: '30s' });
-  assert.equal(requests.length, 2);
-  assert.match(requests[1].prompt, /options/);
-  assert.equal(result.appearance.cosmetic_consultation[0].options[0].name, 'Blepharoplasty');
+  assert.equal(requests.length, 1);
+  assert.equal(result.appearance.cosmetic_consultation[0].options, undefined);
   assert.equal(result.appearance.cosmetic_consultation[0].observation, partial.appearance.cosmetic_consultation[0].observation);
 });
 
@@ -427,7 +426,7 @@ test('adult content is removed for teens, unknown ages, or uncertain subjects wi
   }
 });
 
-test('vision repairs missing female makeup and color sections while preserving the original score', async () => {
+test('missing makeup and color fields preserve the first score and prose without regenerating', async () => {
   const requests = [];
   const partial = face();
   partial.appearance.style.makeup = '';
@@ -441,12 +440,11 @@ test('vision repairs missing female makeup and color sections while preserving t
       }) };
     } },
   }, 'en', 'face', { gender: 'female', age: '20s' });
-  assert.equal(requests.length, 2);
-  assert.match(requests[1].prompt, /appearance.style.makeup/);
-  assert.match(requests[1].prompt, /personal_color/);
+  assert.equal(requests.length, 1);
   assert.equal(result.overall_score, 81);
   assert.equal(result.appearance.style.grooming, '');
-  assert.ok(result.appearance.style.makeup);
+  assert.equal(result.appearance.style.makeup, '');
+  assert.equal(result.personal_color, undefined);
   assert.ok(result.appearance.sex_appeal);
 });
 
