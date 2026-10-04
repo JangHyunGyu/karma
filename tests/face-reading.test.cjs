@@ -103,24 +103,22 @@ test('invalid feature scores are rejected rather than silently clamped or replac
   }
 });
 
-test('high scores still require cautions, and caution-only repairs preserve the reading in both languages', async () => {
+test('high-scoring first responses display their cautions in both languages without another AI call', async () => {
   for (const lang of ['ko', 'en']) {
     const complete = face([78, 82, 80, 81, 79], lang);
     const warning = lang === 'en'
       ? 'In traditional readings, avoiding conflict may delay stating your view. Say where you disagree early.'
       : '전통 해석에서는 갈등을 피하려다 의견을 늦게 밝히는 상황을 경계합니다. 입장이 다르면 먼저 말해 보세요.';
-    const partial = { ...complete, categories: complete.categories.map(({ caution, ...item }) => item) };
+    const reading = { ...complete, categories: complete.categories.map(item => ({ ...item, caution: warning })) };
     const requests = [];
     const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
       AI: { async analyze(request) {
         requests.push(request);
-        return { text: JSON.stringify(requests.length === 1 ? partial : {
-          categories: complete.categories.map(() => ({ caution: warning })),
-        }) };
+        return { text: JSON.stringify(reading) };
       } },
     }, lang, 'face');
-    assert.equal(requests.length, 2, 'an all-positive description must not pass without a caution');
-    assert.match(requests[1].prompt, /categories\[0\]\.caution:non_empty_string/);
+    assert.equal(requests.length, 1);
+    assert.ok(requests[0].prompt.includes('모든 항목에 caution을 반드시 쓰세요'));
     assert.equal(result.overall_score, 80);
     assert.deepEqual(Array.from(result.categories.slice(0, 5), item => item.score), [78, 82, 80, 81, 79]);
     result.categories.forEach((item, index) => {
@@ -129,16 +127,16 @@ test('high scores still require cautions, and caution-only repairs preserve the 
       assert.equal(item.desc, complete.categories[index].desc + '\n\n' + (lang === 'en' ? 'Watch out for' : '주의할 점') + ': ' + warning);
     });
     assert.equal(api.validateKarmaAiContract('face', result, { lang }).ok, true);
-    assert.equal(partial.categories[0].caution, undefined, 'repairs must not mutate the kept response');
+    assert.equal(reading.categories[0].desc, complete.categories[0].desc, 'formatting must not mutate the AI response');
   }
 });
 
-test('missing or blank feature cautions are rejected even at the highest scores', () => {
+test('missing or blank feature cautions do not invalidate otherwise complete readings', () => {
   for (const caution of [undefined, null, '', '   ', 82]) {
     const result = api.normalizeFaceAiScores(face([100, 100, 100, 100, 100]));
     result.categories[2].caution = caution;
     const contract = api.validateKarmaAiContract('face', result, { lang: 'en' });
-    assert.ok(contract.errors.includes('categories[2].caution:non_empty_string'));
+    assert.equal(contract.ok, true);
   }
 });
 

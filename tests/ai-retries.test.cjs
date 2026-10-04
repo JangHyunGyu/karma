@@ -48,19 +48,19 @@ function photo(type) {
   };
 }
 
-test('palm caution patches preserve scores and are included in descriptions used by existing viewers', async () => {
+test('first-response palm cautions preserve scores and appear in descriptions used by existing viewers', async () => {
   const { api } = loadWorker();
   const complete = photo('palm');
-  const partial = { ...complete, lines: complete.lines.map(({ caution, ...line }) => line) };
   const warnings = complete.lines.map((_, index) => `Watch the tendency to overcommit in situation ${index + 1}; agree on a limit first.`);
+  const reading = { ...complete, lines: complete.lines.map((line, index) => ({ ...line, caution: warnings[index] })) };
   let calls = 0;
   const result = await api.callKarmaVisionAi('Inspect the palm.', 'data:image/jpeg;base64,/9j/', {
     AI: { async analyze() {
       calls++;
-      return { text: JSON.stringify(calls === 1 ? partial : { lines: warnings.map(caution => ({ caution })) }) };
+      return { text: JSON.stringify(reading) };
     } },
   }, 'en', 'palm');
-  assert.equal(calls, 2);
+  assert.equal(calls, 1);
   assert.equal(result.overall_score, 76);
   assert.equal(result.overall_grade, 'A');
   result.lines.forEach((line, index) => {
@@ -70,7 +70,7 @@ test('palm caution patches preserve scores and are included in descriptions used
   });
 });
 
-test('persistent all-positive photo responses without cautions fail instead of inventing weaknesses', async () => {
+test('missing photo cautions do not trigger another AI call or invent weaknesses', async () => {
   for (const type of ['face', 'palm']) {
     const { api } = loadWorker();
     const value = photo(type);
@@ -80,10 +80,10 @@ test('persistent all-positive photo responses without cautions fail instead of i
     const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
       AI: { async analyze() { calls++; return { text: JSON.stringify(value) }; } },
     }, 'en', type);
-    assert.equal(calls, 3);
-    assert.ok(result._apiError);
-    assert.equal(result[key], undefined);
-    assert.equal(result._keptResponse[key][0].caution, undefined);
+    assert.equal(calls, 1);
+    assert.equal(result._apiError, undefined);
+    assert.equal(result[key][0].desc, value[key][0].desc);
+    assert.equal(result[key][0].caution, undefined);
   }
 });
 

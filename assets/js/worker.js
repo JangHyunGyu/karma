@@ -1555,7 +1555,6 @@ function validateFaceAiResponse(value, context = {}) {
       addAiScoreError(category.score, errors, `categories[${index}].score`);
       if (!Number.isInteger(category.score)) errors.push(`categories[${index}].score:integer`);
       if (!isNonEmptyAiText(category.desc)) errors.push(`categories[${index}].desc:non_empty_string`);
-      if (!isNonEmptyAiText(category.caution)) errors.push(`categories[${index}].caution:non_empty_string`);
     });
   }
   addFortuneObjectErrors(value.fortune, errors, 'fortune');
@@ -1586,7 +1585,7 @@ function validatePalmAiResponse(value) {
         errors.push(`lines[${index}]:object`);
         return;
       }
-      addRequiredAiTextErrors(line, ['name', 'length', 'desc', 'caution'], errors, `lines[${index}].`);
+      addRequiredAiTextErrors(line, ['name', 'length', 'desc'], errors, `lines[${index}].`);
       addAiScoreError(line.score, errors, `lines[${index}].score`);
     });
   }
@@ -2333,21 +2332,12 @@ function photoScoreInterpretationGuide(contractType) {
 - 점수는 관찰 근거로 먼저 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 점수를 낮추거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
 }
 
-function mergePhotoAiContractPatch(base, patch, contractType) {
-  const key = contractType === 'face' ? 'categories' : contractType === 'palm' ? 'lines' : '';
-  if (key && Array.isArray(base?.[key]) && Array.isArray(patch?.[key])
-      && base[key].length === patch[key].length
-      && base[key].every(isPlainAiObject) && patch[key].every(isPlainAiObject)) {
-    patch = { ...patch, [key]: patch[key].map((item, index) => mergeAiContractPatch(base[key][index], item)) };
-  }
-  return mergeAiContractPatch(base, patch);
-}
-
 function formatPhotoAiCautions(value, contractType, lang) {
   const key = contractType === 'face' ? 'categories' : contractType === 'palm' ? 'lines' : '';
   if (!key || value?.error || !Array.isArray(value?.[key])) return value;
   const label = lang === 'en' ? 'Watch out for' : '주의할 점';
   return { ...value, [key]: value[key].map(item => {
+    if (!isNonEmptyAiText(item.caution)) return item;
     const suffix = `${label}: ${item.caution.trim()}`;
     const desc = item.desc.trim();
     return { ...item, desc: desc.endsWith(suffix) ? desc : `${desc}\n\n${suffix}` };
@@ -2394,7 +2384,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         continue;
       }
       const parsed = parseAiJsonResponse(result.text);
-      let candidate = mergePhotoAiContractPatch(accumulated, parsed, contractType);
+      let candidate = mergeAiContractPatch(accumulated, parsed);
       if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), contractContext);
       if (contractType === 'palm') candidate = normalizePalmAiGrade(candidate);
       const contract = validateKarmaAiContract(contractType, candidate, { ...contractContext, lang: responseLang });
