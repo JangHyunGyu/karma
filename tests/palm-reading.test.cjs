@@ -27,7 +27,7 @@ function palm(score = 76, grade = 'C', lang = 'en') {
     overall_score: score, overall_grade: grade,
     quality_assessment: text, visual_evidence: Array(8).fill(text),
     summary: text, advice: text,
-    lines: [84, 75, 80, 68, 62, 65].map(score => ({ name: text, score, length: text, desc: text })),
+    lines: [84, 75, 80, 68, 62, 65].map(score => ({ name: text, score, length: text, desc: text, caution: text })),
     hand_shape: { type: text, desc: text },
     fortune: { wealth: text, career: text, love: text, health: text },
   };

@@ -40,13 +40,52 @@ function photo(type) {
     ...require('./fixtures/face-appearance.cjs')('en'),
     ...common, celebrity_resemblance: '',
     forehead_observation: { skin_visible: true, hairline_visible: true, observation: text, limitation: '' },
-    categories: Array.from({ length: 6 }, () => ({ name: text, score: 76, desc: text })),
+    categories: Array.from({ length: 6 }, () => ({ name: text, score: 76, desc: text, caution: text })),
   } : {
     ...common, overall_score: 76, overall_grade: 'C',
-    lines: Array.from({ length: 6 }, () => ({ name: text, score: 76, length: text, desc: text })),
+    lines: Array.from({ length: 6 }, () => ({ name: text, score: 76, length: text, desc: text, caution: text })),
     hand_shape: { type: text, desc: text },
   };
 }
+
+test('palm caution patches preserve scores and are included in descriptions used by existing viewers', async () => {
+  const { api } = loadWorker();
+  const complete = photo('palm');
+  const partial = { ...complete, lines: complete.lines.map(({ caution, ...line }) => line) };
+  const warnings = complete.lines.map((_, index) => `Watch the tendency to overcommit in situation ${index + 1}; agree on a limit first.`);
+  let calls = 0;
+  const result = await api.callKarmaVisionAi('Inspect the palm.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() {
+      calls++;
+      return { text: JSON.stringify(calls === 1 ? partial : { lines: warnings.map(caution => ({ caution })) }) };
+    } },
+  }, 'en', 'palm');
+  assert.equal(calls, 2);
+  assert.equal(result.overall_score, 76);
+  assert.equal(result.overall_grade, 'A');
+  result.lines.forEach((line, index) => {
+    assert.equal(line.score, complete.lines[index].score);
+    assert.equal(line.length, complete.lines[index].length);
+    assert.equal(line.desc, text + '\n\nWatch out for: ' + warnings[index]);
+  });
+});
+
+test('persistent all-positive photo responses without cautions fail instead of inventing weaknesses', async () => {
+  for (const type of ['face', 'palm']) {
+    const { api } = loadWorker();
+    const value = photo(type);
+    const key = type === 'face' ? 'categories' : 'lines';
+    value[key].forEach(item => { delete item.caution; });
+    let calls = 0;
+    const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+      AI: { async analyze() { calls++; return { text: JSON.stringify(value) }; } },
+    }, 'en', type);
+    assert.equal(calls, 3);
+    assert.ok(result._apiError);
+    assert.equal(result[key], undefined);
+    assert.equal(result._keptResponse[key][0].caution, undefined);
+  }
+});
 
 test('text analysis recovers on the second or third attempt after transient provider failures', async () => {
   for (const errorMessage of ['HTTP 429 provider busy', 'HTTP 503 unavailable', 'Network connection lost', 'Request timed out']) {

@@ -34,7 +34,7 @@ function face(scores = [81, 87, 79, 84, 76], lang = 'en') {
     quality_assessment: text,
     visual_evidence: Array(8).fill(text),
     summary: text,
-    categories: [...scores.map(score => ({ name: text, score, desc: text })), { name: text, desc: text }],
+    categories: [...scores.map(score => ({ name: text, score, desc: text, caution: text })), { name: text, desc: text, caution: text }],
     fortune: { wealth: text, career: text, love: text, health: text },
     advice: text,
     celebrity_resemblance: '',
@@ -100,6 +100,45 @@ test('invalid feature scores are rejected rather than silently clamped or replac
     input.categories[2].score = invalid;
     const result = api.normalizeFaceAiScores(input);
     assert.equal(api.validateKarmaAiContract('face', result).ok, false, String(invalid));
+  }
+});
+
+test('high scores still require cautions, and caution-only repairs preserve the reading in both languages', async () => {
+  for (const lang of ['ko', 'en']) {
+    const complete = face([78, 82, 80, 81, 79], lang);
+    const warning = lang === 'en'
+      ? 'In traditional readings, avoiding conflict may delay stating your view. Say where you disagree early.'
+      : '전통 해석에서는 갈등을 피하려다 의견을 늦게 밝히는 상황을 경계합니다. 입장이 다르면 먼저 말해 보세요.';
+    const partial = { ...complete, categories: complete.categories.map(({ caution, ...item }) => item) };
+    const requests = [];
+    const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+      AI: { async analyze(request) {
+        requests.push(request);
+        return { text: JSON.stringify(requests.length === 1 ? partial : {
+          categories: complete.categories.map(() => ({ caution: warning })),
+        }) };
+      } },
+    }, lang, 'face');
+    assert.equal(requests.length, 2, 'an all-positive description must not pass without a caution');
+    assert.match(requests[1].prompt, /categories\[0\]\.caution:non_empty_string/);
+    assert.equal(result.overall_score, 80);
+    assert.deepEqual(Array.from(result.categories.slice(0, 5), item => item.score), [78, 82, 80, 81, 79]);
+    result.categories.forEach((item, index) => {
+      assert.equal(item.name, complete.categories[index].name);
+      assert.equal(item.caution, warning);
+      assert.equal(item.desc, complete.categories[index].desc + '\n\n' + (lang === 'en' ? 'Watch out for' : '주의할 점') + ': ' + warning);
+    });
+    assert.equal(api.validateKarmaAiContract('face', result, { lang }).ok, true);
+    assert.equal(partial.categories[0].caution, undefined, 'repairs must not mutate the kept response');
+  }
+});
+
+test('missing or blank feature cautions are rejected even at the highest scores', () => {
+  for (const caution of [undefined, null, '', '   ', 82]) {
+    const result = api.normalizeFaceAiScores(face([100, 100, 100, 100, 100]));
+    result.categories[2].caution = caution;
+    const contract = api.validateKarmaAiContract('face', result, { lang: 'en' });
+    assert.ok(contract.errors.includes('categories[2].caution:non_empty_string'));
   }
 });
 

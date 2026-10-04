@@ -1555,6 +1555,7 @@ function validateFaceAiResponse(value, context = {}) {
       addAiScoreError(category.score, errors, `categories[${index}].score`);
       if (!Number.isInteger(category.score)) errors.push(`categories[${index}].score:integer`);
       if (!isNonEmptyAiText(category.desc)) errors.push(`categories[${index}].desc:non_empty_string`);
+      if (!isNonEmptyAiText(category.caution)) errors.push(`categories[${index}].caution:non_empty_string`);
     });
   }
   addFortuneObjectErrors(value.fortune, errors, 'fortune');
@@ -1585,7 +1586,7 @@ function validatePalmAiResponse(value) {
         errors.push(`lines[${index}]:object`);
         return;
       }
-      addRequiredAiTextErrors(line, ['name', 'length', 'desc'], errors, `lines[${index}].`);
+      addRequiredAiTextErrors(line, ['name', 'length', 'desc', 'caution'], errors, `lines[${index}].`);
       addAiScoreError(line.score, errors, `lines[${index}].score`);
     });
   }
@@ -2320,14 +2321,37 @@ function photoScoreInterpretationGuide(contractType) {
   const itemPath = contractType === 'face' ? 'categories' : 'lines';
   return `## 점수와 설명 일치 원칙
 - ${itemPath}의 각 desc는 실제 관찰 → 점수의 이유 → 전통 해석의 강점 또는 약점 → 점검할 행동 순서로 쓰되 3~4문장으로 정리하세요. 낮은 점수를 주고 설명에는 장점만 나열하지 마세요.
-- 75점 이상은 관찰 근거에 맞는 강점을 중심으로 설명하세요. 관찰된 아쉬움이 있으면 함께 짚되 없는 단점을 만들지 마세요.
+- 모든 항목에 caution을 반드시 쓰세요. 78~82점처럼 높은 점수여도 칭찬만 쓰면 불완전한 응답입니다. desc에는 관찰과 점수의 이유를, caution에는 같은 특징의 약점이나 주의점과 대응 행동을 1~2문장으로 쓰세요. 서버가 두 내용을 이어서 표시하므로 desc에 caution 문장을 반복하지 마세요.
+- 75점 이상도 caution에서 어떤 상황을 조심해야 하는지 밝히세요. 관찰된 아쉬움이 없다면 같은 강점이 지나칠 때 생길 수 있는 걸림돌을 전통 해석 안에서 조건부로 설명하세요. 실제로 보이지 않는 형태의 결함을 만들지 마세요.
 - 60~74점은 점수를 낮춘 구체적인 아쉬움이나 전통 해석의 주의점 1개 이상을 반드시 쓰세요. 어떤 상황에서 걸림돌로 읽는지와 점검할 행동을 설명하세요.
 - 60점 미만은 점수를 낮춘 근거와 전통 해석의 약점을 중심으로 쓰세요. 칭찬을 앞세우거나 약점을 곧바로 장점으로 바꿔 설명하지 마세요.
 - 낮은 점수의 원인이 흐림·가림·각도라면 확인할 수 없는 특징과 촬영 조건을 설명하세요. 관찰 한계를 성격이나 운세의 단점으로 바꾸지 마세요. 선이 없다는 해석도 해당 영역이 선명하게 보일 때만 가능합니다.
 - 약점은 관찰한 형태·비율·선의 끊김 등에 연결해 전통 해석 안에서 설명하세요. 사진만 보고 실제 성격 결함, 능력 부족, 질병, 가난, 이혼, 불운을 단정하지 마세요.
-- summary에는 가장 뚜렷한 강점과 75점 미만 항목 중 가장 아쉬운 부분을 함께 짚으세요. 낮은 항목이 모두 관찰 한계 때문이면 그 한계를 쓰고, 모든 항목이 75점 이상이면 단점을 억지로 만들지 마세요.
+- summary에는 가장 뚜렷한 강점과 우선 점검할 약점 또는 주의점을 함께 짚으세요. 모든 항목이 75점 이상이어도 주의점을 생략하지 마세요. 낮은 항목이 관찰 한계 때문이면 그 한계와 보이는 항목의 주의점을 구분하세요.
 - fortune에는 관련 항목의 약점이나 관찰 한계를 반영하세요. advice는 낮은 점수 항목에서 우선 점검할 행동으로 이어져야 합니다. 관찰 한계만 있다면 재촬영 방법을 안내하세요.
+- caution은 부위마다 다른 관찰 근거와 상황에 연결하세요. "장점이 많다", "큰 문제는 없다", "균형을 유지하세요"만 쓰거나 같은 주의점을 모든 부위에 반복하지 마세요. 전체 인상의 caution은 첫 다섯 부위 중 우선 점검할 주의점을 요약하세요.
 - 점수는 관찰 근거로 먼저 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 점수를 낮추거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
+}
+
+function mergePhotoAiContractPatch(base, patch, contractType) {
+  const key = contractType === 'face' ? 'categories' : contractType === 'palm' ? 'lines' : '';
+  if (key && Array.isArray(base?.[key]) && Array.isArray(patch?.[key])
+      && base[key].length === patch[key].length
+      && base[key].every(isPlainAiObject) && patch[key].every(isPlainAiObject)) {
+    patch = { ...patch, [key]: patch[key].map((item, index) => mergeAiContractPatch(base[key][index], item)) };
+  }
+  return mergeAiContractPatch(base, patch);
+}
+
+function formatPhotoAiCautions(value, contractType, lang) {
+  const key = contractType === 'face' ? 'categories' : contractType === 'palm' ? 'lines' : '';
+  if (!key || value?.error || !Array.isArray(value?.[key])) return value;
+  const label = lang === 'en' ? 'Watch out for' : '주의할 점';
+  return { ...value, [key]: value[key].map(item => {
+    const suffix = `${label}: ${item.caution.trim()}`;
+    const desc = item.desc.trim();
+    return { ...item, desc: desc.endsWith(suffix) ? desc : `${desc}\n\n${suffix}` };
+  }) };
 }
 
 async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '', contractContext = {}, analysisContext = {}) {
@@ -2370,11 +2394,11 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
         continue;
       }
       const parsed = parseAiJsonResponse(result.text);
-      let candidate = mergeAiContractPatch(accumulated, parsed);
+      let candidate = mergePhotoAiContractPatch(accumulated, parsed, contractType);
       if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), contractContext);
       if (contractType === 'palm') candidate = normalizePalmAiGrade(candidate);
       const contract = validateKarmaAiContract(contractType, candidate, { ...contractContext, lang: responseLang });
-      if (contract.ok) return candidate;
+      if (contract.ok) return formatPhotoAiCautions(candidate, contractType, responseLang);
       const previousErrors = accumulated
         ? validateKarmaAiContract(contractType, accumulated, { ...contractContext, lang: responseLang }).errors
         : null;
@@ -2942,12 +2966,12 @@ ${faceExpertRubric()}
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 관찰 2개와 전통적 상징을 구분해 설명. 실제 인생사 단정 금지)",
   "categories": [
-    {"name": "이마 (천정)", "score": null, "desc": "(3~4문장. forehead_observation과 일치하는 실제 형태와 점수 근거, 점수에 맞는 전통 해석의 강점 또는 약점, 점검할 행동)"},
-    {"name": "눈 (눈매)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 관계 표현의 강점 또는 주의점, 대화할 때 점검할 행동)"},
-    {"name": "코 (준두)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)"},
-    {"name": "입 (입술)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)"},
-    {"name": "턱/광대", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)"},
-    {"name": "전체 인상", "desc": "(3~4문장. 첫 다섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)"}
+    {"name": "이마 (천정)", "score": null, "desc": "(3~4문장. forehead_observation과 일치하는 실제 형태와 점수 근거, 점수에 맞는 전통 해석의 강점 또는 약점, 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "눈 (눈매)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 관계 표현의 강점 또는 주의점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "코 (준두)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "입 (입술)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "턱/광대", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "전체 인상", "desc": "(3~4문장. 첫 다섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
   ],
   "fortune": {
     "wealth": "(코·하관 관찰을 근거로 전통 관상에서 말하는 재물 관리 상징과 현실적인 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",
@@ -3137,12 +3161,12 @@ ${palmExpertRubric()}
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",
   "lines": [
-    {"name": "생명선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 생명선의 실제 깊이·연속성·호 형태와 점수 이유, 점수에 맞는 강점 또는 약점, 생활 점검 행동. 질병/사고 단정 금지)"},
-    {"name": "두뇌선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 실제 선의 시작·길이·기울기와 점수 이유, 전통 해석의 강점 또는 약점, 판단할 때 점검할 행동. 정신건강 추정 금지)"},
-    {"name": "감정선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 감정선의 위치·곡선·끊김과 점수 이유, 전통 해석의 강점 또는 관계에서 주의할 점, 대화할 때 점검할 행동)"},
-    {"name": "운명선", "score": null, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(3~4문장. 중앙 세로선의 선명도와 점수 이유, 전통 해석의 강점 또는 업무에서 주의할 점, 일할 때 점검할 행동)"},
-    {"name": "태양선", "score": null, "length": "있음/희미/없음/확인 어려움", "desc": "(3~4문장. 실제 가시성과 점수 이유, 전통 해석의 강점 또는 성취 표현의 약점, 성과를 알릴 때 점검할 행동. 성공 예측 금지)"},
-    {"name": "결혼선", "score": null, "length": "1개/2개/여러개/확인 어려움", "desc": "(3~4문장. 새끼손가락 아래 측면이 보일 때만 관찰과 점수 이유, 전통 해석의 강점 또는 주의점, 관계 점검 행동. 안 보이면 관찰 한계와 재촬영 방법만 설명)"}
+    {"name": "생명선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 생명선의 실제 깊이·연속성·호 형태와 점수 이유, 점수에 맞는 강점 또는 약점, 생활 점검 행동. 질병/사고 단정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "두뇌선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 실제 선의 시작·길이·기울기와 점수 이유, 전통 해석의 강점 또는 약점, 판단할 때 점검할 행동. 정신건강 추정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "감정선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 감정선의 위치·곡선·끊김과 점수 이유, 전통 해석의 강점 또는 관계에서 주의할 점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "운명선", "score": null, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(3~4문장. 중앙 세로선의 선명도와 점수 이유, 전통 해석의 강점 또는 업무에서 주의할 점, 일할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "태양선", "score": null, "length": "있음/희미/없음/확인 어려움", "desc": "(3~4문장. 실제 가시성과 점수 이유, 전통 해석의 강점 또는 성취 표현의 약점, 성과를 알릴 때 점검할 행동. 성공 예측 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "결혼선", "score": null, "length": "1개/2개/여러개/확인 어려움", "desc": "(3~4문장. 새끼손가락 아래 측면이 보일 때만 관찰과 점수 이유, 전통 해석의 강점 또는 주의점, 관계 점검 행동. 안 보이면 관찰 한계와 재촬영 방법만 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
   ],
   "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "(손 형태로 본 성격 민낯 2~3문장)"},
   "fortune": {
