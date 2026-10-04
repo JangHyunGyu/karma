@@ -154,6 +154,11 @@ test('palm API persists the corrected grade with the uploaded image before retur
       assert.equal(write.values[8], imageWrite.values[1]);
     }
     assert.doesNotMatch(prompt, /"overall_grade"\s*:/, 'the model must not be asked to generate a grade');
+    assert.doesNotMatch(prompt, /"(?:overall_score|score)"\s*:\s*\d+/, 'numeric examples must not anchor generation');
+    assert.match(prompt, /lines의 각 desc/);
+    assert.match(prompt, /60~74점/);
+    assert.match(prompt, /60점 미만/);
+    assert.match(prompt, /관찰 한계를 성격이나 운세의 단점으로 바꾸지 마세요/);
   }
 });
 

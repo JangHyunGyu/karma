@@ -2315,6 +2315,21 @@ function validatePhotoImageInput(image, mimeType, lang = 'ko') {
   return { image: encoded, mimeType: normalizedMime, status: 200 };
 }
 
+function photoScoreInterpretationGuide(contractType) {
+  if (!['face', 'palm'].includes(contractType)) return '';
+  const itemPath = contractType === 'face' ? 'categories' : 'lines';
+  return `## 점수와 설명 일치 원칙
+- ${itemPath}의 각 desc는 실제 관찰 → 점수의 이유 → 전통 해석의 강점 또는 약점 → 점검할 행동 순서로 쓰되 3~4문장으로 정리하세요. 낮은 점수를 주고 설명에는 장점만 나열하지 마세요.
+- 75점 이상은 관찰 근거에 맞는 강점을 중심으로 설명하세요. 관찰된 아쉬움이 있으면 함께 짚되 없는 단점을 만들지 마세요.
+- 60~74점은 점수를 낮춘 구체적인 아쉬움이나 전통 해석의 주의점 1개 이상을 반드시 쓰세요. 어떤 상황에서 걸림돌로 읽는지와 점검할 행동을 설명하세요.
+- 60점 미만은 점수를 낮춘 근거와 전통 해석의 약점을 중심으로 쓰세요. 칭찬을 앞세우거나 약점을 곧바로 장점으로 바꿔 설명하지 마세요.
+- 낮은 점수의 원인이 흐림·가림·각도라면 확인할 수 없는 특징과 촬영 조건을 설명하세요. 관찰 한계를 성격이나 운세의 단점으로 바꾸지 마세요. 선이 없다는 해석도 해당 영역이 선명하게 보일 때만 가능합니다.
+- 약점은 관찰한 형태·비율·선의 끊김 등에 연결해 전통 해석 안에서 설명하세요. 사진만 보고 실제 성격 결함, 능력 부족, 질병, 가난, 이혼, 불운을 단정하지 마세요.
+- summary에는 가장 뚜렷한 강점과 75점 미만 항목 중 가장 아쉬운 부분을 함께 짚으세요. 낮은 항목이 모두 관찰 한계 때문이면 그 한계를 쓰고, 모든 항목이 75점 이상이면 단점을 억지로 만들지 마세요.
+- fortune에는 관련 항목의 약점이나 관찰 한계를 반영하세요. advice는 낮은 점수 항목에서 우선 점검할 행동으로 이어져야 합니다. 관찰 한계만 있다면 재촬영 방법을 안내하세요.
+- 점수는 관찰 근거로 먼저 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 점수를 낮추거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
+}
+
 async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractType = '', contractContext = {}, analysisContext = {}) {
   if (!env?.AI?.analyze) {
     return { _apiError: getPhotoAnalysisMessage(lang, 'mediaNotConnected') };
@@ -2326,7 +2341,8 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   const colorFormatGuard = contractType === 'face'
     ? 'Exception for machine-readable fields: preserve personal_color.season and personal_color.undertone enum values in English and colors[].hex as #RRGGBB. Localize all descriptive text and color names.'
     : '';
-  const basePrompt = [String(prompt || ''), proseGuard, languageGuard, colorFormatGuard].filter(Boolean).join('\n\n');
+  const scoreGuide = photoScoreInterpretationGuide(contractType);
+  const basePrompt = [String(prompt || ''), scoreGuide, proseGuard, languageGuard, colorFormatGuard].filter(Boolean).join('\n\n');
   const maxAttempts = KARMA_AI_MAX_ATTEMPTS;
   let contractErrors = [];
   let lastError = null;
@@ -2926,12 +2942,12 @@ ${faceExpertRubric()}
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 관찰 2개와 전통적 상징을 구분해 설명. 실제 인생사 단정 금지)",
   "categories": [
-    {"name": "이마 (천정)", "score": null, "desc": "(2~3문장. forehead_observation과 일치하는 실제 형태와 점수 근거 후 전통적 상징을 조건부로 설명)"},
-    {"name": "눈 (눈매)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 관계 표현 상징을 조건부로 설명)"},
-    {"name": "코 (준두)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 현실감각·재물관리 상징을 조건부로 설명)"},
-    {"name": "입 (입술)", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 의사표현 상징을 조건부로 설명)"},
-    {"name": "턱/광대", "score": null, "desc": "(2~3문장. 실제 형태와 점수 근거 후 전통적인 지속력 상징을 조건부로 설명)"},
-    {"name": "전체 인상", "desc": "(2~3문장. 관찰 가능한 균형을 요약하고 전통 해석과 현실 확인 질문을 분리)"}
+    {"name": "이마 (천정)", "score": null, "desc": "(3~4문장. forehead_observation과 일치하는 실제 형태와 점수 근거, 점수에 맞는 전통 해석의 강점 또는 약점, 점검할 행동)"},
+    {"name": "눈 (눈매)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 관계 표현의 강점 또는 주의점, 대화할 때 점검할 행동)"},
+    {"name": "코 (준두)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)"},
+    {"name": "입 (입술)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)"},
+    {"name": "턱/광대", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)"},
+    {"name": "전체 인상", "desc": "(3~4문장. 첫 다섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)"}
   ],
   "fortune": {
     "wealth": "(코·하관 관찰을 근거로 전통 관상에서 말하는 재물 관리 상징과 현실적인 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",
@@ -3088,7 +3104,7 @@ ${palmExpertRubric()}
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 손바닥 폭, 손가락 길이/벌어짐, 엄지 각도, 생명선 깊이/끊김, 두뇌선 기울기, 감정선 위치, 운명선 선명도, 태양선 유무, 결혼선 가시성, 굳은살/흉터/조명/흐림 여부.
 - 각 \`lines.desc\`의 첫 문장은 반드시 해당 손금의 실제 관찰 특징으로 시작하세요. 관찰 없이 운세부터 말하지 마세요.
 - 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 낮추세요.
-- 점수는 사진별로 45~95 범위에서 분산하세요. 모든 항목을 75~85점으로 몰지 마세요.
+- 각 점수는 45~95 범위에서 실제 관찰을 근거로 독립적으로 정하세요. 모든 항목을 75~85점으로 몰거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요.
 - 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
 - summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 확인 어려운 손금 1개를 함께 언급해 이 손만의 대비를 만드세요.
@@ -3114,19 +3130,19 @@ ${palmExpertRubric()}
 6. 결혼선 - 측면이 보일 때만 관계 지속 패턴 참고
 7. 손 형태 - 성격 민낯
 
-반드시 아래 JSON 형식으로만 응답:
+반드시 아래 JSON 형식으로만 응답. score와 overall_score의 null은 자리표시자이므로 실제 관찰에 근거한 정수로 바꾸세요:
 {
-  "overall_score": 82,
+  "overall_score": null,
   "quality_assessment": "(사진 품질, 손바닥 전체 노출, 초점, 조명, 손금 선명도, 분석 한계)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",
   "lines": [
-    {"name": "생명선", "score": 85, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 생명선의 실제 깊이·연속성·호 형태 관찰부터 시작. 활력·회복력 중심, 질병/사고 단정 금지)"},
-    {"name": "두뇌선", "score": 78, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 실제 선의 시작·길이·기울기 관찰 후 전통적인 사고 방식 상징을 조건부로 설명. 정신건강 추정 금지)"},
-    {"name": "감정선", "score": 88, "length": "길다/보통/짧다/확인 어려움", "desc": "(2~3문장. 감정선의 위치·곡선·끊김 관찰부터 시작. 연애 패턴과 상처 처리 방식 중심으로 설명)"},
-    {"name": "운명선", "score": 75, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(2~3문장. 중앙 세로선의 선명도 관찰부터 시작. 직업 안정성·전환이 잦은 경향으로 설명)"},
-    {"name": "태양선", "score": 70, "length": "있음/희미/없음/확인 어려움", "desc": "(2~3문장. 실제 가시성 관찰 후 전통적인 성취 표현 상징을 조건부로 설명. 성공 예측 금지)"},
-    {"name": "결혼선", "score": 80, "length": "1개/2개/여러개/확인 어려움", "desc": "(2~3문장. 새끼손가락 아래 측면이 보이는 경우만 해석. 안 보이면 확인 어렵다고 명시)"}
+    {"name": "생명선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 생명선의 실제 깊이·연속성·호 형태와 점수 이유, 점수에 맞는 강점 또는 약점, 생활 점검 행동. 질병/사고 단정 금지)"},
+    {"name": "두뇌선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 실제 선의 시작·길이·기울기와 점수 이유, 전통 해석의 강점 또는 약점, 판단할 때 점검할 행동. 정신건강 추정 금지)"},
+    {"name": "감정선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 감정선의 위치·곡선·끊김과 점수 이유, 전통 해석의 강점 또는 관계에서 주의할 점, 대화할 때 점검할 행동)"},
+    {"name": "운명선", "score": null, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(3~4문장. 중앙 세로선의 선명도와 점수 이유, 전통 해석의 강점 또는 업무에서 주의할 점, 일할 때 점검할 행동)"},
+    {"name": "태양선", "score": null, "length": "있음/희미/없음/확인 어려움", "desc": "(3~4문장. 실제 가시성과 점수 이유, 전통 해석의 강점 또는 성취 표현의 약점, 성과를 알릴 때 점검할 행동. 성공 예측 금지)"},
+    {"name": "결혼선", "score": null, "length": "1개/2개/여러개/확인 어려움", "desc": "(3~4문장. 새끼손가락 아래 측면이 보일 때만 관찰과 점수 이유, 전통 해석의 강점 또는 주의점, 관계 점검 행동. 안 보이면 관찰 한계와 재촬영 방법만 설명)"}
   ],
   "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "(손 형태로 본 성격 민낯 2~3문장)"},
   "fortune": {

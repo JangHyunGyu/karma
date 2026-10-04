@@ -118,6 +118,8 @@ test('vision retries missing forehead evidence and preserves the uploaded image 
   const result = await api.callKarmaVisionAi('Inspect the photo.', imageUrl, env, 'en', 'face');
   assert.equal(requests.length, 2);
   assert.match(requests[1].prompt, /forehead_observation/);
+  assert.ok(requests.every(request => request.prompt.includes('60~74점') && request.prompt.includes('60점 미만')),
+    'score interpretation rules must survive contract repair retries');
   assert.ok(requests.every(request => request.media[0].url === imageUrl));
   assert.equal(result.overall_score, 81);
   assert.equal(result.categories[5].score, 81);
@@ -167,6 +169,9 @@ test('face handler persists the image before analysis and stores the same calcul
   assert.deepEqual(JSON.parse(imageWrite.values[5]), result);
   assert.match(imageWrite.values[1], /^karma\/face\//);
   assert.doesNotMatch(prompt, /"(?:overall_score|score)"\s*:\s*\d+/, 'numeric examples must not anchor generation');
+  assert.match(prompt, /categories의 각 desc/);
+  assert.match(prompt, /낮은 점수를 주고 설명에는 장점만 나열하지 마세요/);
+  assert.match(prompt, /관찰 한계를 성격이나 운세의 단점으로 바꾸지 마세요/);
 });
 
 test('both face pages display photo limitations safely and retain old shared results', () => {
