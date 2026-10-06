@@ -4330,12 +4330,10 @@ async function handlePostErrorLog(request, env) {
   return json({ ok: true });
 }
 
-// 기본값은 아직 해결 처리하지 않은 오류(resolved_at IS NULL)만 보여 줍니다. ?status=all이면 전체를 봅니다.
-async function handleGetErrorLog(env, url) {
+async function handleGetErrorLog(env) {
   try {
-    const includeResolved = url?.searchParams?.get('status') === 'all' || url?.searchParams?.get('all') === '1';
     const { results } = await env.DB.prepare(
-      `SELECT * FROM error_logs WHERE app_id = 'karma'${includeResolved ? '' : ' AND resolved_at IS NULL'} ORDER BY created_at DESC LIMIT 50`
+      "SELECT * FROM error_logs WHERE app_id = 'karma' ORDER BY created_at DESC LIMIT 50"
     ).all();
     return json({ errors: results });
   } catch {
@@ -4618,7 +4616,7 @@ export default {
       if (path === '/api/error-log' && method === 'GET') {
         const authError = getKarmaAdminAuthError(request, env);
         if (authError) return authError;
-        return handleGetErrorLog(env, url);
+        return handleGetErrorLog(env);
       }
 
       // ---- Share Routes ----
