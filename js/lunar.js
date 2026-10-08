@@ -590,7 +590,24 @@ function hasLeapMonth(year, month) {
   return getLeapMonth(year) === month;
 }
 
+// Month length for the birth-date picker. Lunar months are 29 or 30 days,
+// including leap months. Solar months follow the Gregorian calendar.
+function daysInCalendarMonth(calendarType, year, monthValue) {
+  const raw = String(monthValue ?? '');
+  const isLeap = raw.startsWith('leap_');
+  const month = parseInt(isLeap ? raw.slice(5) : raw, 10);
+  const numericYear = parseInt(year, 10);
+  if (calendarType === 'lunar') {
+    if (!Number.isInteger(numericYear) || numericYear < LUNAR_START_YEAR || numericYear > LUNAR_END_YEAR) return 30;
+    if (!Number.isInteger(month) || month < 1 || month > 12) return 30;
+    const lunarDays = isLeap ? getLeapMonthDays(numericYear) : getMonthDays(numericYear, month);
+    return lunarDays >= 29 && lunarDays <= 30 ? lunarDays : 30;
+  }
+  if (!Number.isInteger(numericYear) || !Number.isInteger(month) || month < 1 || month > 12) return 31;
+  return new Date(numericYear, month, 0).getDate();
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { lunarToSolar, getLunarYearInfo, hasLeapMonth };
+  module.exports = { lunarToSolar, getLunarYearInfo, hasLeapMonth, daysInCalendarMonth };
 }

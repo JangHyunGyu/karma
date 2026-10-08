@@ -1745,6 +1745,7 @@ const KARMA_TEXT_ANALYSIS_MESSAGES = {
     serverError: '서버 오류가 발생했습니다.',
     birthDateRequired: '생년월일은 필수입니다.',
     bothBirthDatesRequired: '두 사람의 생년월일은 필수입니다.',
+    rateLimited: '분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
   },
   en: {
     incompleteAiResponse: 'The AI response was incomplete. Please try again.',
@@ -1756,6 +1757,7 @@ const KARMA_TEXT_ANALYSIS_MESSAGES = {
     serverError: 'A server error occurred.',
     birthDateRequired: 'Date of birth is required.',
     bothBirthDatesRequired: 'Dates of birth are required for both people.',
+    rateLimited: 'Too many analysis requests. Please try again later.',
   },
 };
 
@@ -2621,10 +2623,34 @@ async function recordKarmaAnalysis(env, {
   }
 }
 
+async function karmaRequestLang(request) {
+  let lang = /^en\b/i.test(request?.headers?.get?.('Accept-Language') || '') ? 'en' : 'ko';
+  try {
+    const body = await request.clone().json();
+    if (isPlainAiObject(body) && body.lang != null) lang = normalizeKarmaTextAnalysisLang(body.lang);
+  } catch (_) {}
+  return lang;
+}
+
+async function localizeKarmaTextGateError(response, lang) {
+  let result = {};
+  try { result = await response.clone().json(); } catch (_) {}
+  if (!isPlainAiObject(result)) result = {};
+  const status = Number(response?.status || 500);
+  const errorMessage = status === 429
+    ? getKarmaTextAnalysisMessage(lang, 'rateLimited')
+    : String(result.error || getKarmaTextAnalysisMessage(lang, 'serverError'));
+  const localizedResult = { ...result, error: errorMessage };
+  const retryAfter = response?.headers?.get?.('Retry-After');
+  return json(localizedResult, status, retryAfter ? { 'Retry-After': retryAfter } : {});
+}
+
 async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'KARMA_AI') {
   const isPhotoAnalysis = ['face', 'palm'].includes(analysisType);
   const rateLimitError = await enforceKarmaAnalysisRateLimit(request, env, analysisType);
-  if (rateLimitError && !isPhotoAnalysis) return rateLimitError;
+  if (rateLimitError && !isPhotoAnalysis) {
+    return localizeKarmaTextGateError(rateLimitError, await karmaRequestLang(request));
+  }
   const requestForLog = isPhotoAnalysis ? null : request.clone();
   const requestId = crypto.randomUUID();
   const analysisContext = { r2Key: '', aiCalled: false };
@@ -3323,6 +3349,10 @@ function buildSajuEvidence(saju) {
   };
 }
 
+function karmaTodayKst(now = new Date()) {
+  return new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 function getAgeAt(birthDate, targetDate) {
   if (!birthDate) return null;
   const [by, bm, bd] = birthDate.split('-').map(Number);
@@ -3393,7 +3423,7 @@ function buildSajuPrompt(saju, gender, lang, birthDate) {
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
   const rel = analyzeInternalRelations(saju.pillars);
   const evidence = buildSajuEvidence(saju);
-  const activeDaeun = formatActiveDaeun(saju, birthDate, new Date());
+  const activeDaeun = formatActiveDaeun(saju, birthDate, karmaTodayKst());
 
   const system = `당신은 사주 원국의 계산값을 근거로 설명하는 명리 해설가입니다. 좋은 말이나 나쁜 말을 만들기보다 입력된 원국이 다른 이유를 정확히 구분하세요.
 
@@ -3744,7 +3774,7 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, b
   const { excess: excessB, lack: lackB } = getOhangAnalysis(sajuB.ohangCount);
   const evidenceA = buildSajuEvidence(sajuA);
   const evidenceB = buildSajuEvidence(sajuB);
-  const today = new Date();
+  const today = karmaTodayKst();
   const activeDaeunA = formatActiveDaeun(sajuA, birthDateA, today);
   const activeDaeunB = formatActiveDaeun(sajuB, birthDateB, today);
 
@@ -4023,7 +4053,7 @@ async function handleFortune(request, env) {
   if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
-  const year = reqYear || new Date().getFullYear();
+  const year = reqYear || Number(karmaTodayKst().slice(0, 4));
 
   if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
@@ -4043,8 +4073,7 @@ async function handleDaily(request, env) {
   if (target_date && /^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
     todayStr = target_date;
   } else {
-    const today = new Date();
-    todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    todayStr = karmaTodayKst();
   }
 
   if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);

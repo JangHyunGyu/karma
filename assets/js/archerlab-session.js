@@ -52,6 +52,8 @@
   function visible() { if (document.visibilityState === 'visible') void refresh(); }
   function restored(event) { if (event.persisted) void refresh(); }
   function bindEvents() {
+    document.removeEventListener('visibilitychange', visible);
+    window.removeEventListener('pageshow', restored);
     document.addEventListener('visibilitychange', visible);
     window.addEventListener('pageshow', restored);
   }

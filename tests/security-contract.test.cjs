@@ -18,7 +18,10 @@ globalThis.__karmaSecurity = {
   getKarmaRateLimitPolicy,
   saveKarmaAnalysisImageToR2,
   handleFaceReading,
-  handlePalmReading
+  handlePalmReading,
+  karmaTodayKst,
+  karmaRequestLang,
+  localizeKarmaTextGateError
 };`;
 const context = {
   console: { log() {}, warn() {}, error() {} },
@@ -161,5 +164,23 @@ test('AI analysis budgets distinguish photo and text traffic while photo handler
   );
   assert.match(loggedHandler, /await enforceKarmaAnalysisRateLimit\(request, env, analysisType\)/);
   assert.match(loggedHandler, /rateLimitError && !isPhotoAnalysis/);
+  assert.match(loggedHandler, /localizeKarmaTextGateError\(rateLimitError, await karmaRequestLang\(request\)\)/);
   assert.match(loggedHandler, /handler\(request, env, requestId, rateLimitError, analysisContext\)/);
+});
+
+test('text rate limits use the JSON language and KST dates ignore the runtime timezone', async () => {
+  assert.equal(security.karmaTodayKst(new Date('2026-10-08T15:30:00Z')), '2026-10-09');
+  assert.equal(security.karmaTodayKst(new Date('2026-10-08T14:59:00Z')), '2026-10-08');
+  const request = new Request('https://karma-api.example/api/saju', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept-Language': 'ko' },
+    body: JSON.stringify({ lang: 'en', birth_date: '1990-01-01' }),
+  });
+  assert.equal(await security.karmaRequestLang(request), 'en');
+  const localized = await security.localizeKarmaTextGateError(jsonResponse({
+    error: '분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+  }, 429, { 'Retry-After': '12' }), 'en');
+  assert.equal(localized.status, 429);
+  assert.equal(localized.headers.get('Retry-After'), '12');
+  assert.equal((await localized.json()).error, 'Too many analysis requests. Please try again later.');
 });

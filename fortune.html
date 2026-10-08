@@ -201,8 +201,8 @@
   </div>
 </section>
 
-<script src="/js/lunar.js?v=1"></script>
-<script src="/js/components.js?v=10"></script>
+<script src="/js/lunar.js?v=2"></script>
+<script src="/js/components.js?v=12"></script>
 <script>
 window.KarmaShare = window.KarmaShare || {
   _pendingInit: null,
@@ -250,9 +250,8 @@ async function doFortune() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(fortuneInput),
     });
-    if (!resp.ok) { alert(_L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
-    const data = await resp.json();
-    if (data.error || !data.fortune) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error || !data.fortune) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
     window._fortuneInput = augmentShareInput(fortuneInput);
     window._fortuneResult = data;
     renderFortune(data);

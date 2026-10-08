@@ -237,8 +237,8 @@
 
 </div>
 
-<script src="/js/lunar.js?v=1"></script>
-<script src="/js/components.js?v=10"></script>
+<script src="/js/lunar.js?v=2"></script>
+<script src="/js/components.js?v=12"></script>
 <script>
 window.KarmaShare = window.KarmaShare || {
   _pendingInit: null,
@@ -265,14 +265,14 @@ function createDateSelectsFor(containerId, prefix, defY, defM, defD) {
   html += '</div>';
   // Year
   html += '<div class="date-select-group"><label>'+yearLabel+'</label><select id="'+prefix+'Year" onchange="updateMonthsFor(\''+prefix+'\');updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
-  for (let y = thisYear - 5; y >= thisYear - 100; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
+  for (let y = thisYear; y >= 1920; y--) html += '<option value="'+y+'" '+(y==defY?'selected':'')+'>'+y+'</option>';
   html += '</select></div>';
   // Month
   html += '<div class="date-select-group"><label>'+monthLabel+'</label><select id="'+prefix+'Month" onchange="updateDaysFor(\''+prefix+'\');saveCompatInputs()">';
   for (let m = 1; m <= 12; m++) html += '<option value="'+m+'" '+(m==defM?'selected':'')+'>'+m+'</option>';
   html += '</select></div>';
   // Day
-  html += '<div class="date-select-group"><label>'+dayLabel+'</label><select id="'+prefix+'Day">';
+  html += '<div class="date-select-group"><label>'+dayLabel+'</label><select id="'+prefix+'Day" onchange="saveCompatInputs()">';
   const days = new Date(defY, defM, 0).getDate();
   for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d==defD?'selected':'')+'>'+d+'</option>';
   html += '</select></div>';
@@ -312,33 +312,7 @@ function updateMonthsFor(prefix) {
   } else {
     monthSelect.value = monthSelect.options[0]?.value || '1';
   }
-  // Recreate custom combo
-  const combo = monthSelect.closest('.combo');
-  if (combo) {
-    const dropdown = combo.querySelector('.combo-dropdown');
-    const trigger = combo.querySelector('.combo-trigger span:first-child');
-    dropdown.innerHTML = '';
-    Array.from(monthSelect.options).forEach(opt => {
-      const div = document.createElement('div');
-      div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
-      div.textContent = opt.textContent;
-      div.dataset.value = opt.value;
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        monthSelect.value = opt.value;
-        trigger.textContent = opt.textContent;
-        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
-        div.classList.add('selected');
-        combo.classList.remove('open');
-        if (typeof setComboLayerState === 'function') setComboLayerState(combo, false);
-        updateDaysFor(prefix);
-        saveCompatInputs();
-      });
-      dropdown.appendChild(div);
-    });
-    const selOpt = monthSelect.options[monthSelect.selectedIndex];
-    if (trigger && selOpt) trigger.textContent = selOpt.textContent;
-  }
+  if (typeof syncComboFromSelect === 'function') syncComboFromSelect(monthSelect);
 }
 function updateDaysFor(prefix) {
   const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
@@ -346,10 +320,14 @@ function updateDaysFor(prefix) {
   const sel = document.getElementById(prefix+'Day');
   if (!sel) return;
   const cur = parseInt(sel.value) || 1;
-  const days = (_compatCalType[prefix] === 'lunar') ? 30 : new Date(y, parseInt(mVal), 0).getDate();
+  const days = typeof daysInCalendarMonth === 'function'
+    ? daysInCalendarMonth(_compatCalType[prefix], y, mVal)
+    : ((_compatCalType[prefix] === 'lunar') ? 30 : new Date(y, parseInt(mVal, 10), 0).getDate());
+  const selected = Math.min(cur, days);
   let html = '';
-  for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d===Math.min(cur,days)?'selected':'')+'>'+d+'</option>';
+  for (let d = 1; d <= days; d++) html += '<option value="'+d+'" '+(d===selected?'selected':'')+'>'+d+'</option>';
   sel.innerHTML = html;
+  if (typeof syncComboFromSelect === 'function') syncComboFromSelect(sel);
 }
 function getDateFor(prefix) {
   const y = document.getElementById(prefix+'Year')?.value;
@@ -374,13 +352,35 @@ function saveCompatInputs() {
     const el = document.getElementById(id);
     if (el) data[id] = el.value;
   });
+  data.calendarA = _compatCalType.a;
+  data.calendarB = _compatCalType.b;
   localStorage.setItem(COMPAT_KEY, JSON.stringify(data));
+}
+function restoreCompatCalendar(prefix, type) {
+  if (type !== 'lunar' && type !== 'solar') return;
+  const root = document.getElementById(prefix === 'a' ? 'dateSelectsA' : 'dateSelectsB');
+  const btn = root?.querySelector('.cal-btn[data-cal="' + type + '"]');
+  if (btn) setCompatCalType(btn, prefix, type);
 }
 function restoreCompatInputs() {
   try {
     const data = JSON.parse(localStorage.getItem(COMPAT_KEY) || '{}');
     if (!data.aYear) return false;
-    Object.entries(data).forEach(([id, val]) => setComboValue(id, val));
+    if (data.aYear) setComboValue('aYear', data.aYear);
+    if (data.bYear) setComboValue('bYear', data.bYear);
+    restoreCompatCalendar('a', data.calendarA || 'solar');
+    restoreCompatCalendar('b', data.calendarB || 'solar');
+    ['a', 'b'].forEach(prefix => {
+      const month = data[prefix + 'Month'];
+      const day = data[prefix + 'Day'];
+      if (month) setComboValue(prefix + 'Month', month);
+      updateDaysFor(prefix);
+      if (day) setComboValue(prefix + 'Day', day);
+    });
+    ['genderA', 'timeA', 'birthLocationA', 'genderB', 'timeB', 'birthLocationB'].forEach(id => {
+      if (data[id]) setComboValue(id, data[id]);
+    });
+    saveCompatInputs();
     return true;
   } catch { return false; }
 }
@@ -416,9 +416,8 @@ async function doCompat() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(compatInput),
     });
-    if (!resp.ok) { alert('A server error occurred. Please try again later.'); return; }
-    const data = await resp.json();
-    if (data.error) { alert(data.error); return; }
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.error) { alert(data.error || 'A server error occurred. Please try again later.'); return; }
     window._compatInput = compatInput;
     window._compatResult = data;
     renderResult(data);

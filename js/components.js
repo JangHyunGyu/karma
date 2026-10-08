@@ -198,16 +198,19 @@ function saveInputs() {
 function restoreInputs() {
   try {
     const data = JSON.parse(safeLocalStorageGet(STORAGE_KEY) || '{}');
+    if (!document.getElementById('birthYear')) return;
     if (data.year) setComboValue('birthYear', data.year);
-    if (data.month) setComboValue('birthMonth', data.month);
-    if (data.day) setComboValue('birthDay', data.day);
-    if (data.gender) setComboValue('gender', data.gender);
-    if (data.birthTime) setComboValue('birthTime', data.birthTime);
-    if (data.birthLocation) setComboValue('birthLocation', data.birthLocation);
     if (data.calendarType === 'lunar') {
       const lunarBtn = document.querySelector('.cal-btn[data-cal="lunar"]');
       if (lunarBtn) setCalendarType(lunarBtn, 'lunar');
     }
+    if (data.month) setComboValue('birthMonth', data.month);
+    updateDays();
+    if (data.day) setComboValue('birthDay', data.day);
+    if (data.gender) setComboValue('gender', data.gender);
+    if (data.birthTime) setComboValue('birthTime', data.birthTime);
+    if (data.birthLocation) setComboValue('birthLocation', data.birthLocation);
+    saveInputs();
   } catch {}
 }
 
@@ -405,6 +408,40 @@ function createCombo(selectEl) {
   return combo;
 }
 
+// Rebuild the visible list after the hidden select options change.
+function syncComboFromSelect(selectEl) {
+  if (!selectEl) return;
+  const combo = selectEl.closest('.combo');
+  if (!combo) return;
+  const dropdown = combo.querySelector('.combo-dropdown');
+  const trigger = combo.querySelector('.combo-trigger span:first-child');
+  if (!dropdown) return;
+  const lang = document.documentElement.lang || 'ko';
+  const labelOf = (el) => el?.dataset?.[lang] || el?.dataset?.ko || el?.textContent || '';
+  dropdown.innerHTML = '';
+  Array.from(selectEl.options).forEach(opt => {
+    const div = document.createElement('div');
+    div.className = 'combo-option' + (opt.value === selectEl.value ? ' selected' : '');
+    if (opt.dataset.ko) div.dataset.ko = opt.dataset.ko;
+    if (opt.dataset.en) div.dataset.en = opt.dataset.en;
+    div.textContent = labelOf(opt);
+    div.dataset.value = opt.value;
+    div.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectEl.value = opt.value;
+      if (trigger) trigger.textContent = labelOf(div);
+      dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
+      div.classList.add('selected');
+      combo.classList.remove('open');
+      setComboLayerState(combo, false);
+      selectEl.dispatchEvent(new Event('change'));
+    });
+    dropdown.appendChild(div);
+  });
+  const selected = selectEl.options[selectEl.selectedIndex];
+  if (trigger && selected) trigger.textContent = labelOf(selected);
+}
+
 // ===== 생년월일 셀렉트 =====
 function createDateSelects(containerId, defY, defM, defD) {
   const container = document.getElementById(containerId);
@@ -420,7 +457,7 @@ function createDateSelects(containerId, defY, defM, defD) {
   html += '</div>';
   // 년
   html += '<div class="date-select-group"><label data-ko="년" data-en="Year">' + _L('년','Year') + '</label><select id="birthYear" onchange="updateMonths();updateDays();saveInputs()">';
-  for (let y = thisYear - 5; y >= thisYear - 100; y--) html += `<option value="${y}" ${y==defY?'selected':''}>${y}</option>`;
+  for (let y = thisYear; y >= 1920; y--) html += `<option value="${y}" ${y==defY?'selected':''}>${y}</option>`;
   html += '</select></div>';
   // 월
   html += '<div class="date-select-group"><label data-ko="월" data-en="Month">' + _L('월','Month') + '</label><select id="birthMonth" onchange="updateDays();saveInputs()">';
@@ -494,35 +531,7 @@ function updateMonths() {
     monthSelect.value = monthSelect.options[0]?.value || '1';
   }
 
-  // 커스텀 콤보 드롭다운 재생성
-  const combo = monthSelect.closest('.combo');
-  if (combo) {
-    const dropdown = combo.querySelector('.combo-dropdown');
-    const trigger = combo.querySelector('.combo-trigger span:first-child');
-    dropdown.innerHTML = '';
-    Array.from(monthSelect.options).forEach(opt => {
-      const div = document.createElement('div');
-      div.className = 'combo-option' + (opt.value === monthSelect.value ? ' selected' : '');
-      if (opt.dataset.ko) div.dataset.ko = opt.dataset.ko;
-      if (opt.dataset.en) div.dataset.en = opt.dataset.en;
-      div.textContent = (opt.dataset[document.documentElement.lang] || opt.textContent);
-      div.dataset.value = opt.value;
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        monthSelect.value = opt.value;
-        trigger.textContent = (opt.dataset[document.documentElement.lang] || opt.textContent);
-        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
-        div.classList.add('selected');
-        combo.classList.remove('open');
-        setComboLayerState(combo, false);
-        updateDays();
-        saveInputs();
-      });
-      dropdown.appendChild(div);
-    });
-    const selOpt = monthSelect.options[monthSelect.selectedIndex];
-    if (trigger && selOpt) trigger.textContent = selOpt.textContent;
-  }
+  syncComboFromSelect(monthSelect);
 }
 
 function updateDays() {
@@ -533,8 +542,10 @@ function updateDays() {
   if (!daySelect) return;
 
   const curDay = parseInt(daySelect.value) || 1;
-  // 음력이면 음력 일수 사용 (기본 30일)
-  const daysInMonth = (_calendarType === 'lunar') ? 30 : new Date(y, m, 0).getDate();
+  const monthValue = document.getElementById('birthMonth')?.value || '1';
+  const daysInMonth = typeof daysInCalendarMonth === 'function'
+    ? daysInCalendarMonth(_calendarType, y, monthValue)
+    : (_calendarType === 'lunar' ? 30 : new Date(y, m, 0).getDate());
   const newDay = Math.min(curDay, daysInMonth);
 
   // select 옵션 재생성
@@ -549,31 +560,11 @@ function updateDays() {
     daySelect.appendChild(opt);
   }
 
-  // 커스텀 콤보 드롭다운 재생성
-  if (dayCombo) {
-    const dropdown = dayCombo.querySelector('.combo-dropdown');
-    const trigger = dayCombo.querySelector('.combo-trigger span:first-child');
-    dropdown.innerHTML = '';
-    for (let d = 1; d <= daysInMonth; d++) {
-      const div = document.createElement('div');
-      div.className = 'combo-option' + (d === newDay ? ' selected' : '');
-      div.dataset.ko = d + '일';
-      div.dataset.en = String(d);
-      div.textContent = _L(d + '일', d);
-      div.dataset.value = d;
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        daySelect.value = d;
-        trigger.textContent = _L(d + '일', d);
-        dropdown.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
-        div.classList.add('selected');
-        dayCombo.classList.remove('open');
-        saveInputs();
-      });
-      dropdown.appendChild(div);
-    }
-    trigger.textContent = _L(newDay + '일', newDay);
+  if (dayCombo?.classList.contains('open')) {
+    dayCombo.classList.remove('open');
+    setComboLayerState(dayCombo, false);
   }
+  syncComboFromSelect(daySelect);
 }
 
 // ===== 콤보 언어 전환 =====

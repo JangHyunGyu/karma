@@ -356,7 +356,7 @@ test('photo pages tell users how long face and palm analysis usually takes', () 
   for (const [page, parts] of Object.entries(pages)) {
     const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
     for (const part of parts) assert.ok(html.includes(part), `${page} missing ${part}`);
-    assert.match(html, /components\.js\?v=11/);
+    assert.match(html, /components\.js\?v=12/);
   }
   const helper = fs.readFileSync(path.join(__dirname, '../js/components.js'), 'utf8');
   assert.match(helper, /function startKarmaPhotoWait/);
