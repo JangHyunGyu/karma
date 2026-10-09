@@ -453,6 +453,16 @@ function isAdultFaceAgeInput(age) {
   const years = /^\d{1,3}(?:\uC138)?$/.test(value) ? Number.parseInt(value, 10) : NaN;
   return Number.isFinite(years) && years >= 20 && years < 130;
 }
+function cosmeticConsultationItems(value) {
+  let current = value;
+  for (let depth = 0; depth < 2 && typeof current === 'string'; depth += 1) {
+    const text = current.trim();
+    if (!text) return [];
+    try { current = JSON.parse(text); } catch (_) { return []; }
+  }
+  if (current && typeof current === 'object' && !Array.isArray(current)) current = [current];
+  return Array.isArray(current) ? current.filter(item => item && typeof item === 'object') : [];
+}
 function renderAppearance(d) {
   const appearanceCard = document.getElementById('appearance');
   const colorCard = document.getElementById('personalColor');
@@ -500,10 +510,11 @@ function renderAppearance(d) {
       + row(_L('사진의 한계와 확인 방법', 'Limitations & how to check'), c.limitation);
     colorCard.style.display = '';
   }
-  if (adult && Array.isArray(a.cosmetic_consultation) && a.cosmetic_consultation.length) {
+  const cosmeticItems = cosmeticConsultationItems(a && a.cosmetic_consultation);
+  if (adult && cosmeticItems.length) {
     cosmeticCard.innerHTML = '<h2>' + _L('💬 성형 상담 포인트', '💬 Cosmetic Consultation Points') + '</h2>'
       + '<p class="appearance-note">' + _L('성형을 고민 중이라면 전문의 상담 때 참고하세요. 사진만으로 수술의 필요성·적합성·결과를 판단할 수 없어요.', 'If you are considering a cosmetic procedure, use these points in a consultation with a qualified clinician. A photo cannot establish whether surgery is needed, suitable, or how it will turn out.') + '</p>'
-      + a.cosmetic_consultation.filter(item => item && typeof item === 'object').map(item => '<div class="appearance-row"><h3>' + esc(item.area) + '</h3>'
+      + cosmeticItems.map(item => '<div class="appearance-row"><h3>' + esc(item.area) + '</h3>'
         + row(_L('사진에서 보이는 특징', 'Visible features'), item.observation)
         + row(_L('바꾸려는 인상', 'Desired change'), item.goal)
         + (Array.isArray(item.options) ? item.options : []).filter(option => option && typeof option === 'object').map(option =>

@@ -1420,6 +1420,34 @@ function normalizeFaceAiScores(value) {
   };
 }
 
+function parseLooseAiJson(value) {
+  let current = value;
+  for (let depth = 0; depth < 2 && typeof current === 'string'; depth += 1) {
+    const text = current.trim();
+    if (!text) return null;
+    try {
+      current = JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+  return current;
+}
+
+function coerceCosmeticConsultation(value) {
+  const parsed = typeof value === 'string' ? parseLooseAiJson(value) : value;
+  const items = Array.isArray(parsed) ? parsed : (isPlainAiObject(parsed) ? [parsed] : []);
+  return items.filter(isPlainAiObject).map(item => {
+    if (typeof item.options !== 'string') {
+      return isPlainAiObject(item.options) ? { ...item, options: [item.options] } : item;
+    }
+    const options = parseLooseAiJson(item.options);
+    if (Array.isArray(options)) return { ...item, options };
+    if (isPlainAiObject(options)) return { ...item, options: [options] };
+    return { ...item, options: [] };
+  });
+}
+
 function isAdultFaceAge(age) {
   const value = String(age ?? '').trim();
   if (['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(value)) {
@@ -1438,11 +1466,12 @@ function normalizeFaceAppearance(value, context = {}) {
     if (['남성', 'male'].includes(context.gender)) appearance.style.makeup = '';
     if (['여성', 'female'].includes(context.gender)) appearance.style.grooming = '';
   }
+  appearance.cosmetic_consultation = coerceCosmeticConsultation(appearance.cosmetic_consultation);
   if (!isAdultFaceAge(context.age) || appearance.adult_subject !== true) {
     appearance.sex_appeal = '';
     appearance.cosmetic_consultation = [];
   }
-  if (Array.isArray(appearance.cosmetic_consultation) && appearance.cosmetic_consultation.length > 2) {
+  if (appearance.cosmetic_consultation.length > 2) {
     appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
   }
 
@@ -2951,6 +2980,7 @@ ${faceExpertRubric()}
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
 - adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
 - cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위만 최대 2개 쓰고, 없으면 빈 배열로 두세요.
+- cosmetic_consultation과 각 항목의 options는 JSON 배열입니다. 배열 전체를 따옴표로 감싼 문자열로 반환하지 마세요.
 - 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
 - question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.
 - observation은 현재 보이는 특징만 씁니다. "입체감을 살리면 더 세련되어진다" 같은 제안을 관찰인 것처럼 쓰지 마세요. goal도 "조화롭고 세련되게"로 끝내지 말고 어느 선을 덜 강조하거나 어느 부위가 더 드러나게 하려는지 밝히세요. 정면 사진 하나에서 측면 돌출 정도를 확정하지 마세요.
@@ -3024,7 +3054,7 @@ ${faceExpertRubric()}
     "style": {"hair": "(가르마·기장·볼륨 위치와 얼굴 비율상의 이유)", "accessories": "(어울리는 액세서리의 종류·크기·형태와 이유. 안경은 어울릴 때만 포함. 제안 근거가 없으면 빈 문자열)", "photo": "(시선·턱 방향·입매 중 바꿔 볼 행동과 강조되는 특징)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
     "adult_subject": null,
     "sex_appeal": "(항상 작성: 가장 눈에 띄는 부위 하나의 실제 형태, 그 형태가 만드는 인상, 그 부위를 살릴 표정·시선·각도를 2~3문장으로.)",
-    "cosmetic_consultation": '[{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]'
+    "cosmetic_consultation": [{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]
   },
   "personal_color": {
     "season": "(spring/summer/autumn/winter/undetermined 중 하나)",

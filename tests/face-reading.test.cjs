@@ -337,6 +337,33 @@ test('english personal-color enums nested under appearance are not Korean-langua
   assert.equal(contract.errors.some(error => String(error).includes('korean_only')), false);
 });
 
+test('stringified cosmetic consultation is restored as an array for adults', () => {
+  const value = face(undefined, 'ko');
+  const items = value.appearance.cosmetic_consultation;
+  value.appearance.cosmetic_consultation = JSON.stringify(JSON.stringify(items));
+  const normalized = api.normalizeFaceAppearance(value, { gender: '여성', age: '30대' });
+  assert.equal(normalized.appearance.cosmetic_consultation[0].area, items[0].area);
+  assert.equal(normalized.appearance.cosmetic_consultation[0].options[0].name, items[0].options[0].name);
+  assert.equal(api.validateKarmaAiContract('face', api.normalizeFaceAiScores(normalized), { lang: 'ko', gender: '여성', age: '30대' }).ok, true);
+
+  const teen = face(undefined, 'ko');
+  teen.appearance.cosmetic_consultation = JSON.stringify(items);
+  assert.deepEqual(Array.from(api.normalizeFaceAppearance(teen, { gender: '여성', age: '10대' }).appearance.cosmetic_consultation), []);
+});
+
+test('a quoted cosmetic consultation is shown without another model call', async () => {
+  const partial = face(undefined, 'ko');
+  const name = partial.appearance.cosmetic_consultation[0].options[0].name;
+  partial.appearance.cosmetic_consultation = JSON.stringify(partial.appearance.cosmetic_consultation);
+  let calls = 0;
+  const result = await api.callKarmaVisionAi('Inspect the photo.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() { calls += 1; return { text: JSON.stringify(partial) }; } },
+  }, 'ko', 'face', { gender: '여성', age: '30대' });
+  assert.equal(calls, 1);
+  assert.equal(result._apiError, undefined);
+  assert.equal(result.appearance.cosmetic_consultation[0].options[0].name, name);
+});
+
 test('more than two cosmetic suggestions are trimmed instead of failing the reading', () => {
   const value = face(undefined, 'ko');
   const item = value.appearance.cosmetic_consultation[0];
@@ -469,6 +496,8 @@ test('face handler uses the selected gender and age and persists only age-approp
     assert.match(prompt, /가장 눈에 띄는 눈빛·눈매·입술선·미소/);
     assert.doesNotMatch(prompt, /섹시|성적 매력|섹슈얼|sexy|sexual|explicit_sex_appeal/i);
     assert.match(prompt, /실제 수술·시술 명칭/);
+    assert.match(prompt, /"cosmetic_consultation": \[/);
+    assert.doesNotMatch(prompt, /"cosmetic_consultation":\s*'/);
     assert.ok(result.appearance.style[female ? 'makeup' : 'grooming']);
     assert.equal(result.appearance.style[female ? 'grooming' : 'makeup'], '');
     if (age === 'teens') {
@@ -504,6 +533,11 @@ test('both renderers escape new content, reject CSS injection, gate adult sectio
     assert.match(elements.get('appearance').innerHTML, /Sensual appeal/);
     assert.match(elements.get('appearance').innerHTML, /Accessories/);
     assert.doesNotMatch(elements.get('appearance').innerHTML, />Glasses</);
+    assert.equal(elements.get('cosmeticConsultation').style.display, '');
+    assert.match(elements.get('cosmeticConsultation').innerHTML, /Blepharoplasty/);
+    const quoted = JSON.parse(JSON.stringify(result));
+    quoted.appearance.cosmetic_consultation = JSON.stringify(quoted.appearance.cosmetic_consultation);
+    dom.renderResult(quoted);
     assert.equal(elements.get('cosmeticConsultation').style.display, '');
     assert.match(elements.get('cosmeticConsultation').innerHTML, /Blepharoplasty/);
     for (const label of ['Desired change', 'What it aims to change', 'Conditions &amp; risks to check']) {
