@@ -259,11 +259,11 @@ window.KarmaShare = window.KarmaShare || {
     </div>
     <div style="font-size:0.72rem;color:#888;line-height:1.6;padding:0 4px;margin-bottom:16px">
       <div style="color:#c9a044;font-weight:600;margin-bottom:4px" data-ko="📌 주의사항" data-en="📌 Caution">📌 주의사항</div>
-      <span data-ko="• 정면 얼굴이 잘 보이는 사진을 사용하세요" data-en="• Use a photo with a clear front-facing view">• 정면 얼굴이 잘 보이는 사진을 사용하세요</span><br>
-      <span data-ko="• 모자, 선글라스, 마스크 없이 촬영해주세요" data-en="• No hats, sunglasses, or masks">• 모자, 선글라스, 마스크 없이 촬영해주세요</span><br>
-      <span data-ko="• 조명이 밝고 그림자가 적을수록 정확합니다" data-en="• Bright lighting with minimal shadows works best">• 조명이 밝고 그림자가 적을수록 정확합니다</span><br>
-      <span data-ko="• 1인 사진만 가능합니다 (단체 사진 불가)" data-en="• Single person photos only (no group photos)">• 1인 사진만 가능합니다 (단체 사진 불가)</span><br>
-      <span style="color:#e07070" data-ko="⚠ 보정/필터 적용된 사진은 결과가 부정확합니다" data-en="⚠ Filtered or retouched photos may give inaccurate results">⚠ 보정/필터 적용된 사진은 결과가 부정확합니다</span>
+      <span data-ko="• 정면 얼굴이 선명하게 나온 사진을 사용해 주세요" data-en="• Use a photo with a clear front-facing view">• 정면 얼굴이 선명하게 나온 사진을 사용해 주세요</span><br>
+      <span data-ko="• 모자, 선글라스, 마스크로 얼굴이 가려진 사진은 피해 주세요" data-en="• No hats, sunglasses, or masks">• 모자, 선글라스, 마스크로 얼굴이 가려진 사진은 피해 주세요</span><br>
+      <span data-ko="• 밝은 곳에서 그림자 없이 찍은 사진일수록 잘 읽힙니다" data-en="• Bright lighting with minimal shadows works best">• 밝은 곳에서 그림자 없이 찍은 사진일수록 잘 읽힙니다</span><br>
+      <span data-ko="• 한 사람만 나온 사진을 올려 주세요 (단체 사진 불가)" data-en="• Single person photos only (no group photos)">• 한 사람만 나온 사진을 올려 주세요 (단체 사진 불가)</span><br>
+      <span style="color:#e07070" data-ko="⚠ 보정이나 필터가 강한 사진은 결과가 달라질 수 있습니다" data-en="⚠ Filtered or retouched photos may give inaccurate results">⚠ 보정이나 필터가 강한 사진은 결과가 달라질 수 있습니다</span>
     </div>
     <div class="options-row">
       <div class="opt-group">
@@ -370,7 +370,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   if (file.size > 50 * 1024 * 1024) {
-    alert(_L('이미지 크기가 50MB를 초과합니다. 더 작은 사진을 사용해주세요.','Image size exceeds 50MB. Please use a smaller photo.'));
+    alert(_L('사진 용량이 50MB를 넘습니다. 더 작은 사진을 사용해 주세요.','Image size exceeds 50MB. Please use a smaller photo.'));
     return;
   }
   const url = URL.createObjectURL(file);
@@ -420,13 +420,13 @@ analyzeBtn.addEventListener('click', async () => {
       }),
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.error) throw new Error(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
+    if (!resp.ok || data.error) throw new Error(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.','A server error occurred. Please try again later.'));
     window._faceInput = faceInput;
     window._faceResult = data;
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
-    err.textContent = e.message || _L('분석 중 오류가 발생했습니다','An error occurred during analysis');
+    err.textContent = e.message || _L('분석 중 오류가 발생했습니다.','An error occurred during analysis');
     err.style.display = 'block';
   } finally {
     stopKarmaPhotoWait();
@@ -576,7 +576,7 @@ function handleShareKakao() {
   const isEn = (document.documentElement.lang === 'en');
   KarmaShare.shareKakao(
     isEn ? 'My Karma Face Reading' : '내 AI 관상 분석 결과',
-    isEn ? 'AI-powered face reading — check it out' : 'AI가 분석한 내 관상 결과를 확인해보세요'
+    isEn ? 'AI-powered face reading — check it out' : 'AI가 풀이한 내 관상 결과를 확인해 보세요'
   );
 }
 

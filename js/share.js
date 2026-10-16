@@ -120,9 +120,9 @@
         const ok = await copyToClipboard(shareUrl);
         const msg = ok
           ? (isEn ? 'Link copied to clipboard!\nPaste it in KakaoTalk to share.\n\n' + shareUrl
-                  : '링크가 복사되었습니다!\n카카오톡에 붙여넣어 공유하세요.\n\n' + shareUrl)
+                  : '링크를 복사했습니다!\n카카오톡 대화창에 붙여넣어 공유해 보세요.\n\n' + shareUrl)
           : (isEn ? 'Share this link:\n\n' + shareUrl
-                  : '아래 링크를 복사해 공유하세요:\n\n' + shareUrl);
+                  : '아래 링크를 복사해 공유해 보세요:\n\n' + shareUrl);
         alert(msg);
         return;
       }
@@ -132,8 +132,8 @@
       Kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
-          title: title || (isEn ? 'Karma AI Analysis' : '카르마 AI 분석 결과'),
-          description: description || (isEn ? 'View my AI analysis result' : '내 AI 분석 결과를 확인해보세요'),
+          title: title || (isEn ? 'Karma AI Analysis' : 'Karma AI 분석 결과'),
+          description: description || (isEn ? 'View my AI analysis result' : '내 AI 풀이 결과를 확인해 보세요'),
           imageUrl: imageUrl || defaultImageUrl,
           imageWidth: 1200,
           imageHeight: 630,

@@ -1152,7 +1152,7 @@ function ohangCompatibility(saju1, saju2) {
   const oh1 = saju1.ilganOhang;
   const oh2 = saju2.ilganOhang;
 
-  // 일간 하나만 보던 기존 점수에서 일지와 전체 원국 합·충까지 반영한다.
+  // 일간 하나만 보던 기존 점수에서 일지와 전체 원국 합·충까지 반영
   if (SANGSAENG[oh1] === oh2 || SANGSAENG[oh2] === oh1) score += 10;
   if (SANGGEUK[oh1] === oh2 || SANGGEUK[oh2] === oh1) score -= 8;
   if (oh1 === oh2) score += 4;
@@ -1177,7 +1177,7 @@ function ohangCompatibility(saju1, saju2) {
     if (saju2.ohangCount[key] === 0 && saju1.ohangCount[key] >= 2) score += 3;
   }
 
-  // 전통 명리 관계를 요약한 휴리스틱이므로 과도한 0/100 확정값은 피한다.
+  // 전통 명리 관계를 요약한 휴리스틱이므로 과도한 0/100 확정값 배제
   return Math.max(20, Math.min(95, Math.round(score)));
 }
 
@@ -1765,15 +1765,15 @@ function aiContractRetryInstruction(contractType, errors, context = {}) {
 
 const KARMA_TEXT_ANALYSIS_MESSAGES = {
   ko: {
-    incompleteAiResponse: 'AI 응답 항목이 완전하지 않습니다. 잠시 후 다시 시도해주세요.',
-    tarotCardsRequired: '카드 객체 3개를 선택해야 합니다.',
-    invalidCardIds: '올바르지 않은 카드가 포함되어 있습니다.',
+    incompleteAiResponse: 'AI 응답 항목이 완전하지 않습니다. 잠시 후 다시 시도해 주세요.',
+    tarotCardsRequired: '타로 카드 3장을 모두 골라 주세요.',
+    invalidCardIds: '선택한 카드 정보가 올바르지 않습니다.',
     aiUnavailable: 'AI 서비스를 사용할 수 없습니다.',
-    aiBusy: 'AI 분석 서비스가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.',
-    invalidRequest: '요청 형식이 올바르지 않습니다. 입력값을 확인해주세요.',
+    aiBusy: 'AI 분석 서비스가 일시적으로 혼잡합니다. 잠시 후 다시 시도해 주세요.',
+    invalidRequest: '요청 형식이 올바르지 않습니다. 입력값을 다시 확인해 주세요.',
     serverError: '서버 오류가 발생했습니다.',
-    birthDateRequired: '생년월일은 필수입니다.',
-    bothBirthDatesRequired: '두 사람의 생년월일은 필수입니다.',
+    birthDateRequired: '생년월일을 입력해 주세요.',
+    bothBirthDatesRequired: '두 사람의 생년월일을 모두 입력해 주세요.',
     rateLimited: '분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
   },
   en: {
@@ -2270,18 +2270,18 @@ async function handleTarotReading(request, env) {
 
 const PHOTO_ANALYSIS_MESSAGES = {
   ko: {
-    imageTooLarge: '이미지 크기가 8MB를 초과합니다. 더 작은 사진을 사용해주세요.',
-    imageRequired: '이미지가 필요합니다.',
-    invalidImage: '지원하지 않거나 손상된 이미지입니다. JPEG, PNG 또는 WebP 사진을 사용해주세요.',
-    imageStorageFailed: '사진 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    imageTooLarge: '사진 용량이 8MB를 넘습니다. 더 작은 사진을 사용해 주세요.',
+    imageRequired: '사진을 먼저 올려 주세요.',
+    invalidImage: '지원하지 않거나 손상된 이미지입니다. JPEG, PNG 또는 WebP 사진을 사용해 주세요.',
+    imageStorageFailed: '사진 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
     serviceUnavailable: 'AI 분석 서비스를 사용할 수 없습니다.',
     mediaNotConnected: 'AI 미디어 분석 서비스가 연결되지 않았습니다.',
-    emptyResponse: 'AI가 빈 응답을 반환했습니다. 다른 사진을 시도해주세요.',
-    callFailed: '사진 분석 요청에 실패했습니다. 잠시 후 다시 시도해주세요.',
-    faceAnalysisFailed: 'AI 분석에 실패했습니다. 얼굴이 잘 보이는 정면 사진을 사용해주세요.',
-    palmAnalysisFailed: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해주세요.',
-    faceRejected: '분석할 수 있는 얼굴 사진이 아닙니다. 사람의 정면 얼굴이 선명하게 보이는 사진을 업로드해주세요.',
-    palmRejected: '분석할 수 있는 손바닥 사진이 아닙니다. 손을 펴고 손금이 선명하게 보이는 사진을 업로드해주세요.',
+    emptyResponse: 'AI 응답이 비어 있습니다. 다른 사진으로 다시 시도해 주세요.',
+    callFailed: '사진 분석 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+    faceAnalysisFailed: 'AI 분석에 실패했습니다. 정면 얼굴이 선명하게 나온 사진을 사용해 주세요.',
+    palmAnalysisFailed: 'AI 분석에 실패했습니다. 손바닥이 잘 보이는 사진을 사용해 주세요.',
+    faceRejected: '분석할 수 있는 얼굴 사진이 아닙니다. 사람의 정면 얼굴이 선명하게 나온 사진을 올려 주세요.',
+    palmRejected: '분석할 수 있는 손바닥 사진이 아닙니다. 손을 활짝 펴고 손금이 잘 보이는 사진을 올려 주세요.',
     rateLimited: '사진 분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
   },
   en: {

@@ -195,15 +195,15 @@
       <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
     </div>
     <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
-      <span data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.</span>
+      <span data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분만 해당합니다. 켜 두면 자정(0시)을 기준으로 날짜를 나눠 계산합니다. 다른 시간대에 태어났다면 결과에 영향을 주지 않습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분만 해당합니다. 켜 두면 자정(0시)을 기준으로 날짜를 나눠 계산합니다. 다른 시간대에 태어났다면 결과에 영향을 주지 않습니다.</span>
     </div>
     <button class="btn" id="analyzeBtn" onclick="doAnalyze()" data-ko="사주 분석하기" data-en="Analyze Saju">사주 분석하기</button>
   </div>
 
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
-    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="사주를 분석하고 있습니다" data-en="Analyzing your Saju...">사주를 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="사주팔자를 해석하고 있어요..." data-en="Interpreting your Four Pillars of Destiny...">사주팔자를 해석하고 있어요...</p>
+    <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="사주팔자를 분석하고 있습니다" data-en="Analyzing your Saju...">사주팔자를 분석하고 있습니다</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="타고난 기운과 대운의 흐름을 읽고 있어요..." data-en="Interpreting your Four Pillars of Destiny...">타고난 기운과 대운의 흐름을 읽고 있어요...</p>
   </div>
 
   <div id="result" class="fade-in saju-grid" style="display:none">
@@ -231,7 +231,7 @@
     <!-- 대운 -->
     <div id="daeunSection" style="display:none">
       <div class="card">
-        <h2><span data-ko="🔄 대운 (10년 단위 인생 흐름)" data-en="🔄 Major Luck Cycles (10-Year Life Flow)">🔄 대운 (10년 단위 인생 흐름)</span> <span style="font-size:0.7rem;color:#888;font-weight:400" data-ko="카드를 클릭하세요" data-en="Click a card">카드를 클릭하세요</span></h2>
+        <h2><span data-ko="🔄 대운 (10년 단위 인생 흐름)" data-en="🔄 Major Luck Cycles (10-Year Life Flow)">🔄 대운 (10년 단위 인생 흐름)</span> <span style="font-size:0.7rem;color:#888;font-weight:400" data-ko="카드를 눌러 보세요" data-en="Click a card">카드를 눌러 보세요</span></h2>
         <div id="daeunTimeline" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px"></div>
         <div id="daeunAccordion" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;margin-top:12px;background:rgba(255,255,255,0.03);border:1px solid transparent;border-radius:12px">
           <div id="daeunAccordionContent" style="padding:14px"></div>
@@ -316,30 +316,30 @@ createDateSelects('dateSelects');
 const OHANG_COLORS = { '목':'#4CAF50', '화':'#F44336', '토':'#795548', '금':'#FFC107', '수':'#2196F3' };
 const OHANG_EMOJI = { '목':'🌿', '화':'🔥', '토':'🏔', '금':'⚔', '수':'🌊' };
 const ILGAN_INFO = {
-  '갑': { symbol: ['큰 나무','Great Tree'], nature: ['목(木)','Wood (木)'], desc: ['우직하고 곧은 성격의 리더. 한번 정하면 끝까지 밀고 나가는 추진력의 소유자','A steadfast and upright leader. Once decided, they push through to the end with unwavering drive'] },
-  '을': { symbol: ['풀과 덩굴','Grass & Vines'], nature: ['목(木)','Wood (木)'], desc: ['부드럽고 유연한 사교가. 어떤 환경에든 잘 적응하며 사람들과 잘 어울림','A soft and flexible socialite. Adapts well to any environment and gets along with everyone'] },
-  '병': { symbol: ['태양','Sun'], nature: ['화(火)','Fire (火)'], desc: ['밝고 열정적인 분위기 메이커. 주변을 환하게 만들고 사람들의 주목을 받는 타입','A bright and passionate mood maker. Lights up their surroundings and naturally draws attention'] },
-  '정': { symbol: ['촛불','Candle'], nature: ['화(火)','Fire (火)'], desc: ['조용하지만 따뜻한 배려의 사람. 겉은 차분해도 마음속에 뜨거운 열정을 품고 있음','A quiet but warmly caring person. Calm on the outside, but harboring passionate fire within'] },
-  '무': { symbol: ['큰 산','Great Mountain'], nature: ['토(土)','Earth (土)'], desc: ['듬직하고 믿음직한 사람. 주변 사람들에게 안정감을 주고 묵묵히 자기 자리를 지킴','A dependable and trustworthy person. Provides stability to those around them and steadfastly holds their ground'] },
-  '기': { symbol: ['논밭','Farmland'], nature: ['토(土)','Earth (土)'], desc: ['현실적이고 꼼꼼한 관리자. 실리를 잘 챙기며 세심하게 주변을 돌봄','A practical and meticulous manager. Looks after practical interests and cares for others with attention to detail'] },
-  '경': { symbol: ['강철','Steel'], nature: ['금(金)','Metal (金)'], desc: ['의지가 강하고 정의로운 사람. 옳다고 믿는 것은 반드시 지키려는 원칙주의자','A strong-willed and righteous person. A principled individual who stands firm for what they believe is right'] },
-  '신': { symbol: ['보석','Jewel'], nature: ['금(金)','Metal (金)'], desc: ['예리하고 섬세한 완벽주의자. 아름다움을 추구하며 날카로운 분석력을 가짐','A sharp and delicate perfectionist. Pursues beauty and possesses keen analytical ability'] },
-  '임': { symbol: ['큰 바다','Great Ocean'], nature: ['수(水)','Water (水)'], desc: ['넓은 마음의 자유인. 생각이 깊고 포용력이 커서 누구든 품어주는 타입','A free spirit with a broad mind. Deep in thought and embracing, the type who accepts everyone'] },
-  '계': { symbol: ['이슬/시냇물','Dew/Stream'], nature: ['수(水)','Water (水)'], desc: ['감수성 풍부한 예술가 기질. 직관이 뛰어나고 겉은 잔잔하지만 내면은 깊음','An artistically sensitive temperament. Highly intuitive, calm on the surface but deep within'] },
+  '갑': { symbol: ['큰 나무','Great Tree'], nature: ['목(木)','Wood (木)'], desc: ['곧고 당당한 리더형입니다. 한번 마음먹은 일은 끝까지 밀고 나갑니다.','A steadfast and upright leader. Once decided, they push through to the end with unwavering drive'] },
+  '을': { symbol: ['풀과 덩굴','Grass & Vines'], nature: ['목(木)','Wood (木)'], desc: ['부드럽고 유연한 사교가입니다. 낯선 환경에도 금세 적응하고 사람들과 두루 어울립니다.','A soft and flexible socialite. Adapts well to any environment and gets along with everyone'] },
+  '병': { symbol: ['태양','Sun'], nature: ['화(火)','Fire (火)'], desc: ['밝고 열정적인 분위기 메이커입니다. 주변을 환하게 밝히며 어디서나 자연스럽게 눈길을 끕니다.','A bright and passionate mood maker. Lights up their surroundings and naturally draws attention'] },
+  '정': { symbol: ['촛불','Candle'], nature: ['화(火)','Fire (火)'], desc: ['조용하지만 속정이 깊은 사람입니다. 겉은 차분해도 안에는 뜨거운 열정을 품고 있습니다.','A quiet but warmly caring person. Calm on the outside, but harboring passionate fire within'] },
+  '무': { symbol: ['큰 산','Great Mountain'], nature: ['토(土)','Earth (土)'], desc: ['큰 산처럼 듬직하고 믿음직한 사람입니다. 주변에 안정감을 주며 묵묵히 자기 자리를 지킵니다.','A dependable and trustworthy person. Provides stability to those around them and steadfastly holds their ground'] },
+  '기': { symbol: ['논밭','Farmland'], nature: ['토(土)','Earth (土)'], desc: ['현실적이고 꼼꼼한 살림꾼입니다. 실속을 챙기면서 주변 사람도 세심하게 돌봅니다.','A practical and meticulous manager. Looks after practical interests and cares for others with attention to detail'] },
+  '경': { symbol: ['강철','Steel'], nature: ['금(金)','Metal (金)'], desc: ['의지가 굳고 원칙을 중시하는 사람입니다. 옳다고 믿는 기준을 끝까지 지키려 합니다.','A strong-willed and righteous person. A principled individual who stands firm for what they believe is right'] },
+  '신': { symbol: ['보석','Jewel'], nature: ['금(金)','Metal (金)'], desc: ['예리하고 섬세한 완벽주의자입니다. 안목이 높고 날카로운 분석력을 지녔습니다.','A sharp and delicate perfectionist. Pursues beauty and possesses keen analytical ability'] },
+  '임': { symbol: ['큰 바다','Great Ocean'], nature: ['수(水)','Water (水)'], desc: ['마음이 넓고 생각이 깊은 사람입니다. 포용력이 커서 누구든 편하게 품어 줍니다.','A free spirit with a broad mind. Deep in thought and embracing, the type who accepts everyone'] },
+  '계': { symbol: ['이슬/시냇물','Dew/Stream'], nature: ['수(水)','Water (水)'], desc: ['감수성이 풍부하고 직관력이 뛰어난 사람입니다. 겉은 잔잔해 보여도 내면이 깊습니다.','An artistically sensitive temperament. Highly intuitive, calm on the surface but deep within'] },
 };
 const OHANG_EXCESS = {
-  '목': ['추진력 넘치지만 고집이 강할 수 있음','Full of drive but can be stubborn'],
-  '화': ['열정적이지만 급하고 감정 기복이 있을 수 있음','Passionate but can be hasty with mood swings'],
-  '토': ['안정적이지만 변화를 두려워할 수 있음','Stable but may fear change'],
-  '금': ['완벽주의적이지만 비판적일 수 있음','Perfectionistic but can be overly critical'],
-  '수': ['지혜롭지만 우유부단할 수 있음','Wise but can be indecisive'],
+  '목': ['추진력은 좋지만 자기 주장이 강해지기 쉬움','Full of drive but can be stubborn'],
+  '화': ['열정적이지만 성급해지거나 감정 기복이 생기기 쉬움','Passionate but can be hasty with mood swings'],
+  '토': ['안정적이지만 익숙한 방식만 고집하기 쉬움','Stable but may fear change'],
+  '금': ['기준이 분명하지만 남이나 자신을 날카롭게 몰아붙이기 쉬움','Perfectionistic but can be overly critical'],
+  '수': ['생각이 깊지만 결정을 미루고 망설이기 쉬움','Wise but can be indecisive'],
 };
 const OHANG_LACK = {
-  '목': ['추진력/도전 정신이 부족할 수 있음','May lack drive and adventurous spirit'],
-  '화': ['열정/표현력이 약하고 소극적일 수 있음','May lack passion/expressiveness and be passive'],
-  '토': ['안정감이 부족하고 불안할 수 있음','May lack stability and feel anxious'],
-  '금': ['결단력/판단력이 약할 수 있음','May lack decisiveness and judgment'],
-  '수': ['유연성/적응력이 부족할 수 있음','May lack flexibility and adaptability'],
+  '목': ['새 일을 밀어붙이는 추진력이 약해지기 쉬움','May lack drive and adventurous spirit'],
+  '화': ['감정 표현을 아끼고 안으로 삼키기 쉬움','May lack passion/expressiveness and be passive'],
+  '토': ['환경이 바뀔 때 중심을 잡기 어렵고 흔들리기 쉬움','May lack stability and feel anxious'],
+  '금': ['맺고 끊는 결단이 늦어지기 쉬움','May lack decisiveness and judgment'],
+  '수': ['상황에 맞춰 유연하게 돌아가는 여유가 부족해지기 쉬움','May lack flexibility and adaptability'],
 };
 
 async function doAnalyze() {
@@ -365,7 +365,7 @@ async function doAnalyze() {
       body: JSON.stringify(sajuInput),
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.error) { alert(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.')); return; }
+    if (!resp.ok || data.error) { alert(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.','A server error occurred. Please try again later.')); return; }
     window._sajuInput = augmentShareInput(sajuInput);
     window._sajuResult = data;
     renderResult(data);
@@ -479,7 +479,7 @@ function handleShareKakao() {
   const isEn = (document.documentElement.lang === 'en');
   KarmaShare.shareKakao(
     isEn ? 'My Karma Saju Analysis' : '내 사주팔자 AI 분석 결과',
-    isEn ? 'AI-powered Saju reading — check it out' : '생년월일로 본 AI 사주풀이 결과를 확인해보세요'
+    isEn ? 'AI-powered Saju reading — check it out' : '생년월일로 본 AI 사주풀이 결과를 확인해 보세요'
   );
 }
 
@@ -516,8 +516,8 @@ function openDaeunModal(index, event) {
         '</div>' +
       '</div>' +
     '</div>' +
-    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">' + esc(_L('현재 이 대운의 영향 아래에 있습니다','You are currently under the influence of this major fortune cycle')) + '</div>' : '') +
-    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || _L('해석 데이터가 없습니다.','No reading data available.')) + '</p>';
+    (du.isCurrent ? '<div style="background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.8rem;color:#ff6b6b">' + esc(_L('현재 이 대운이 작용하는 시기입니다','You are currently under the influence of this major fortune cycle')) + '</div>' : '') +
+    '<p style="line-height:1.7;color:#e0e0e0;font-size:0.88rem">' + esc(du.reading || _L('풀이 내용이 없습니다.','No reading data available.')) + '</p>';
 
   // 콘텐츠 높이 측정 후 max-height 적용 (부드러운 전환)
   accordion.style.maxHeight = '0';

@@ -49,14 +49,14 @@
   <div id="loading" style="position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
     <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px">매칭 목록을 불러오고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px">잠시만 기다려주세요...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px">잠시만 기다려 주세요...</p>
   </div>
 
   <div id="content" style="display:none">
     <div id="matchList"></div>
     <div id="empty" style="display:none" class="empty-state">
       <p>아직 매칭된 사람이 없습니다</p>
-      <p style="font-size:0.8rem;color:#555;margin-top:8px">탐색 페이지에서 마음에 드는 사람에게 💕 좋아요를 보내보세요</p>
+      <p style="font-size:0.8rem;color:#555;margin-top:8px">탐색 페이지에서 마음에 드는 사람에게 💕 좋아요를 보내 보세요</p>
       <button class="btn" style="margin-top:16px;width:auto;padding:10px 24px" onclick="location.href='/discover.html'">탐색하러 가기</button>
     </div>
   </div>
@@ -71,7 +71,7 @@
     </div>
     <div id="chatMessages" style="flex:1;overflow-y:auto;padding:10px 0"></div>
     <div style="display:flex;gap:8px;padding:10px 0">
-      <input type="text" id="chatInput" placeholder="쪽지를 입력하세요..." style="flex:1" onkeydown="if(event.key==='Enter')sendMsg()">
+      <input type="text" id="chatInput" placeholder="쪽지를 입력해 주세요..." style="flex:1" onkeydown="if(event.key==='Enter')sendMsg()">
       <button class="btn btn-small" onclick="sendMsg()">전송</button>
     </div>
   </div>

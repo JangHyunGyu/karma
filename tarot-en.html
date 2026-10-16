@@ -484,7 +484,7 @@ window.KarmaShare = window.KarmaShare || {
 <div class="stars-bg" id="starsBg"></div>
 <div class="container tarot-page">
   <h1 data-ko="🃏 타로 리딩" data-en="🃏 Tarot Reading">🃏 Tarot Reading</h1>
-  <p class="subtitle" data-ko="카드 3장을 선택하세요" data-en="Select 3 cards">Select 3 cards</p>
+  <p class="subtitle" data-ko="마음이 가는 카드 3장을 골라 보세요" data-en="Select 3 cards">Select 3 cards</p>
 
   <div class="tarot-question-wrap" id="questionWrap">
     <input type="text" class="tarot-question" id="tarotQuestion"
@@ -492,14 +492,14 @@ window.KarmaShare = window.KarmaShare || {
       maxlength="100">
   </div>
 
-  <div class="tarot-instruction" id="tarotInstruction" data-ko="카드를 클릭하여 3장을 선택하세요" data-en="Click cards to select 3">Click cards to select 3</div>
+  <div class="tarot-instruction" id="tarotInstruction" data-ko="카드를 눌러 3장을 골라 주세요" data-en="Click cards to select 3">Click cards to select 3</div>
   <div class="tarot-selected-info" id="selectedInfo"></div>
 
   <div class="tarot-grid" id="tarotGrid"></div>
 
   <div class="tarot-loading" id="tarotLoading">
     <div class="tarot-spinner"></div>
-    <div class="tarot-loading-text" data-ko="카드를 해석하고 있습니다..." data-en="Reading your cards...">Reading your cards...</div>
+    <div class="tarot-loading-text" data-ko="뽑은 카드의 흐름을 읽고 있습니다..." data-en="Reading your cards...">Reading your cards...</div>
   </div>
 
   <div class="tarot-result-wrap" id="tarotResult"></div>
@@ -683,7 +683,7 @@ if (typeof window.gsap === 'undefined') {
   function updateSelectedInfo() {
     const info = document.getElementById('selectedInfo');
     info.textContent = selectedCards.length > 0
-      ? _L(`${selectedCards.length}/3 장 선택됨`, `${selectedCards.length}/3 cards selected`)
+      ? _L(`3장 중 ${selectedCards.length}장 선택`, `${selectedCards.length}/3 cards selected`)
       : '';
   }
 
@@ -833,7 +833,7 @@ if (typeof window.gsap === 'undefined') {
     if (shareBtn) shareBtn.addEventListener('click', () => {
       KarmaShare.shareKakao(
         _L('내 타로 리딩 결과', 'My Tarot Reading'),
-        _L('AI 타로 리딩 결과를 확인해보세요', 'Check out my AI tarot reading')
+        _L('AI 타로 리딩 결과를 확인해 보세요', 'Check out my AI tarot reading')
       );
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -875,7 +875,7 @@ if (typeof window.gsap === 'undefined') {
   window.changeLang = function(l) {
     origChangeLang(l);
     const q = document.getElementById('tarotQuestion');
-    if (q) q.placeholder = l === 'en' ? 'Enter your question (optional)' : '질문을 입력하세요 (선택사항)';
+    if (q) q.placeholder = l === 'en' ? 'Enter your question (optional)' : '궁금한 점을 적어 주세요 (선택 사항)';
   };
 
   KarmaShare.init({

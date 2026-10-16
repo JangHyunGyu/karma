@@ -158,13 +158,13 @@ function showYajasiHint() {
       <div style="font-size:2.2rem;margin-bottom:12px">🌙</div>
       <div style="font-size:1rem;font-weight:700;color:#ffd93d;margin-bottom:12px">${_L('야자시/조자시','Night/Morning Ja-si')}</div>
       <p style="font-size:0.82rem;color:#ccc;line-height:1.7;margin-bottom:8px">${_L(
-        '태어난 시가 <b style="color:#ffd93d">자시(23:30~01:30)</b>인 분만 해당되는 옵션입니다.',
+        '태어난 시가 <b style="color:#ffd93d">자시(23:30~01:30)</b>인 분만 해당하는 설정입니다.',
         'This option only applies to those born during <b style="color:#ffd93d">Ja-si (23:30~01:30)</b>.'
       )}</p>
       <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:16px;text-align:left">
         <div style="font-size:0.75rem;color:#c9a044;font-weight:600;margin-bottom:6px">${_L('야자시란?','What is Night Ja-si?')}</div>
         <p style="font-size:0.78rem;color:#aaa;line-height:1.6;margin:0">${_L(
-          '밤 11시 30분~새벽 1시 30분 사이에 태어난 분의 사주를 더 정확하게 계산하는 옵션입니다. 켜면 자정(0시)을 기준으로 날짜를 나눠서 일주를 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.',
+          '밤 11시 30분~새벽 1시 30분 사이에 태어난 분만 해당합니다. 켜 두면 자정(0시)을 기준으로 날짜를 나눠 일주를 계산합니다. 다른 시간대에 태어났다면 결과에 영향을 주지 않습니다.',
           'An option for more accurate calculation for those born between 11:30 PM and 1:30 AM. When enabled, the date is split at midnight for day pillar calculation. No effect if born outside this time range.'
         )}</p>
       </div>
@@ -240,7 +240,7 @@ function getBirthDate() {
     const isLeap = mVal.startsWith('leap_');
     const m = isLeap ? parseInt(mVal.replace('leap_', '')) : parseInt(mVal);
     const solar = lunarToSolar(+y, m, +d, isLeap);
-    if (!solar) { alert(_L('유효하지 않은 음력 날짜입니다', 'Invalid lunar date')); return ''; }
+    if (!solar) { alert(_L('올바른 음력 날짜가 아닙니다.', 'Invalid lunar date')); return ''; }
     return `${solar.year}-${String(solar.month).padStart(2,'0')}-${String(solar.day).padStart(2,'0')}`;
   }
   return `${y}-${String(mVal).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -724,7 +724,7 @@ function createLocationSelect(containerId, selectId, onChangeFn) {
   tip.textContent = lang === 'en' ? "What's this?" : '이게 뭐예요?';
   const tipBox = document.createElement('div');
   tipBox.style.cssText = 'display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:8px;line-height:1.6';
-  tipBox.dataset.ko = '사주는 태어난 순간의 천체 위치를 기준으로 합니다. 같은 시각이라도 나라마다 시간대(타임존)가 다르기 때문에, 해외 출생자는 태어난 지역을 선택해야 정확한 사주를 볼 수 있습니다. 내가 태어난 나라나 지역이 없으면 같은 UTC 시간대의 다른 지역을 선택하세요.';
+  tipBox.dataset.ko = '사주는 태어난 지역의 태양 시각과 절기를 기준으로 계산합니다. 해외에서 태어났다면 현지 시간대를 선택해 주세요. 목록에 해당 국가나 도시가 없다면 UTC 시간대가 같은 지역을 고르면 됩니다.';
   tipBox.dataset.en = 'Saju is based on the celestial positions at the moment of birth. Since time zones differ by country, selecting your birth location ensures accurate calculation. If your birth country or region is not listed, choose another region with the same UTC offset.';
   tipBox.textContent = lang === 'en' ? tipBox.dataset.en : tipBox.dataset.ko;
   tip.addEventListener('click', () => { tipBox.style.display = tipBox.style.display === 'none' ? 'block' : 'none'; });

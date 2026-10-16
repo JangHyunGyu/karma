@@ -113,9 +113,9 @@ async function doRegister() {
   const birth_date = document.getElementById('regBirthDate').value;
   const birth_time = document.getElementById('regBirthTime').value;
 
-  if (!user_id || !pw1 || !nickname || !birth_date) return showError('필수 항목을 모두 입력하세요');
-  if (pw1 !== pw2) return showError('비밀번호가 일치하지 않습니다');
-  if (!/^[a-zA-Z0-9]{3,20}$/.test(user_id)) return showError('ID는 영문/숫자 3~20자');
+  if (!user_id || !pw1 || !nickname || !birth_date) return showError('필수 항목을 모두 입력해 주세요.');
+  if (pw1 !== pw2) return showError('비밀번호가 일치하지 않습니다.');
+  if (!/^[a-zA-Z0-9]{3,20}$/.test(user_id)) return showError('ID는 영문과 숫자 3~20자로 입력해 주세요.');
 
   try {
     const resp = await fetch(API_BASE + '/api/register', {

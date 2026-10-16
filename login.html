@@ -67,7 +67,7 @@ function showError(msg) {
 async function doLogin() {
   const user_id = document.getElementById('loginId').value.trim();
   const password = document.getElementById('loginPw').value;
-  if (!user_id || !password) return showError('ID와 비밀번호를 입력하세요');
+  if (!user_id || !password) return showError('ID와 비밀번호를 입력해 주세요.');
 
   try {
     const resp = await fetch(API_BASE + '/api/login', {

@@ -247,11 +247,11 @@ window.KarmaShare = window.KarmaShare || {
     </div>
     <div style="font-size:0.72rem;color:#888;line-height:1.6;padding:0 4px;margin-bottom:16px">
       <div style="color:#c9a044;font-weight:600;margin-bottom:4px" data-ko="📌 주의사항" data-en="📌 Caution">📌 주의사항</div>
-      <span data-ko="• 손바닥을 활짝 펴서 촬영해주세요" data-en="• Spread your palm wide open for the photo">• 손바닥을 활짝 펴서 촬영해주세요</span><br>
-      <span data-ko="• 손금이 선명하게 보이도록 밝은 곳에서 촬영" data-en="• Take the photo in a bright area so palm lines are clearly visible">• 손금이 선명하게 보이도록 밝은 곳에서 촬영</span><br>
-      <span data-ko="• 손바닥만 나오도록 가까이 촬영해주세요" data-en="• Take a close-up photo showing only the palm">• 손바닥만 나오도록 가까이 촬영해주세요</span><br>
-      <span data-ko="• 주 사용 손 = 후천적 노력, 반대 손 = 선천적 운명" data-en="• Dominant hand = acquired effort, Non-dominant = innate destiny">• 주 사용 손 = 후천적 노력, 반대 손 = 선천적 운명</span><br>
-      <span data-ko="• 손가락까지 나오면 더 정확한 분석이 가능합니다" data-en="• Including fingers allows for more accurate analysis">• 손가락까지 나오면 더 정확한 분석이 가능합니다</span>
+      <span data-ko="• 손바닥을 활짝 펴서 찍어 주세요" data-en="• Spread your palm wide open for the photo">• 손바닥을 활짝 펴서 찍어 주세요</span><br>
+      <span data-ko="• 손금이 잘 보이도록 밝은 곳에서 찍어 주세요" data-en="• Take the photo in a bright area so palm lines are clearly visible">• 손금이 잘 보이도록 밝은 곳에서 찍어 주세요</span><br>
+      <span data-ko="• 손바닥 전체가 담기도록 가까이에서 찍어 주세요" data-en="• Take a close-up photo showing only the palm">• 손바닥 전체가 담기도록 가까이에서 찍어 주세요</span><br>
+      <span data-ko="• 주로 쓰는 손은 후천운(노력), 반대 손은 선천운(타고난 기질)을 뜻합니다" data-en="• Dominant hand = acquired effort, Non-dominant = innate destiny">• 주로 쓰는 손은 후천운(노력), 반대 손은 선천운(타고난 기질)을 뜻합니다</span><br>
+      <span data-ko="• 손가락까지 함께 나오면 손 형태까지 더 잘 읽힙니다" data-en="• Including fingers allows for more accurate analysis">• 손가락까지 함께 나오면 손 형태까지 더 잘 읽힙니다</span>
     </div>
     <div class="options-row">
       <div class="opt-group">
@@ -395,7 +395,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   if (file.size > 50 * 1024 * 1024) {
-    alert(_L('이미지 크기가 50MB를 초과합니다. 더 작은 사진을 사용해주세요.','Image size exceeds 50MB. Please use a smaller photo.'));
+    alert(_L('사진 용량이 50MB를 넘습니다. 더 작은 사진을 사용해 주세요.','Image size exceeds 50MB. Please use a smaller photo.'));
     return;
   }
   const url = URL.createObjectURL(file);
@@ -449,13 +449,13 @@ analyzeBtn.addEventListener('click', async () => {
       }),
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.error) throw new Error(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.','A server error occurred. Please try again later.'));
+    if (!resp.ok || data.error) throw new Error(data.error || _L('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.','A server error occurred. Please try again later.'));
     window._palmInput = palmInput;
     window._palmResult = data;
     renderResult(data);
   } catch (e) {
     const err = document.getElementById('error');
-    err.textContent = e.message || _L('분석 중 오류가 발생했습니다','An error occurred during analysis');
+    err.textContent = e.message || _L('분석 중 오류가 발생했습니다.','An error occurred during analysis');
     err.style.display = 'block';
   } finally {
     stopKarmaPhotoWait();
@@ -519,7 +519,7 @@ function handleShareKakao() {
   const isEn = (document.documentElement.lang === 'en');
   KarmaShare.shareKakao(
     isEn ? 'My Karma Palm Reading' : '내 AI 손금 분석 결과',
-    isEn ? 'AI-powered palm reading — check it out' : 'AI가 분석한 내 손금 결과를 확인해보세요'
+    isEn ? 'AI-powered palm reading — check it out' : 'AI가 풀이한 내 손금 결과를 확인해 보세요'
   );
 }
 

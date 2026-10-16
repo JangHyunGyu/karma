@@ -165,7 +165,7 @@
       <span style="font-size:0.7rem;color:#666;cursor:pointer;border:1px solid rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px" onclick="document.getElementById('yajasiInfo').style.display=document.getElementById('yajasiInfo').style.display==='none'?'block':'none'" data-ko="이게 뭐예요?" data-en="What's this?">이게 뭐예요?</span>
     </div>
     <div id="yajasiInfo" style="display:none;font-size:0.72rem;color:#999;background:rgba(255,255,255,0.05);padding:10px;border-radius:4px;margin-bottom:12px;line-height:1.6">
-      <span data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분을 위한 옵션입니다. 켜면 자정(0시) 전후로 날짜를 나눠서 더 정확하게 계산합니다. 해당 시간대가 아니면 결과에 영향이 없습니다.</span>
+      <span data-ko="밤 11시 30분~새벽 1시 30분 사이에 태어난 분만 해당합니다. 켜 두면 자정(0시)을 기준으로 날짜를 나눠 계산합니다. 다른 시간대에 태어났다면 결과에 영향을 주지 않습니다." data-en="For those born between 11:30 PM and 1:30 AM. When ON, the date is split at midnight for more accurate calculation. No effect if born outside this time range.">밤 11시 30분~새벽 1시 30분 사이에 태어난 분만 해당합니다. 켜 두면 자정(0시)을 기준으로 날짜를 나눠 계산합니다. 다른 시간대에 태어났다면 결과에 영향을 주지 않습니다.</span>
     </div>
     <button class="btn" id="dailyBtn" onclick="doDaily()" data-ko="오늘의 운세 보기" data-en="See Today's Fortune">오늘의 운세 보기</button>
   </div>
@@ -173,7 +173,7 @@
   <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(10,10,30,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column">
     <div class="spinner"></div>
     <p style="color:#c9a044;font-size:1rem;font-weight:600;margin-top:16px" data-ko="오늘의 운세를 분석하고 있습니다" data-en="Analyzing today's fortune...">오늘의 운세를 분석하고 있습니다</p>
-    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="오늘의 운세를 풀이하고 있어요..." data-en="Reading today's fortune for you...">오늘의 운세를 풀이하고 있어요...</p>
+    <p style="color:#888;font-size:0.8rem;margin-top:8px" data-ko="선택한 날의 일진과 사주 흐름을 맞춰 보고 있어요..." data-en="Reading today's fortune for you...">선택한 날의 일진과 사주 흐름을 맞춰 보고 있어요...</p>
   </div>
 
   <div id="result" style="display:none" class="fade-in fortune-grid">
@@ -306,7 +306,7 @@ async function doDaily() {
       body: JSON.stringify(dailyInput),
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.error || !data.daily) { alert(data.error || _L('운세 분석 실패','Fortune analysis failed')); return; }
+    if (!resp.ok || data.error || !data.daily) { alert(data.error || _L('운세 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.','Fortune analysis failed')); return; }
     window._dailyInput = augmentShareInput(dailyInput);
     window._dailyResult = data;
     renderDaily(data);
@@ -349,7 +349,7 @@ function handleShareKakao() {
   const date = (window._dailyInput && window._dailyInput.target_date) || '';
   KarmaShare.shareKakao(
     isEn ? (date ? `My Fortune for ${date}` : 'My Daily Fortune') : (date ? `${date} 내 운세` : '내 오늘의 운세'),
-    isEn ? 'Daily AI fortune — check it out' : '사주 기반 AI 오늘의 운세 결과를 확인해보세요'
+    isEn ? 'Daily AI fortune — check it out' : '사주 기반 AI 오늘의 운세 결과를 확인해 보세요'
   );
 }
 
