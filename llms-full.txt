@@ -15,7 +15,7 @@ Karma(카르마)는 생년월일을 입력하면 사주팔자, 오늘의 운세,
 - 가입·설치: 회원가입과 앱 설치 없이 브라우저에서 이용
 - 제공 메뉴: 사주, 오늘의 운세, 올해의 운세(2026 신년운세), 궁합, 타로, 관상, 손금
 - 언어: 한국어, 영어
-- 운영: ArcherLab (장현규)
+- 운영: archerlab
 - 성격: 엔터테인먼트와 문화적 해석. 의료·법률·재무·심리 조언이 아닙니다.
 
 ### Who it is for / 대상
@@ -78,7 +78,7 @@ Karma is a free browser-based AI fortune service. Enter a birth date to get a Ko
 - Signup / install: No signup and no app install; runs in the browser
 - Menus: Saju, daily fortune, yearly fortune (2026), compatibility, tarot, face reading, palm reading
 - Languages: Korean, English
-- Operator: ArcherLab (Hyungyu Jang)
+- Operator: archerlab
 - Nature: Entertainment and cultural interpretation. Not medical, legal, financial or psychological advice.
 
 ### Who it is for / 대상
