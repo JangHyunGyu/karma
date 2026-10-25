@@ -17,7 +17,7 @@ function loadWorker() {
     fetch: async () => new Response('{}'),
   };
   vm.runInNewContext(source.replace('export default {', 'globalThis.worker = {') + `
-globalThis.api = { callKarmaTextAi, callKarmaVisionAi };
+globalThis.api = { callKarmaTextAi, callKarmaVisionAi, karmaTracedEnv, recordKarmaAnalysis, recordKarmaImageAnalysis };
 `, context);
   return { ...context, delays };
 }
@@ -268,7 +268,27 @@ test('face and palm retries store one image, consume one local quota, and persis
       const final = logs.at(-1).values;
       assert.equal(final[3], response.status);
       assert.match(final[8], new RegExp(`^karma/${type}/`));
-      assert.deepEqual(JSON.parse(final[5]), result);
+      const { _aiTrace, ...savedResult } = JSON.parse(final[5]);
+      assert.deepEqual(savedResult, result);
+      assert.equal(_aiTrace.length, expectedCalls);
     }
   }
+});
+
+test('request-scoped AI traces preserve actual models, retries, failures and both archive tables',async()=>{
+ const {api}=loadWorker(),writes=[];
+ const DB={prepare(sql){return{bind(...values){return{run:async()=>writes.push({sql,values})}},run:async()=>{}}}};
+ const binding={async complete(){return{model:'vendor/text',providerRoute:'text-route',text:'reading'}},async analyze(){return{model:'vendor/vision',providerName:'vision-route',text:'photo'}}};
+ const first=api.karmaTracedEnv({AI:binding,DB}),second=api.karmaTracedEnv({AI:binding,DB});
+ await Promise.all([first.AI.complete({}),second.AI.analyze({})]);
+ assert.equal(first.karmaAiTrace.length,1);assert.equal(first.karmaAiTrace[0].model,'vendor/text');
+ assert.equal(second.karmaAiTrace.length,1);assert.equal(second.karmaAiTrace[0].model,'vendor/vision');
+ await api.recordKarmaAnalysis(first,{requestId:'one',analysisType:'tarot',status:'success',httpStatus:200,result:{summary:'reading'}});
+ await api.recordKarmaImageAnalysis(second,{requestId:'two',r2Key:'karma/face/test',analysisType:'face',status:'success',result:{summary:'photo'}});
+ const archive=writes.filter(item=>item.sql.includes('INSERT INTO karma_'));
+ assert.equal(archive.length,3);
+ for(const item of archive){const result=JSON.parse(item.values[5]);assert.equal(result._aiTrace.length,1);assert.match(result._aiTrace[0].model,/^vendor\//);assert.equal(result._aiTrace[0].status,'response');}
+ const failed=api.karmaTracedEnv({AI:{complete:async()=>{throw Error('offline')}}});
+ await assert.rejects(failed.AI.complete({}),/offline/);assert.equal(failed.karmaAiTrace[0].status,'error');assert.equal(failed.karmaAiTrace[0].model,'');
+ assert.equal(api.karmaTracedEnv({}).karmaAiTrace.length,0);
 });

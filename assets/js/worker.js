@@ -2639,7 +2639,7 @@ async function recordKarmaAnalysis(env, {
       ['success', 'rejected', 'invalid_input', 'error'].includes(status) ? status : 'error',
       Number.isInteger(httpStatus) ? httpStatus : 500,
       JSON.stringify(sanitizeKarmaAnalysisInput(input || {})),
-      JSON.stringify(result || {}),
+      JSON.stringify({ ...result, ...(env.karmaAiTrace ? { _aiTrace: env.karmaAiTrace } : {}) }),
       String(errorMessage || '').slice(0, 2000),
       String(aiService || '').slice(0, 80),
       String(r2Key || '').slice(0, 1000),
@@ -2674,7 +2674,32 @@ async function localizeKarmaTextGateError(response, lang) {
   return json(localizedResult, status, retryAfter ? { 'Retry-After': retryAfter } : {});
 }
 
+function karmaTracedEnv(env) {
+  const traces = [];
+  const ai = {};
+  for (const method of ['complete', 'analyze']) {
+    if (typeof env.AI?.[method] !== 'function') continue;
+    ai[method] = async (...args) => {
+      const trace = { operation: method, status: 'error', model: '', providerRoute: '' };
+      traces.push(trace);
+      try {
+        const result = await env.AI[method](...args);
+        trace.model = String(result?.model || '');
+        trace.providerRoute = String(result?.providerRoute || result?.providerName || result?.provider || '');
+        trace.status = 'response';
+        return result;
+      } catch (error) {
+        trace.model = String(error?.model || '');
+        trace.providerRoute = String(error?.providerRoute || '');
+        throw error;
+      }
+    };
+  }
+  return { ...env, AI: ai, karmaAiTrace: traces };
+}
+
 async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'KARMA_AI') {
+  env = karmaTracedEnv(env);
   const isPhotoAnalysis = ['face', 'palm'].includes(analysisType);
   const rateLimitError = await enforceKarmaAnalysisRateLimit(request, env, analysisType);
   if (rateLimitError && !isPhotoAnalysis) {
@@ -2753,7 +2778,7 @@ async function recordKarmaImageAnalysis(env, {
         analysisType === 'palm' ? 'palm' : 'face',
         ['success', 'rejected', 'error'].includes(status) ? status : 'error',
         JSON.stringify(input || {}),
-        JSON.stringify(result || {}),
+        JSON.stringify({ ...result, ...(env.karmaAiTrace ? { _aiTrace: env.karmaAiTrace } : {}) }),
         String(errorMessage || '').slice(0, 2000),
         aiService,
       ).run();
