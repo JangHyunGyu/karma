@@ -609,6 +609,7 @@ if (typeof window.gsap === 'undefined') {
   // ===== 상태 =====
   const selectedCards = [];
   let phase = 'selecting';
+  let readingTimer = null;
 
   // ===== 카드 그리드 생성 =====
   const grid = document.getElementById('tarotGrid');
@@ -649,6 +650,7 @@ if (typeof window.gsap === 'undefined') {
   // ===== 카드 선택/해제 =====
   function toggleCard(el, card) {
     if (phase !== 'selecting') return;
+    clearTimeout(readingTimer);
 
     const idx = selectedCards.findIndex(c => c.id === card.id);
     if (idx !== -1) {
@@ -662,9 +664,9 @@ if (typeof window.gsap === 'undefined') {
       el.classList.add('selected');
       updateCards();
 
-      if (selectedCards.length === 3) {
-        setTimeout(startReading, 500);
-      }
+    }
+    if (selectedCards.length === 3) {
+      readingTimer = setTimeout(startReading, 500);
     }
     updateSelectedInfo();
   }
@@ -689,6 +691,7 @@ if (typeof window.gsap === 'undefined') {
 
   // ===== 리딩 시작 =====
   function startReading() {
+    if (phase !== 'selecting' || selectedCards.length !== 3) return;
     phase = 'reading';
     document.getElementById('tarotInstruction').style.display = 'none';
     document.getElementById('selectedInfo').style.display = 'none';
@@ -763,6 +766,10 @@ if (typeof window.gsap === 'undefined') {
 
   // ===== 결과 표시 =====
   function showResult(data) {
+    const cards = (Array.isArray(data.cards) ? data.cards : []).map(card => {
+      const definition = MAJOR_ARCANA.find(item => item.id === card?.id);
+      return definition ? { ...card, ...definition } : null;
+    }).filter(Boolean);
     phase = 'result';
     const wrap = document.getElementById('tarotResult');
     const posLabels = [_L('과거', 'Past'), _L('현재', 'Present'), _L('미래', 'Future')];
@@ -771,7 +778,7 @@ if (typeof window.gsap === 'undefined') {
 
     // 카드 3장 이미지 (크고 선명하게)
     html += '<div class="tarot-cards-display">';
-    data.cards.forEach((card, i) => {
+    cards.forEach((card, i) => {
       html += `<div class="tarot-card-column">
         <div class="tarot-card-position">${posLabels[i]}</div>
         <div class="tarot-card-img-wrap${card.reversed ? ' reversed' : ''}">
@@ -788,7 +795,7 @@ if (typeof window.gsap === 'undefined') {
     html += '</div>';
 
     // 각 카드 해석
-    data.cards.forEach((card, i) => {
+    cards.forEach((card, i) => {
       html += `<div class="tarot-result-card">
         <h3>${posLabels[i]} — ${lang() === 'en' ? card.name : card.nameKo}</h3>
         <p>${esc(card.interpretation)}</p>

@@ -88,6 +88,7 @@ async function loadMatches() {
   try {
     const resp = await fetch(API_BASE + '/api/matches/' + encodeURIComponent(userId));
     const data = await resp.json();
+    if (!resp.ok || data.error) { alert(data.error || 'HTTP ' + resp.status); return; }
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
@@ -111,6 +112,8 @@ async function loadMatches() {
     `).join('');
   } catch(e) {
     alert('Error: ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
   }
 }
 

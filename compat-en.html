@@ -502,7 +502,7 @@ function renderResult(d) {
     const grid = document.getElementById('catGrid');
     grid.innerHTML = catDefs.map(c => {
       const cat = cats[c.key] || {};
-      const sc = cat.score ?? 0;
+      const sc = Number.isFinite(Number(cat.score)) ? Math.max(0, Math.min(100, Number(cat.score))) : 0;
       const g = sc >= 90 ? 's' : sc >= 75 ? 'a' : sc >= 60 ? 'b' : sc >= 40 ? 'c' : 'd';
       const colors = { s: 'linear-gradient(90deg,#ffd93d,#ffb74d)', a: 'linear-gradient(90deg,#81c784,#4caf50)', b: 'linear-gradient(90deg,#64b5f6,#42a5f5)', c: 'linear-gradient(90deg,#ffb74d,#ff9800)', d: 'linear-gradient(90deg,#ef5350,#e53935)' };
       return `<div class="cat-item">

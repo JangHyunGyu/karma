@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-03",
+  "baselineCommit": "5a5fd224075b57f17800acf3c9cd676a09808c40",
+  "scope": "Karma application, API, Korean/English pages, UI, image assets and deployment output",
+  "fixes": [
+    "Keep untrusted result text inert through automatic sentence formatting; escape shared chart values and normalize compatibility scores before HTML interpolation.",
+    "Use locally defined tarot card identities when restoring public shares.",
+    "Cancel stale tarot reading timers after deselection and prevent duplicate reading starts; reject duplicate or null cards at the API boundary.",
+    "Clear previous lucky values when a subsequent daily/yearly reading omits them.",
+    "Preserve shared result query parameters and fragments during language changes.",
+    "Return localized 400 responses for malformed analysis requests, impossible dates and invalid birth times without invoking AI.",
+    "Release loading overlays when legacy matching APIs reject requests and avoid treating API errors as empty match lists.",
+    "Exclude nested Markdown documentation and internal QA files from public build output."
+  ],
+  "verification": {
+    "htmlPages": 42,
+    "viewports": ["360x900", "768x900", "1440x900"],
+    "browserRendersBefore": 126,
+    "browserRendersAfter": 126,
+    "runtimeErrors": 0,
+    "horizontalOverflow": 0,
+    "brokenInternalLinks": 0,
+    "brokenRenderedImages": 0,
+    "decodedImageAssets": 176,
+    "invalidImageAssets": 0,
+    "analysisFlows": "All seven analysis types in Korean and English rendered using deterministic AI responses; non-tarot forms also recovered after injected HTTP 503 responses. Changed chart flows were repeated on final sources.",
+    "browserSecurity": "Injected HTML stayed inert through both sentence formatters and through the actual shared-tarot URL restoration path.",
+    "automatedTests": { "passed": 86, "failed": 0, "newRegressionTests": 22 },
+    "validators": ["validate-i18n", "validate-quality", "validate-contracts", "validate-tarot"],
+    "publicBuildFiles": 233,
+    "workerDryRun": "passed",
+    "visualVerification": {
+      "pairedComparisons": 26,
+      "viewports": ["390x900", "1440x900"],
+      "method": "Compared baseline Git sources with final sources after document, font and image loading; used identical external resources and paused animations.",
+      "result": "All measured headings, cards, controls and image containers retained identical positions and dimensions. No visible design change; tiny rasterization differences remain in some captures.",
+      "expectedErrorStateDifference": "The six legacy matching pages now dismiss failed loading overlays; the unavailable matching APIs remain disabled.",
+      "stylesAndMasterAssets": "unchanged"
+    }
+  },
+  "productionEvidenceBeforeRelease": {
+    "windowStart": "2026-10-27",
+    "successfulPhotoAnalysesMissingPrivateImageLinks": 0,
+    "recentError": "One saju AI response contract failure at 2026-11-02 22:34:15 in the existing KST database timestamps; existing bounded retries and error recovery remain in place.",
+    "preservedPolicies": ["private R2 persistence before valid photo analysis", "D1 image links", "AI routing and prompts", "legacy account API disablement"]
+  },
+  "limits": [
+    "Browser flow fixtures verify rendering and error recovery, not the accuracy of generated readings.",
+    "Transient external AI provider failures cannot be excluded by local regression tests.",
+    "Some desktop requests cancel the unused mobile background resource while switching to the desktop source; the rendered images and final resource responses are valid."
+  ],
+  "localEvidenceDirectory": "D:/workspace/tmp/karma-audit-20261103"
+}

@@ -102,6 +102,8 @@ async function loadMatches() {
     `).join('');
   } catch(e) {
     alert('Error: ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
   }
 }
 

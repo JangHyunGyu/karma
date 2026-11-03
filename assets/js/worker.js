@@ -2229,12 +2229,12 @@ async function handleTarotReading(request, env) {
 
     // 카드 정보 매핑
     const cards = selectedCards.map(c => {
-      const card = TAROT_MAJOR_ARCANA.find(t => t.id === c.id);
+      const card = TAROT_MAJOR_ARCANA.find(t => t.id === c?.id);
       if (!card) return null;
       return { ...card, reversed: !!c.reversed };
     }).filter(Boolean);
 
-    if (cards.length !== 3) {
+    if (cards.length !== 3 || new Set(cards.map(card => card.id)).size !== 3) {
       return json({ error: getKarmaTextAnalysisMessage(responseLang, 'invalidCardIds') }, 400);
     }
 
@@ -2698,6 +2698,27 @@ function karmaTracedEnv(env) {
   return { ...env, AI: ai, karmaAiTrace: traces };
 }
 
+function isValidKarmaDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  return day <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+}
+
+function hasValidKarmaCalendarInput(body) {
+  const inputs = [body, body.personA, body.personB].filter(isPlainAiObject);
+  for (const input of inputs) {
+    for (const key of ['birth_date', 'birth_a', 'birth_b', 'target_date']) {
+      if (input[key] != null && input[key] !== '' && !isValidKarmaDate(input[key])) return false;
+    }
+    for (const key of ['birth_time', 'time_a', 'time_b']) {
+      if (input[key] != null && input[key] !== '' && (typeof input[key] !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input[key]))) return false;
+    }
+  }
+  return body.year == null || body.year === '' || (Number.isInteger(Number(body.year)) && Number(body.year) >= 1 && Number(body.year) <= 9999);
+}
+
 async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handler, aiService = 'KARMA_AI') {
   env = karmaTracedEnv(env);
   const isPhotoAnalysis = ['face', 'palm'].includes(analysisType);
@@ -2710,7 +2731,13 @@ async function handleLoggedKarmaAnalysis(request, env, ctx, analysisType, handle
   const analysisContext = { r2Key: '', aiCalled: false };
   let response;
   try {
-    response = await handler(request, env, requestId, rateLimitError, analysisContext);
+    let body;
+    if (!isPhotoAnalysis) {
+      try { body = await request.clone().json(); } catch (_) {}
+    }
+    response = isPhotoAnalysis || (isPlainAiObject(body) && hasValidKarmaCalendarInput(body))
+      ? await handler(request, env, requestId, rateLimitError, analysisContext)
+      : json({ error: getKarmaTextAnalysisMessage(await karmaRequestLang(request), 'invalidRequest') }, 400);
   } catch (error) {
     response = karmaAiServiceErrorResponse(error)
       || json({ error: error?.message || 'Server error' }, 500);
@@ -2933,7 +2960,10 @@ function palmExpertRubric() {
 async function handleFaceReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
   const oversizedRequest = getOversizedPhotoRequestError(request);
   if (oversizedRequest) return oversizedRequest;
-  const { image, mimeType, gender, age, lang } = await request.json();
+  let body;
+  try { body = await request.json(); } catch (_) {}
+  if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(/^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko', 'invalidRequest') }, 400);
+  const { image, mimeType, gender, age, lang } = body;
   const analysisLang = normalizePhotoAnalysisLang(lang);
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
@@ -3146,7 +3176,10 @@ ${faceExpertRubric()}
 async function handlePalmReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
   const oversizedRequest = getOversizedPhotoRequestError(request);
   if (oversizedRequest) return oversizedRequest;
-  const { image, mimeType, hand, dominant, gender, lang } = await request.json();
+  let body;
+  try { body = await request.json(); } catch (_) {}
+  if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(/^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko', 'invalidRequest') }, 400);
+  const { image, mimeType, hand, dominant, gender, lang } = body;
   const analysisLang = normalizePhotoAnalysisLang(lang);
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);

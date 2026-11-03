@@ -8,10 +8,10 @@ const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist');
 const excluded = [
   /^\.git(\/|$)/, /^\.github(\/|$)/, /^\.wrangler(\/|$)/, /^node_modules(\/|$)/, /^dist(\/|$)/,
-  /^scripts(\/|$)/, /^tests(\/|$)/,
+  /^scripts(\/|$)/, /^tests(\/|$)/, /^docs(\/|$)/,
   /^assets\/js\/worker\.js$/,
   /^wrangler\.toml$/, /^package(?:-lock)?\.json$/, /^validate-[^/]+\.js$/,
-  /^[^/]+\.md$/, /^tmp-server-.*\.log$/, /^npm-debug\.log/
+  /\.md$/i, /^tmp-server-.*\.log$/, /^npm-debug\.log/
 ];
 
 function walk(dir, files = []) {

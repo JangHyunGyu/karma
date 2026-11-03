@@ -65,7 +65,13 @@ if (!window.__karmaErrorReporterInstalled) {
 function changeLang(lang) {
   safeLocalStorageSet('karma_lang', lang);
   var link = document.querySelector('link[hreflang="' + lang + '"]');
-  if (link) { location.href = link.href; return; }
+  if (link) {
+    const target = new URL(link.href);
+    target.search = location.search;
+    target.hash = location.hash;
+    location.href = target.href;
+    return;
+  }
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-ko][data-en]').forEach(function(el) { el.textContent = el.dataset[lang]; });
   if (typeof updateComboLang === 'function') updateComboLang(lang);
@@ -614,9 +620,13 @@ window.addEventListener('scroll', (e) => {
 }, true);
 
 // ===== 마침표 줄바꿈 =====
+function escapeKarmaHtml(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function formatSentences(el) {
   if (!el || !el.textContent.trim()) return;
-  el.innerHTML = el.textContent
+  el.innerHTML = escapeKarmaHtml(el.textContent)
     .replace(/\. /g, '.<br>')
     .replace(/다\. /g, '다.<br>')
     .replace(/요\. /g, '요.<br>');
@@ -628,7 +638,7 @@ function applyLineBreaks() {
     if (p.dataset.formatted) return;
     const text = p.textContent;
     if (text && text.length > 30) {
-      p.innerHTML = text.replace(/다\.\s*/g, '다.<br>').replace(/요\.\s*/g, '요.<br>').replace(/니다\.<br>/g, '니다.<br><br>');
+      p.innerHTML = escapeKarmaHtml(text).replace(/다\.\s*/g, '다.<br>').replace(/요\.\s*/g, '요.<br>').replace(/니다\.<br>/g, '니다.<br><br>');
       p.dataset.formatted = '1';
     }
   });

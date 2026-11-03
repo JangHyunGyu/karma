@@ -333,6 +333,7 @@ function renderDaily(d) {
   document.getElementById('dailyHealth').textContent = f.health || '';
   document.getElementById('dailyAdvice').textContent = f.advice || '';
 
+  document.getElementById('dailyLucky').innerHTML = '';
   if (f.lucky) {
     document.getElementById('dailyLucky').innerHTML =
       (f.lucky.color ? '<span class="tag tag-good">' + _L('🎨 행운의 색: ','🎨 Lucky Color: ') + esc(f.lucky.color) + '</span>' : '') +

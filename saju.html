@@ -405,14 +405,14 @@ function renderResult(d) {
 
   const maxOh = Math.max(...Object.values(d.ohangCount), 1);
   let ohangHtml = Object.entries(d.ohangCount).map(([k,v]) =>
-    '<div class="bar-item"><div class="bar-label"><span>'+OHANG_EMOJI[k]+' '+k+'</span><span>'+v+'</span></div>' +
+    '<div class="bar-item"><div class="bar-label"><span>'+OHANG_EMOJI[k]+' '+esc(k)+'</span><span>'+esc(v)+'</span></div>' +
     '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+OHANG_COLORS[k]+'"></div></div></div>'
   ).join('');
   // 과다/부족 태그
   const ohangTags = [];
   for (const [k,v] of Object.entries(d.ohangCount)) {
-    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + k + _L(' 과다: ',' Excess: ') + esc(_L(...(OHANG_EXCESS[k]||['','']))) + '</span>');
-    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + k + _L(' 부족: ',' Lacking: ') + esc(_L(...(OHANG_LACK[k]||['','']))) + '</span>');
+    if (v >= 4) ohangTags.push('<span class="tag tag-warn">' + OHANG_EMOJI[k] + ' ' + esc(k) + _L(' 과다: ',' Excess: ') + esc(_L(...(OHANG_EXCESS[k]||['','']))) + '</span>');
+    if (v === 0) ohangTags.push('<span class="tag" style="background:rgba(100,100,100,0.3);color:#aaa;border:1px solid rgba(100,100,100,0.4)">' + OHANG_EMOJI[k] + ' ' + esc(k) + _L(' 부족: ',' Lacking: ') + esc(_L(...(OHANG_LACK[k]||['','']))) + '</span>');
   }
   if (ohangTags.length) ohangHtml += '<div class="tags" style="margin-top:8px">' + ohangTags.join('') + '</div>';
   document.getElementById('ohangBars').innerHTML = ohangHtml;

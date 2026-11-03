@@ -301,6 +301,7 @@ function renderFortune(d) {
   document.getElementById('fortuneAdvice').textContent = f.advice || '';
 
   // Lucky items
+  document.getElementById('fortuneLucky').innerHTML = '';
   if (f.lucky) {
     document.getElementById('fortuneLucky').innerHTML =
       (f.lucky.color ? '<span class="tag tag-good">🎨 Lucky Color: ' + esc(f.lucky.color) + '</span>' : '') +

@@ -413,7 +413,7 @@ function renderResult(d) {
   // Five Elements — keys are now English (Wood, Fire, etc.)
   const maxOh = Math.max(...Object.values(d.ohangCount), 1);
   let ohangHtml = Object.entries(d.ohangCount).map(([k,v]) =>
-    '<div class="bar-item"><div class="bar-label"><span>'+(OHANG_EMOJI[k]||'')+' '+esc(k)+'</span><span>'+v+'</span></div>' +
+    '<div class="bar-item"><div class="bar-label"><span>'+(OHANG_EMOJI[k]||'')+' '+esc(k)+'</span><span>'+esc(v)+'</span></div>' +
     '<div class="bar-track"><div class="bar-fill" style="width:'+(v/maxOh*100)+'%;background:'+(OHANG_COLORS[k]||'#888')+'"></div></div></div>'
   ).join('');
   const ohangTags = [];

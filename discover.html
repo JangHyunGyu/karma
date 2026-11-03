@@ -101,6 +101,8 @@ async function loadMatches() {
     `).join('');
   } catch(e) {
     alert('오류: ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
   }
 }
 

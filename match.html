@@ -190,6 +190,8 @@ async function loadMatch() {
     }
   } catch(e) {
     alert('오류: ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
   }
 }
 
