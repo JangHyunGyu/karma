@@ -1944,11 +1944,19 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
     let contractErrors = [];
     let accumulated = null;
     let lastParseError = null;
+    let lastRawText = '';
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) await waitForKarmaAiRetry(attempt);
+      // error_logs 6475: a valid JSON object whose strings were all empty (or whose keys were not the schema keys)
+      // failed three times in a row. Say exactly what was wrong instead of only asking for "valid JSON".
       const retryInstruction = contractErrors.length
-        ? 'The previous response could not be displayed. Return one valid JSON object matching the original schema with actual reading text. Do not return a patch.'
+        ? ['The previous response could not be displayed. Return one valid JSON object matching the original schema with actual reading text. Do not return a patch.',
+          contractErrors.includes('root:no_displayable_text')
+            ? 'It contained no readable text: use exactly the schema keys and fill every string with real sentences grounded in the input. Never return empty strings, empty arrays, placeholders, or a copy of the schema.'
+            : ''].filter(Boolean).join(' ')
         : '';
+      // Lower temperature only helps broken JSON syntax; an empty template repeats more often when sampling is narrowed.
+      const narrowRetry = attempt > 0 && contractErrors.length > 0 && !contractErrors.includes('root:no_displayable_text');
       const attemptSystem = [systemText, retryInstruction].filter(Boolean).join('\n\n');
       const attemptPrompt = promptText;
       const messages = attemptSystem
@@ -1966,7 +1974,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
           messages,
           cacheKey,
           responseFormat: 'json_object',
-          temperature: attempt > 0 ? 0.2 : 0.5,
+          temperature: narrowRetry ? 0.2 : 0.5,
           maxTokens: 16384,
         });
       } catch (error) {
@@ -1992,8 +2000,9 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
         provider_route: result?.providerRoute || result?.providerName || result?.provider || null,
       });
       let parsed;
+      lastRawText = String(result?.text || '');
       try {
-        parsed = parseAiJsonResponse(result?.text || '');
+        parsed = parseAiJsonResponse(lastRawText);
         lastParseError = null;
       } catch (error) {
         lastParseError = error;
@@ -2005,7 +2014,8 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
       if (contract.ok) return accumulated;
       contractErrors = contract.errors;
     }
-    await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, [contractErrors.join(', '), lastParseError?.message].filter(Boolean).join('\n'), {
+    const rawSample = lastRawText.replace(/\s+/g, ' ').trim().slice(0, 600);
+    await logApiError(_env, `[${endpoint}] AI JSON contract mismatch after retry`, [contractErrors.join(', '), lastParseError?.message, rawSample ? `raw: ${rawSample}` : ''].filter(Boolean).join('\n'), {
       endpoint,
       contractType,
       promptChars: _contentsSize,
