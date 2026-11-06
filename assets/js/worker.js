@@ -1945,14 +1945,16 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
     let accumulated = null;
     let lastParseError = null;
     let lastRawText = '';
+    const failedModels = [];
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) await waitForKarmaAiRetry(attempt);
-      // error_logs 6475: a valid JSON object whose strings were all empty (or whose keys were not the schema keys)
-      // failed three times in a row. Say exactly what was wrong instead of only asking for "valid JSON".
+      // error_logs 6475, 6499, 6505: a valid JSON object whose strings were all empty (or whose keys were
+      // degenerate punctuation like {":": {": ": ...}}) failed three times in a row. Say exactly what was wrong
+      // and exclude the model that produced the empty/degenerate output on retry.
       const retryInstruction = contractErrors.length
         ? ['The previous response could not be displayed. Return one valid JSON object matching the original schema with actual reading text. Do not return a patch.',
           contractErrors.includes('root:no_displayable_text')
-            ? 'It contained no readable text: use exactly the schema keys and fill every string with real sentences grounded in the input. Never return empty strings, empty arrays, placeholders, or a copy of the schema.'
+            ? 'It contained no readable text: use exactly the schema keys and fill every string with real sentences grounded in the input. Never return empty strings, empty arrays, punctuation keys (such as ":"), placeholders, or a copy of the schema.'
             : ''].filter(Boolean).join(' ')
         : '';
       // Lower temperature only helps broken JSON syntax; an empty template repeats more often when sampling is narrowed.
@@ -1976,12 +1978,14 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
           responseFormat: 'json_object',
           temperature: narrowRetry ? 0.2 : 0.5,
           maxTokens: 16384,
+          ...(failedModels.length ? { excludeModels: [...new Set(failedModels)] } : {}),
         });
       } catch (error) {
         // Transport failures and response repairs share one bounded retry budget.
         if (isRetryableKarmaAiError(error) && attempt < maxAttempts - 1) continue;
         throw new KarmaAiServiceError(responseLang, error);
       }
+      if (result?.model) failedModels.push(String(result.model));
       const usage = result?.usage || {};
       await logPerfStats(_env, _ctx, {
         app: `karma:${endpoint}`,

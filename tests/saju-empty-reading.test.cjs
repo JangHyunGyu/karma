@@ -64,3 +64,29 @@ test('row 6475 input: a real reading on retry is returned', async () => {
   assert.equal(result.personality, t);
   assert.equal(n, 2);
 });
+
+test('rows 6499 & 6505: degenerate punctuation-key JSON forwards excludeModels on retry', async () => {
+  const api = loadWorker();
+  const saju = api.calculateSaju('2004-06-21', '12:00', 'female', false, 'utc+9');
+  const prompt = api.buildSajuPrompt(saju, 'female', 'ko', '2004-06-21');
+  const t = '갑신년 경오월 기미일 기사시 사주로 토 기운이 중심을 잡아 줍니다. [근거: 토4]';
+  const reading = { pillar_reading: { year: t, month: t, day: t, hour: t }, personality: t, love_style: t, career: t, advice: t,
+    strengths: [t, t, t], cautions: [t, t, t], daeun_reading: Array(8).fill(t) };
+  const calls = [];
+  const env = {
+    AI: {
+      async complete(req) {
+        calls.push(req);
+        if (calls.length === 1) {
+          return { text: '{":": {": ": {": ": {"": ""}}}}', model: 'deepseek/deepseek-v4.1-flash-1017', usage: {} };
+        }
+        return { text: JSON.stringify(reading), model: 'google/gemma-4-31b-it', usage: {} };
+      },
+    },
+  };
+  const result = await api.callKarmaTextAi(prompt, 'saju', env, null, 'saju', { hasTime: true, daeunCount: 8 });
+  assert.equal(result.personality, t);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(Array.from(calls[1].excludeModels || []), ['deepseek/deepseek-v4.1-flash-1017']);
+  assert.match(calls[1].messages[0].content, /punctuation keys/);
+});
