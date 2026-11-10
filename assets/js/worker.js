@@ -1148,37 +1148,48 @@ function translateSajuToEn(saju) {
 }
 
 function ohangCompatibility(saju1, saju2) {
-  let score = 50;
+  let score = 58;
   const oh1 = saju1.ilganOhang;
   const oh2 = saju2.ilganOhang;
 
-  // 일간 하나만 보던 기존 점수에서 일지와 전체 원국 합·충까지 반영
-  if (SANGSAENG[oh1] === oh2 || SANGSAENG[oh2] === oh1) score += 10;
-  if (SANGGEUK[oh1] === oh2 || SANGGEUK[oh2] === oh1) score -= 8;
-  if (oh1 === oh2) score += 4;
+  // 일간·음양·일지·원국 전체 합충과 오행 보완/과다 겹침을 큰 폭으로 반영해 궁합 점수 편차 확대
+  if (SANGSAENG[oh1] === oh2 || SANGSAENG[oh2] === oh1) score += 14;
+  if (SANGGEUK[oh1] === oh2 || SANGGEUK[oh2] === oh1) score -= 14;
+  if (oh1 === oh2) score -= 4;
+
+  const info1 = CHEONGAN_INFO[saju1.ilgan] || {};
+  const info2 = CHEONGAN_INFO[saju2.ilgan] || {};
+  if (Boolean(info1.yin) !== Boolean(info2.yin)) score += 6;
+  else score -= 5;
 
   const dayA = saju1.pillars.find(p => p.name === '일주');
   const dayB = saju2.pillars.find(p => p.name === '일주');
   if (dayA && dayB) {
     const dayRel = analyzeSajuRelations([dayA], [dayB]);
-    score += Math.min(8, dayRel.ganHap.length * 4);
-    score += Math.min(10, dayRel.jiHap.length * 10);
-    score -= Math.min(10, dayRel.jiChung.length * 10);
-    if (dayA.ji === dayB.ji) score += 3;
+    score += Math.min(12, dayRel.ganHap.length * 12);
+    score += Math.min(14, dayRel.jiHap.length * 14);
+    score -= Math.min(18, dayRel.jiChung.length * 18);
+    const dayOhA = JIJI_OHANG[dayA.ji];
+    const dayOhB = JIJI_OHANG[dayB.ji];
+    if (dayOhA && dayOhB) {
+      if (SANGSAENG[dayOhA] === dayOhB || SANGSAENG[dayOhB] === dayOhA) score += 8;
+      if (SANGGEUK[dayOhA] === dayOhB || SANGGEUK[dayOhB] === dayOhA) score -= 8;
+    }
   }
 
   const wholeRel = analyzeSajuRelations(saju1.pillars, saju2.pillars);
-  score += Math.min(8, wholeRel.ganHap.length * 2);
-  score += Math.min(12, wholeRel.jiHap.length * 3);
-  score -= Math.min(15, wholeRel.jiChung.length * 3);
+  score += Math.min(15, wholeRel.ganHap.length * 5);
+  score += Math.min(18, wholeRel.jiHap.length * 6);
+  score -= Math.min(24, wholeRel.jiChung.length * 8);
 
   for (const key of Object.keys(OHANG)) {
-    if (saju1.ohangCount[key] === 0 && saju2.ohangCount[key] >= 2) score += 3;
-    if (saju2.ohangCount[key] === 0 && saju1.ohangCount[key] >= 2) score += 3;
+    if (saju1.ohangCount[key] === 0 && saju2.ohangCount[key] >= 2) score += 6;
+    if (saju2.ohangCount[key] === 0 && saju1.ohangCount[key] >= 2) score += 6;
+    if (saju1.ohangCount[key] >= 3 && saju2.ohangCount[key] >= 3) score -= 8;
   }
 
   // 전통 명리 관계를 요약한 휴리스틱이므로 과도한 0/100 확정값 배제
-  return Math.max(20, Math.min(95, Math.round(score)));
+  return Math.max(20, Math.min(96, Math.round(score)));
 }
 
 // ============================================================
@@ -1691,7 +1702,24 @@ function validateFaceAiResponse(value, context = {}) {
 function normalizePalmAiGrade(value) {
   if (!isPlainAiObject(value) || value.error || !Number.isInteger(value.overall_score)
       || value.overall_score < 0 || value.overall_score > 100) return value;
-  return { ...value, overall_grade: getGrade(value.overall_score) };
+  let overallScore = value.overall_score;
+  // 정면 손바닥 사진에서 측면 결혼선 등 확인 불가 선의 일괄 저점수가 전체 점수를 60점대로 고정하는 현상 보정
+  if (Array.isArray(value.lines) && value.lines.length === 6
+      && value.lines.every(line => isPlainAiObject(line) && Number.isInteger(line.score) && line.score >= 0 && line.score <= 100)) {
+    const unreadablePattern = /확인\s*어려움|hard\s*to\s*verify|confirmation\s*difficult|unconfirmed|unreadable/i;
+    const hasUnreadableLine = value.lines.some(line => unreadablePattern.test(String(line.length ?? '')));
+    if (hasUnreadableLine) {
+      const readableLines = value.lines
+        .map((line, index) => ({ score: line.score, weight: index < 3 ? 1.4 : 1.0, unreadable: unreadablePattern.test(String(line.length ?? '')) }))
+        .filter(item => !item.unreadable);
+      if (readableLines.length > 0) {
+        const totalWeight = readableLines.reduce((sum, item) => sum + item.weight, 0);
+        const weightedMean = readableLines.reduce((sum, item) => sum + item.score * item.weight, 0) / totalWeight;
+        overallScore = Math.max(0, Math.min(100, Math.round(weightedMean)));
+      }
+    }
+  }
+  return { ...value, overall_score: overallScore, overall_grade: getGrade(overallScore) };
 }
 
 function validatePalmAiResponse(value) {
@@ -1948,7 +1976,7 @@ const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
 - [근거: ...] 표기가 필요할 때도 계산값만 나열하지 말고, "내 사주에서 생각을 말과 행동으로 옮기는 성향이 두드러짐"처럼 누구나 이해할 수 있는 짧은 설명을 씁니다.
 - 문장 하나에는 핵심 내용 하나만 담고 짧게 씁니다. "변화 압력", "표현 자원", "관계 템포" 같은 추상적인 표현 대신 실제 생활에서 겪을 수 있는 상황이나 행동으로 풀어 씁니다.
 - 조언은 "주의하세요"로 끝내지 말고, 오늘·이번 주·올해 무엇을 어떻게 해볼지 바로 실행할 수 있게 씁니다.
-- 각 해석에서 잘 맞는 선택과 아쉬운 점을 분명히 고릅니다. "장단점이 공존한다", "균형이 필요하다", "가능성이 열려 있다"로 양쪽을 덮지 말고, 어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지 밝힙니다. 입력 근거가 부족한 부분만 범위를 좁혀 모른다고 씁니다.
+- 각 해석에서 잘 맞는 선택과 아쉬운 점을 분명히 고릅니다. 듣기 좋은 칭찬이나 위로로 포장하지 말고 입력 데이터·사진에서 드러나는 약점, 불균형, 결핍, 걸림돌을 가감 없이 직설적으로 짚습니다. "장단점이 공존한다", "균형이 필요하다", "가능성이 열려 있다", "대체로 무난하다"로 양쪽을 덮지 말고 어떤 상황에서 무엇이 유리하고 무엇이 걸림돌인지 냉정하게 밝힙니다. 입력 근거가 부족한 부분만 범위를 좁혀 모른다고 씁니다.
 - 사주·운세·궁합·타로의 본문은 쉬운 결론 → 입력 근거 → 생활 속 장면이나 행동으로 이어갑니다. 예를 들 때는 실제로 있었던 사건처럼 꾸미지 않습니다. 특정 입력값을 먼저 길게 나열하라는 지시보다 읽기 쉬운 결론을 앞세웁니다.
 - 관상·손금은 눈에 보이는 모양·위치·길이·비율을 먼저 말하고 전통 해석과 실천할 행동을 구분합니다. "돈 관리에 유의" 대신 관리할 지출이나 확인할 항목을, "관계에 노력" 대신 바꿔 볼 대화 행동을 구체적으로 적습니다.
 - "성숙한 우아함", "자연스러운 조화", "깊이 있는 분위기" 같은 칭찬만으로 설명을 끝내지 않습니다. 어느 특징이 어떤 인상을 만드는지, 무엇을 어느 방향으로 바꾸면 인상이 어떻게 달라 보이는지 적습니다. 전문 용어나 긴 문장으로 직설적인 설명을 대신하지 않습니다.
@@ -1974,7 +2002,7 @@ const ENGLISH_PLAIN_PROSE_GUARD = `[Clear, plain English]
 - If an [Evidence: ...] label is required, do not fill it with raw calculations. Use a short explanation anyone can understand, such as "your chart puts more emphasis on turning ideas into action."
 - Keep one main idea per sentence and keep sentences short. Replace abstractions such as "change pressure," "expressive resources," or "relationship tempo" with a concrete situation or action from everyday life.
 - Do not end advice with vague phrases such as "be careful." Say what the reader can do today, this week, or this year.
-- Choose a clear strength, drawback, or priority from the supplied evidence. Do not hide the conclusion behind "balance is needed," "both strengths and weaknesses," or "potential." Name the situation, useful choice, and likely friction within the reading; identify only the specific unknowns.
+- Choose a clear strength, drawback, or priority from the supplied evidence. Do not flatter or sugarcoat; point out weaknesses, imbalances, blind spots, and stumbling blocks directly and candidly. Do not hide the conclusion behind "balance is needed," "both strengths and weaknesses," "generally fine," or "potential." Name the situation, useful choice, and likely friction within the reading; identify only the specific unknowns.
 - For Saju, fortunes, compatibility, and tarot, lead with a plain conclusion, then its input evidence and a concrete everyday example or action. An example is not a claim about an event that happened. Readability takes precedence over opening with a list of chart symbols.
 - For face and palm readings, start with visible shape, position, length, or proportions, then distinguish traditional interpretation from a practical action. Replace "manage money carefully" or "work on relationships" with an expense to review or a communication behavior to try.
 - Praise such as "mature elegance," "natural harmony," or "a deep aura" is not an explanation. Name the feature, the visual impression it creates, and the specific adjustment that would change that impression.
@@ -2266,6 +2294,7 @@ function buildTarotPrompt(cards, question, lang) {
 
 ## Spread-Specific Differentiation
 - Treat the exact three-card order, direction, and question as this reading's fingerprint. A different card, reversed state, or question must change the core conflict, advice, and keywords.
+- Do not flatter the querent or soften harsh spreads into generic encouragement. When reversed or conflicting cards appear, directly name the blind spot, avoidance, overreach, or stumbling block that is holding the situation back.
 - Start overall with a clear answer to the question or a priority supported by this spread, then explain the cause-effect link between at least two drawn cards. Do not start with a generic life theme.
 - If there is no question, choose one dominant real-life arena from this exact card combination; do not cover love, career, and personal growth with equal generic weight.
 - Keywords must come from this exact spread, not a reusable tarot keyword list.
@@ -2306,6 +2335,7 @@ ${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${questi
 
 ## 배열별 차별화 필수
 - 뽑힌 3장의 카드명, 순서, 정/역방향, 질문을 이번 리딩의 지문으로 삼으세요. 카드 한 장, 방향 하나, 질문 하나가 달라지면 핵심 갈등·조언·키워드도 달라져야 합니다.
+- 듣기 좋은 위로로 포장하지 마세요. 역방향 카드나 충돌하는 카드 조합이 나오면 현재 회피하고 있는 문제, 잘못된 집착, 어긋난 기대, 이대로 가면 막히는 걸림돌을 직설적으로 짚으세요.
 - overall 첫 문장은 질문에 대한 답이나 이 배열에서 우선할 행동을 쉬운 말로 제시하고, 뽑힌 카드 2장 이상의 원인→결과 흐름을 근거로 이어 쓰세요. 일반적인 인생 주제로 시작하지 마세요.
 - 질문이 없는 경우에도 카드 조합에서 가장 강한 현실 영역 하나를 골라 깊게 파세요. 연애·직업·성장을 같은 비중의 무난한 설명으로 나열하지 마세요.
 - keywords는 이번 카드 조합에서 나온 단어만 고르세요. 재사용 가능한 타로 공통 키워드 목록처럼 만들지 마세요.
@@ -2488,18 +2518,19 @@ function validatePhotoImageInput(image, mimeType, lang = 'ko') {
 function photoScoreInterpretationGuide(contractType) {
   if (!['face', 'palm'].includes(contractType)) return '';
   const itemPath = contractType === 'face' ? 'categories' : 'lines';
-  return `## 점수와 설명 일치 원칙
+  return `## 점수와 설명 일치 원칙 (냉정한 정밀 채점 및 편차 확대)
 - ${itemPath}의 각 desc는 실제 관찰 → 점수의 이유 → 전통 해석의 강점 또는 약점 → 점검할 행동 순서로 쓰되 3~4문장으로 정리하세요. 낮은 점수를 주고 설명에는 장점만 나열하지 마세요.
-- 모든 항목에 caution을 반드시 쓰세요. 78~82점처럼 높은 점수여도 칭찬만 쓰면 불완전한 응답입니다. desc에는 관찰과 점수의 이유를, caution에는 같은 특징의 약점이나 주의점과 대응 행동을 1~2문장으로 쓰세요. 서버가 두 내용을 이어서 표시하므로 desc에 caution 문장을 반복하지 마세요.
-- 75점 이상도 caution에서 어떤 상황을 조심해야 하는지 밝히세요. 관찰된 아쉬움이 없다면 같은 강점이 지나칠 때 생길 수 있는 걸림돌을 전통 해석 안에서 조건부로 설명하세요. 실제로 보이지 않는 형태의 결함을 만들지 마세요.
-- 60~74점은 점수를 낮춘 구체적인 아쉬움이나 전통 해석의 주의점 1개 이상을 반드시 쓰세요. 어떤 상황에서 걸림돌로 읽는지와 점검할 행동을 설명하세요.
-- 60점 미만은 점수를 낮춘 근거와 전통 해석의 약점을 중심으로 쓰세요. 칭찬을 앞세우거나 약점을 곧바로 장점으로 바꿔 설명하지 마세요.
+- 듣기 좋은 말로 포장하거나 모든 부위에 무난한 중상위 점수를 주지 마세요. 평범한 기본 기준점은 64점(B등급)입니다. 실제로 뛰어난 부위와 부족한 부위를 가감 없이 갈라 채점해 한 결과 안에서도 최고점 부위와 최저점 부위의 격차가 최소 18~35점 이상 벌어지게 하세요.
+- 모든 항목에 caution을 반드시 쓰세요. 높은 점수여도 칭찬만 쓰면 불완전한 응답입니다. desc에는 관찰과 점수의 이유를, caution에는 같은 특징의 약점이나 주의점과 대응 행동을 1~2문장으로 쓰세요. 서버가 두 내용을 이어서 표시하므로 desc에 caution 문장을 반복하지 마세요.
+- 88~96점(최상위 강점)은 비율·대칭·윤곽·기색 또는 선의 깊이·연속성이 사진에서 흠잡을 데 없이 뚜렷한 부위에만 부여하세요. 75점 이상도 caution에서 어떤 상황을 조심해야 하는지 밝히세요. 관찰된 아쉬움이 없다면 같은 강점이 지나칠 때 생길 수 있는 걸림돌을 전통 해석 안에서 조건부로 설명하세요. 실제로 보이지 않는 형태의 결함을 만들지 마세요.
+- 60~74점은 일반 평균이거나 비대칭, 불균형, 피부결 거칠기, 선의 흐림 등 아쉬움이 있는 구간입니다. 60~74점은 점수를 낮춘 구체적인 아쉬움이나 전통 해석의 주의점·걸림돌 1개 이상을 반드시 직설적으로 쓰세요. 어떤 상황에서 걸림돌로 읽는지와 점검할 행동을 설명하세요.
+- 60점 미만(30~59점)은 비대칭, 비율 불균형, 트러블, 가림이 뚜렷하거나 손금이 끊김, 사슬형, 섬 모양, 극도로 얕은 약점 구간입니다. 약점이 보이면 주저 없이 60점 미만을 부여하세요. 60점 미만은 점수를 낮춘 근거와 전통 해석의 약점·걸림돌을 중심으로 직설적으로 쓰세요. 칭찬을 앞세우거나 약점을 곧바로 장점으로 바꿔 설명하지 마세요.
 - 낮은 점수의 원인이 흐림·가림·각도라면 확인할 수 없는 특징과 촬영 조건을 설명하세요. 관찰 한계를 성격이나 운세의 단점으로 바꾸지 마세요. 선이 없다는 해석도 해당 영역이 선명하게 보일 때만 가능합니다.
 - 약점은 관찰한 형태·비율·선의 끊김 등에 연결해 전통 해석 안에서 설명하세요. 사진만 보고 실제 성격 결함, 능력 부족, 질병, 가난, 이혼, 불운을 단정하지 마세요.
-- summary에는 가장 뚜렷한 강점과 우선 점검할 약점 또는 주의점을 함께 짚으세요. 모든 항목이 75점 이상이어도 주의점을 생략하지 마세요. 낮은 항목이 관찰 한계 때문이면 그 한계와 보이는 항목의 주의점을 구분하세요.
-- fortune에는 관련 항목의 약점이나 관찰 한계를 반영하세요. advice는 낮은 점수 항목에서 우선 점검할 행동으로 이어져야 합니다. 관찰 한계만 있다면 재촬영 방법을 안내하세요.
-- caution은 부위마다 다른 관찰 근거와 상황에 연결하세요. "장점이 많다", "큰 문제는 없다", "균형을 유지하세요"만 쓰거나 같은 주의점을 모든 부위에 반복하지 마세요. 전체 인상의 caution은 앞선 세부 부위 중 우선 점검할 주의점을 요약하세요.
-- 점수는 관찰 근거로 먼저 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 점수를 낮추거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
+- summary에는 가장 뚜렷한 강점과 우선 점검할 약점·걸림돌을 함께 직설적으로 짚으세요. 모든 항목이 75점 이상이어도 주의점을 생략하지 마세요. 낮은 항목이 관찰 한계 때문이면 그 한계와 보이는 항목의 주의점을 구분하세요.
+- fortune에는 관련 항목의 약점·걸림돌이나 관찰 한계를 구체적으로 반영하세요. advice는 낮은 점수 항목에서 우선 점검할 행동으로 이어져야 합니다. 관찰 한계만 있다면 재촬영 방법을 안내하세요.
+- caution은 부위마다 다른 관찰 근거와 상황에 연결하세요. "장점이 많다", "큰 문제는 없다", "균형을 유지하세요"만 쓰거나 같은 주의점을 모든 부위에 반복하지 마세요. 전체 인상의 caution은 앞선 세부 부위 중 우선 점검할 핵심 약점과 걸림돌을 요약하세요.
+- 점수는 관찰 근거로 먼저 냉정하게 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 없는 결함을 만들거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
 }
 
 function formatPhotoAiCautions(value, contractType, lang) {
@@ -3172,7 +3203,7 @@ ${faceExpertRubric()}
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 피부결/트러블/기색, 얼굴형, 좌우 비대칭, 조명/가림 여부.
 - 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
 - 부위의 형태 대부분을 실제로 관찰할 수 없을 때만 해당 부위의 설명에 "사진상 확인 어려움"과 구체 원인을 쓰세요. 부분 가림은 보이는 특징을 먼저 설명하고 확인할 수 없는 특징만 한정하세요.
-- 이마·눈·코·입·턱/광대·피부(기색) 순서의 첫 여섯 항목 점수는 각각 관찰한 형태·피부 상태와 균형을 근거로 독립적으로 산정한 0~100 정수입니다. 설명에 점수의 근거를 포함하세요. 잘 보이는 부위는 윤곽·비율·균형·기색을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
+- 이마·눈·코·입·턱/광대·피부(기색) 순서의 첫 여섯 항목 점수는 각각 관찰한 형태·피부 상태와 균형을 근거로 독립적으로 산정한 0~100 정수입니다. 평범한 기본 점수는 64점(B등급)이며, 부위별 실제 편차에 따라 35~96점 전 구간을 넓게 쓰세요(매우 뛰어남 88~96, 우수함 76~87, 보통·아쉬움 60~74, 뚜렷한 약점·불균형·트러블·가림 35~59). 여섯 부위를 모두 70점대 후반~80점대 초반에 몰아넣는 천편일률적 채점을 절대 하지 말고, 이 얼굴의 최고 강점 부위와 최저 약점 부위가 최소 18점 이상 차이 나도록 냉정하게 평가하세요. 설명에는 점수의 근거와 약점·걸림돌을 직설적으로 포함하세요. 잘 보이는 부위는 윤곽·비율·균형·기색을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
 - 점수 예시는 제공하지 않습니다. 미리 정한 대표 숫자나 구간에서 고르거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요. 같은 사진의 같은 관찰은 같은 평가를 받아야 합니다.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수도 달라져야 합니다.
 - summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
@@ -3370,13 +3401,13 @@ ${palmExpertRubric()}
 - 먼저 사진에서 실제로 보이는 손바닥 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 손바닥 폭, 손가락 길이/벌어짐, 엄지 각도, 생명선 깊이/끊김, 두뇌선 기울기, 감정선 위치, 운명선 선명도, 태양선 유무, 결혼선 가시성, 굳은살/흉터/조명/흐림 여부.
 - 각 \`lines.desc\`의 첫 문장은 반드시 해당 손금의 실제 관찰 특징으로 시작하세요. 관찰 없이 운세부터 말하지 마세요.
-- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 낮추세요.
-- 각 점수는 45~95 범위에서 실제 관찰을 근거로 독립적으로 정하세요. 모든 항목을 75~85점으로 몰거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요.
+- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 두되, 정면 사진 특성상 측면 결혼선 하나만 안 보이는 경우에는 그 한 줄 때문에 전체 손금 총점(overall_score)까지 60점대로 일괄 깎지 마세요.
+- 각 점수는 35~96 범위에서 실제 관찰을 근거로 냉정하고 독립적으로 정하세요(깊고 끊김 없이 선명한 최상급 선은 86~96, 뚜렷하고 안정된 선은 75~85, 평범하거나 잔선이 섞인 선은 60~74, 얕거나 끊김·사슬형·섬 모양 등 약점이 뚜렷한 선은 35~59). 모든 항목을 비슷한 점수대로 몰거나 습관적으로 68점·78점 같은 고정 점수를 주지 마세요. 한 손바닥 안에서도 가장 깊고 뚜렷한 선과 가장 약한 선의 점수 격차가 최소 18~35점 이상 벌어지게 채점하세요.
 - 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
-- summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 확인 어려운 손금 1개를 함께 언급해 이 손만의 대비를 만드세요.
-- fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼으세요. 근거 없이 일반 운세처럼 말하지 마세요.
-- overall_score와 각 lines 점수는 관찰된 선명도·끊김·가시성에서 나와야 합니다. 손바닥 사진이 정상이라는 이유만으로 A등급/80점대에 몰지 마세요.
+- summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 끊긴 손금(또는 확인 어려운 손금) 1개를 함께 언급해 이 손만의 강점과 걸림돌 대비를 직설적으로 만드세요.
+- fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼고, 약한 선이 시사하는 걸림돌과 주의 행동을 숨기지 말고 구체적으로 쓰세요. 근거 없이 일반 운세처럼 말하지 마세요.
+- overall_score는 실제로 판독된 주요 손금(생명선·두뇌선·감정선·운명선·태양선)의 선명도·깊이·연속성과 손바닥 기세를 종합해 40~95점 전 구간에서 산정하세요. 손금이 전반적으로 깊고 또렷하면 82~94점(A~S등급), 평범하면 64~74점(B등급), 주요 선이 얕고 끊기거나 흐리면 42~59점(C등급)을 주어 사진 간 점수 편차를 확실히 넓히세요. 습관적으로 65~70점이나 78~82점에 고정하지 마세요.
 - overall_grade는 서버가 종합 점수에 맞는 공통 등급 기준으로 계산합니다. 등급을 생성하지 마세요.
 
 ## 직설 모드 원칙
@@ -3645,10 +3676,12 @@ function buildSajuPrompt(saju, gender, lang, birthDate) {
 ## 오행 상생/상극 기본 원리
 ${OHANG_RELATIONS}
 
-## 개인화 필수 (누구나 비슷한 사주 풀이면 실패)
+## 개인화 및 냉정한 직설 원칙 (누구나 비슷한 좋은 말 위주 풀이면 실패)
 - 해석의 출발점은 원국 지문, 일간 역할별 오행 수, 우세·희소 오행, 내부 합/충, 현재 대운입니다. 성별이나 일반 사주 상식만으로 결론을 만들지 마세요.
+- 듣기 좋은 칭찬으로 포장하지 마세요. 과다 오행(3개 이상)·결핍 오행(0개)·지지충·역할 편중이 만드는 성격적 약점, 인간관계 마찰, 금전·업무상의 걸림돌을 피하지 말고 각 항목에서 직설적으로 짚으세요.
 - pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
-- strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 위험 3개를 골라야 합니다.
+- strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 실제 발목을 잡는 치명적 약점·걸림돌 3개를 명확히 골라야 합니다.
+- daeun_reading에서도 8개 대운을 모두 무난하거나 좋게 쓰지 마세요. 원국의 과다 오행을 더 키우거나 일지·월지를 충하는 대운은 소모, 갈등, 정체가 커지는 시기로 봅니다. 부족한 오행을 채우는 대운은 확장·전환 시기로 보아 대운별 좋고 나쁨의 편차를 분명하게 구분하세요.
 - 단순히 0개/4개 이상일 때만 차이를 찾지 마세요. 매번 제공된 우세·희소 오행과 십성 역할 수를 비교해 이 원국만의 대비를 잡으세요.
 - 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 강점과 걸림돌을 쉬운 생활 언어로 먼저 말하고 근거를 이어 쓰세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
 
@@ -3757,11 +3790,12 @@ function buildFortunePrompt(saju, gender, year, lang, birthDate) {
 - "전반적으로 무난", "긍정적으로 생각" 같은 재사용 가능한 문장
 - 해마다 같은 결론 반복 금지. 입력의 세운 60갑자 순번, 세운-원국 합/충, 일지-세운 지지 관계를 근거로 해당 연도만의 사건·월·행운 요소를 골라라
 
-## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+## 개인화 및 냉정한 직설 필수 (가장 중요 — 누구나 비슷한 좋은 말이 나오면 실패다)
 - 세운(올해 천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 세운의 오행만 설명하는 도입부는 절대 금지(예: "올해는 ○(○) 기운이 강한 해라..." 금지).
 - 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 내부 합충)이다. 세운은 방아쇠이며 현재 대운을 함께 고려하라.
+- 모든 분야(love, money, health, career)를 다 잘 풀린다고 미화하지 마라. 세운이 원국의 과다 오행을 더 키우거나 일지·월지를 충·상극하는 분야는 올해 가장 취약한 걸림돌과 손해 보기 쉬운 행동 패턴을 직설적으로 경고하라. 반대로 결핍 오행을 채우거나 합을 이루는 분야만 기회로 꼽아 분야 간 온도차를 뚜렷하게 벌려라.
 - 일간·오행 구성이 다른 두 사람은 같은 해라도 결론이 확연히 달라야 한다. 같은 세운이 어떤 역할을 늘리는지 원국 지문과 비교하라.
-- year_summary 첫 문장은 올해 우선할 선택과 부담이 커질 수 있는 상황을 쉬운 말로 제시하고, 원국의 특정 신호와 세운 또는 현재 대운의 관계를 근거로 이어 쓰세요.
+- year_summary 첫 문장은 올해 우선할 선택과 부담이 커질 수 있는 걸림돌 상황을 쉬운 말로 직설 제시하고, 원국의 특정 신호와 세운 또는 현재 대운의 관계를 근거로 이어 쓰세요.
 - love, money, health, career, advice는 서로 다른 근거를 써야 합니다. 같은 "올해 조심" 문장을 분야명만 바꿔 반복하지 말고, 원국 오행·일지 관계·세운 합/충·대운 중 무엇을 근거로 삼았는지 문장 안에 드러내세요.
 - 각 항목에 [근거: 입력 신호]를 최소 한 번 표시하세요. lucky의 월은 제공된 월별 대표 신호 중 실제 합·충 또는 일간 관계가 있는 달만 선택하세요.
 
@@ -3888,11 +3922,12 @@ function buildDailyPrompt(saju, gender, todayStr, lang, birthDate) {
 - "긍정적으로 보내세요", "마음가짐이 중요" 같은 재사용 가능한 조언
 - 매일 같은 문장 구조와 결론 반복 금지. 입력의 오늘 날짜 식별자, 60갑자 순번, 일진-원국 합/충을 근거로 날짜별로 다른 사건·시간대·행운 색·숫자를 골라라
 
-## 개인화 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
+## 개인화 및 냉정한 직설 필수 (가장 중요 — 누구나 비슷한 결과가 나오면 실패다)
 - 오늘의 일진(천간·지지)은 모든 사람이 똑같이 공유하는 값이다. 일진의 오행만 설명하는 도입부는 절대 금지(예: "오늘은 ○(○) 기운이 강한 날이라..." 금지).
 - 해석의 출발점은 항상 **이 사람의 원국**(일간, 역할별 표면 수, 최다·최저 오행, 합충)과 현재 대운이다. 일진이 이 지문을 어떻게 건드리는지로 풀어라.
+- 6개 분야(love, money, career, study, social, health)를 모두 무난하거나 좋은 말로 채우지 마라. 오늘 일진이 원국의 과다 오행을 자극하거나 일지·월지와 충·상극을 이루는 분야는 오늘 가장 꼬이기 쉬운 걸림돌, 감정 마찰, 지출 실수를 직설적으로 짚어라. 상생·합이 작동하는 분야와 온도차를 분명히 나눠라.
 - 일간·오행 구성이 다른 두 사람은 같은 날이라도 결론이 확연히 달라야 한다. 오행 과다/부족이 다르면 조심할 영역·시간대·조언이 달라진다.
-- overall 첫 문장은 오늘 우선할 일이나 조심할 대화 행동을 쉬운 말로 먼저 제시하고, 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 근거로 이어 쓰세요.
+- overall 첫 문장은 오늘 우선할 일이나 가장 경계해야 할 걸림돌 행동을 쉬운 말로 먼저 제시하고, 원국의 특정 신호와 오늘 일진 또는 현재 대운의 관계를 근거로 이어 쓰세요.
 - love, money, career, study, social, health는 같은 경고를 분야명만 바꿔 반복하면 실패입니다. 각 항목마다 원국 오행·일지 관계·일진 합/충·요일/60갑자 순번 중 서로 다른 근거를 골라야 합니다.
 - 각 항목에 [근거: 입력 신호]를 표시하세요. lucky.color와 lucky.number는 오늘 일진과 가장 희소한 표면 오행에서 도출하세요.
 
@@ -4024,8 +4059,10 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, b
 - 현재 대운이 판별된 경우에도 두 사람의 관계 사건을 확정하지 말고 각자가 예민해질 수 있는 주제와 대화 방법만 설명하세요.
 - 각 categories.desc와 advice에 [근거: 실제 조합 신호]를 표시하세요.
 
-## 조합별 차별화 필수
-- summary 첫 문장은 두 사람이 실제 대화나 결정에서 맞아떨어지거나 부딪힐 수 있는 지점을 쉬운 말로 짚고, A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 근거로 이어 쓰세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
+## 조합별 차별화 및 냉정한 점수 편차 필수
+- summary 첫 문장은 두 사람이 실제 대화나 결정에서 맞아떨어지거나 정면으로 부딪힐 수 있는 지점을 쉬운 말로 직설적으로 짚고, A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 근거로 이어 쓰세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
+- categories의 4개 점수(personality, intimacy, finance, timing)를 모두 60~80점대에 비슷하게 몰아주지 마세요. 20~95점 전 구간을 사용해 이 커플이 가장 잘 맞는 영역(예: 80~95점)과 가장 심하게 충돌하거나 소모되는 취약 영역(예: 25~58점)의 점수 격차가 최소 20점 이상 벌어지게 채점하세요.
+- 상극·지지충·과다 오행 겹침으로 점수가 낮은 영역(60점 미만)은 좋은 말로 포장하지 마세요. 누가 누구를 어떤 방식으로 지치게 하는지, 어떤 상황에서 갈등과 걸림돌이 터지는지를 가감 없이 서술하세요.
 - personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·현재 대운을 나눠 반영하세요.
 - strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
 - advice는 이 커플만의 금지 행동과 허용 행동을 나눠 적으세요. 다른 커플에게 그대로 붙여도 말이 되면 다시 써야 합니다.

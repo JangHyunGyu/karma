@@ -223,6 +223,9 @@ check(tarot.user.includes('현실 영역 하나만'), '무질문 타로가 한 �
 
 check(workerSource.includes('celebrity_resemblance는 항상 빈 문자열'), '관상 실존 인물 식별 금지');
 check(workerSource.includes('손금은 오락·자기성찰용 전통 해석'), '손금 결과의 전통 해석 한계 명시');
+check(!workerSource.includes('78~82점처럼'), '사진 채점 프롬프트에서 78~82점 고정 앵커 제거');
+check(workerSource.includes('최소 18~35점 이상'), '관상·손금 부위 간 점수 편차 확대 지시 포함');
+check(compat.system.includes('최소 20점 이상'), '궁합 카테고리 간 점수 편차 확대 지시 포함');
 check(!workerSource.includes('수위 제한 없음'), '궁합의 무근거 성행동 추정 지시 제거');
 check(!workerSource.includes('몇 살 즈음 특히 조심해야'), '사주의 무근거 발병 시기 지시 제거');
 

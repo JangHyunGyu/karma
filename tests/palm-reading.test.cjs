@@ -189,3 +189,37 @@ test('Korean and English palm pages display the correct grade for old shared res
     }
   }
 });
+
+test('unreadable side marriage line does not anchor palm overall score to 68 when readable lines vary widely', async () => {
+  const { api } = loadWorker();
+  const strongPalm = palm(68, 'B', 'ko');
+  strongPalm.lines = [
+    { name: '생명선', score: 88, length: '길다', desc: '선명합니다.', caution: '과로 주의.' },
+    { name: '두뇌선', score: 84, length: '보통', desc: '또렷합니다.', caution: '고집 주의.' },
+    { name: '감정선', score: 82, length: '길다', desc: '매끄럽습니다.', caution: '감정 소모 주의.' },
+    { name: '운명선', score: 76, length: '뚜렷', desc: '가운데가 깊습니다.', caution: '일 욕심 주의.' },
+    { name: '태양선', score: 72, length: '있음', desc: '약지 아래 보입니다.', caution: '과시 주의.' },
+    { name: '결혼선', score: 48, length: '확인 어려움', desc: '측면이 보이지 않습니다.', caution: '측면 재촬영.' },
+  ];
+  const weakPalm = palm(68, 'B', 'ko');
+  weakPalm.lines = [
+    { name: '생명선', score: 46, length: '짧다', desc: '중간에 끊김이 보입니다.', caution: '체력 저하 주의.' },
+    { name: '두뇌선', score: 52, length: '짧다', desc: '흐리고 잔선이 많습니다.', caution: '성급한 결정 주의.' },
+    { name: '감정선', score: 48, length: '보통', desc: '사슬 모양으로 흔들립니다.', caution: '감정 기복 주의.' },
+    { name: '운명선', score: 42, length: '희미', desc: '거의 보이지 않습니다.', caution: '목표 분산 주의.' },
+    { name: '태양선', score: 44, length: '없음', desc: '선이 드러나지 않습니다.', caution: '주변 협력 점검.' },
+    { name: '결혼선', score: 50, length: '확인 어려움', desc: '측면이 보이지 않습니다.', caution: '측면 재촬영.' },
+  ];
+
+  const strongResult = await api.callKarmaVisionAi('Inspect the palm.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() { return { text: JSON.stringify(strongPalm) }; } },
+  }, 'ko', 'palm');
+  const weakResult = await api.callKarmaVisionAi('Inspect the palm.', 'data:image/jpeg;base64,/9j/', {
+    AI: { async analyze() { return { text: JSON.stringify(weakPalm) }; } },
+  }, 'ko', 'palm');
+
+  assert.equal(strongResult.overall_score, 81);
+  assert.equal(strongResult.overall_grade, 'A');
+  assert.equal(weakResult.overall_score, 47);
+  assert.equal(weakResult.overall_grade, 'C');
+});
