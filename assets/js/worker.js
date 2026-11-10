@@ -1404,10 +1404,10 @@ function validateTarotAiResponse(value) {
 
 function normalizeFaceAiScores(value) {
   if (!isPlainAiObject(value) || value.error || !Array.isArray(value.categories)
-      || value.categories.length !== 6) return value;
-  // The sixth category summarizes the same five features; counting it again
-  // would let the model's preferred overall number bias the result.
-  const scores = value.categories.slice(0, 5).map(category => category?.score);
+      || ![6, 7].includes(value.categories.length)) return value;
+  // 마지막 전체 인상 항목은 앞선 세부 부위(이마·눈·코·입·턱/광대·피부)의 요약이므로 평균 계산에서 제외
+  const summaryIndex = value.categories.length - 1;
+  const scores = value.categories.slice(0, summaryIndex).map(category => category?.score);
   if (!scores.every(score => Number.isInteger(score) && score >= 0 && score <= 100)) return value;
   const overallScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
   return {
@@ -1415,7 +1415,7 @@ function normalizeFaceAiScores(value) {
     overall_score: overallScore,
     overall_grade: getGrade(overallScore),
     categories: value.categories.map((category, index) => (
-      index === 5 && isPlainAiObject(category) ? { ...category, score: overallScore } : category
+      index === summaryIndex && isPlainAiObject(category) ? { ...category, score: overallScore } : category
     )),
   };
 }
@@ -1448,12 +1448,87 @@ function coerceCosmeticConsultation(value) {
   });
 }
 
+// 성형 상담 후보 항목 객체를 받아 부위명·시술명에서 피부 관리 항목 여부를 판별해 불리언 반환, 객체가 아니면 false 반환
+function isSkinCosmeticConsultationItem(item) {
+  if (!isPlainAiObject(item)) return false;
+  const area = String(item.area ?? '').trim();
+  const optionNames = Array.isArray(item.options)
+    ? item.options.map(opt => String(opt?.name ?? '')).join(' ')
+    : '';
+  return /피부|기색|모공|여드름|트러블|잡티|홍조|안색|결\s*관리|토닝|필링|스킨부스터|스케일링|skin\s*care|skin\s*condition|complexion|pore|acne|blemish|redness|peel|laser\s*toning|skin\s*booster|dermatolog/i.test(`${area} ${optionNames}`);
+}
+
+// 관상 카테고리 배열을 받아 피부(기색) 항목의 점수가 65점 이하이고 가림 한계가 아닌 경우 해당 항목 반환, 조건 미충족 시 null 반환
+function findLowScoreSkinCategory(categories) {
+  if (!Array.isArray(categories)) return null;
+  const skinCategory = categories.find(category => (
+    isPlainAiObject(category)
+    && /피부|기색|skin|complexion/i.test(String(category.name ?? ''))
+  ));
+  if (!skinCategory || !Number.isInteger(skinCategory.score) || skinCategory.score > 65) return null;
+  const desc = String(skinCategory.desc ?? '').trim();
+  if (/사진상\s*확인\s*어려움|hard\s*to\s*verify|cannot\s*be\s*verified|unreadable/i.test(desc)) return null;
+  return skinCategory;
+}
+
+// 저점수 피부 카테고리와 언어 코드를 받아 성형 상담용 피부 관리 기본 항목 객체를 생성해 반환
+function buildFallbackSkinCosmeticConsultation(skinCategory, lang = 'ko') {
+  const rawDesc = String(skinCategory?.desc ?? '').trim();
+  const firstSentence = rawDesc.split(/(?<=[.!?])\s+/)[0]?.trim() || '';
+  if (lang === 'en') {
+    const observation = firstSentence && !/[가-힣]/.test(firstSentence)
+      ? firstSentence
+      : 'Uneven skin texture, visible pores, or redness and dullness appear across the cheeks and forehead under the current lighting.';
+    return {
+      area: 'Skin care',
+      observation,
+      goal: 'Calm visible skin trouble or redness and smooth uneven pore and surface texture for a clearer complexion.',
+      options: [
+        {
+          name: 'Medical skin scaling and calming barrier care',
+          purpose: 'Clears excess sebum and dead skin buildup while soothing redness and surface irritation.',
+          caution: 'Check skin sensitivity, active inflammation, and post-care sun protection requirements during consultation.',
+        },
+        {
+          name: 'Laser toning or skin booster treatment',
+          purpose: 'Helps even out blotchy tone, residual marks, and rough pore texture across the cheeks and forehead.',
+          caution: 'Confirm suitable wavelength, session intervals, and temporary dryness or redness risks for your skin type.',
+        },
+      ],
+      question: 'Which dermatological care should come first between calming active trouble and improving pore or tone texture for my current skin barrier?',
+      alternative: 'Use soft front natural light when taking photos and apply a thin color-correcting base rather than heavy matte coverage.',
+    };
+  }
+  const observation = firstSentence && /[가-힣]/.test(firstSentence) && !/[A-Za-z]{2,}/.test(firstSentence)
+    ? firstSentence
+    : '볼과 이마 주변에 피부결 거칠기나 모공·붉은기·트러블 흔적이 함께 드러나 전체 기색이 다소 칙칙해 보입니다.';
+  return {
+    area: '피부 관리',
+    observation,
+    goal: '트러블 흔적과 붉은기를 가라앉히고 거친 피부결과 모공 요철을 정돈해 한결 맑고 매끈한 인상을 만듭니다.',
+    options: [
+      {
+        name: '여드름·모공 스케일링 및 진정 관리',
+        purpose: '모공 속 피지와 각질을 정돈하고 붉은기나 반복되는 트러블 부위의 자극을 완화해 피부결을 정돈합니다.',
+        caution: '현재 염증 진행 여부와 피부 민감도, 시술 후 자외선 차단 및 보습 관리 조건을 진찰에서 확인해야 합니다.',
+      },
+      {
+        name: '레이저 토닝 및 스킨부스터 시술',
+        purpose: '얼룩덜룩한 색소 침착과 칙칙한 안색을 밝히고 속건조로 거칠어진 피부결의 수분감과 결을 보완합니다.',
+        caution: '피부 장벽 상태에 맞는 에너지 강도와 시술 간격, 일시적인 붉은기나 건조감 가능성을 먼저 확인해야 합니다.',
+      },
+    ],
+    question: '현재 피부 장벽 상태에서 염증·붉은기 진정 관리와 모공·색소 레이저 시술 중 무엇을 먼저 진행하는 것이 안전할까요?',
+    alternative: '정면의 부드러운 자연광에서 촬영 각도를 잡고 두꺼운 커버 대신 붉은기와 요철만 얇게 보정하는 베이스 메이크업을 활용하세요.',
+  };
+}
+
 function isAdultFaceAge(age) {
   const value = String(age ?? '').trim();
   if (['20대', '30대', '40대', '50대', '60대 이상', '20s', '30s', '40s', '50s', '60s+'].includes(value)) {
     return true;
   }
-  // Accept numeric ages from API clients ("25", "30세") as well as decade labels.
+  // API 클라이언트에서 전달되는 숫자 나이("25", "30세")와 연령대 라벨을 함께 허용
   const years = /^\d{1,3}(?:세)?$/.test(value) ? Number.parseInt(value, 10) : NaN;
   return Number.isFinite(years) && years >= 20 && years < 130;
 }
@@ -1470,9 +1545,26 @@ function normalizeFaceAppearance(value, context = {}) {
   if (!isAdultFaceAge(context.age) || appearance.adult_subject !== true) {
     appearance.sex_appeal = '';
     appearance.cosmetic_consultation = [];
-  }
-  if (appearance.cosmetic_consultation.length > 2) {
-    appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
+  } else {
+    const lowSkinCategory = findLowScoreSkinCategory(value.categories);
+    const hasSkinItem = appearance.cosmetic_consultation.some(isSkinCosmeticConsultationItem);
+    if (lowSkinCategory && !hasSkinItem) {
+      const fallbackLang = context.lang === 'en'
+        || (!context.lang && /^[A-Za-z\s()/]+$/.test(String(lowSkinCategory.name ?? '')))
+        ? 'en'
+        : 'ko';
+      appearance.cosmetic_consultation = [
+        ...appearance.cosmetic_consultation,
+        buildFallbackSkinCosmeticConsultation(lowSkinCategory, fallbackLang),
+      ];
+    }
+    const skinItems = appearance.cosmetic_consultation.filter(isSkinCosmeticConsultationItem);
+    const nonSkinItems = appearance.cosmetic_consultation.filter(item => !isSkinCosmeticConsultationItem(item));
+    if (skinItems.length > 0) {
+      appearance.cosmetic_consultation = [...nonSkinItems.slice(0, 2), skinItems[0]];
+    } else if (appearance.cosmetic_consultation.length > 2) {
+      appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
+    }
   }
 
   return { ...value, appearance };
@@ -1509,7 +1601,11 @@ function validateFaceAppearance(value, errors, context) {
     }
     if (typeof appearance.adult_subject !== 'boolean') errors.push('appearance.adult_subject:boolean');
     if (typeof appearance.sex_appeal !== 'string') errors.push('appearance.sex_appeal:string');
-    if (!Array.isArray(appearance.cosmetic_consultation) || appearance.cosmetic_consultation.length > 2) {
+    const maxCosmeticItems = Array.isArray(appearance.cosmetic_consultation)
+      && appearance.cosmetic_consultation.some(isSkinCosmeticConsultationItem)
+      ? 3
+      : 2;
+    if (!Array.isArray(appearance.cosmetic_consultation) || appearance.cosmetic_consultation.length > maxCosmeticItems) {
       errors.push('appearance.cosmetic_consultation:array_max_2');
     } else {
       appearance.cosmetic_consultation.forEach((item, index) => {
@@ -1572,8 +1668,8 @@ function validateFaceAiResponse(value, context = {}) {
       errors.push('forehead_observation.limitation:explain_actual_obstruction');
     }
   }
-  if (!Array.isArray(value.categories) || value.categories.length !== 6) {
-    errors.push('categories:array_length_6');
+  if (!Array.isArray(value.categories) || value.categories.length !== 7) {
+    errors.push('categories:array_length_7');
   } else {
     value.categories.forEach((category, index) => {
       if (!isPlainAiObject(category)) {
@@ -2402,7 +2498,7 @@ function photoScoreInterpretationGuide(contractType) {
 - 약점은 관찰한 형태·비율·선의 끊김 등에 연결해 전통 해석 안에서 설명하세요. 사진만 보고 실제 성격 결함, 능력 부족, 질병, 가난, 이혼, 불운을 단정하지 마세요.
 - summary에는 가장 뚜렷한 강점과 우선 점검할 약점 또는 주의점을 함께 짚으세요. 모든 항목이 75점 이상이어도 주의점을 생략하지 마세요. 낮은 항목이 관찰 한계 때문이면 그 한계와 보이는 항목의 주의점을 구분하세요.
 - fortune에는 관련 항목의 약점이나 관찰 한계를 반영하세요. advice는 낮은 점수 항목에서 우선 점검할 행동으로 이어져야 합니다. 관찰 한계만 있다면 재촬영 방법을 안내하세요.
-- caution은 부위마다 다른 관찰 근거와 상황에 연결하세요. "장점이 많다", "큰 문제는 없다", "균형을 유지하세요"만 쓰거나 같은 주의점을 모든 부위에 반복하지 마세요. 전체 인상의 caution은 첫 다섯 부위 중 우선 점검할 주의점을 요약하세요.
+- caution은 부위마다 다른 관찰 근거와 상황에 연결하세요. "장점이 많다", "큰 문제는 없다", "균형을 유지하세요"만 쓰거나 같은 주의점을 모든 부위에 반복하지 마세요. 전체 인상의 caution은 앞선 세부 부위 중 우선 점검할 주의점을 요약하세요.
 - 점수는 관찰 근거로 먼저 정하고 이 기준에 맞춰 설명하세요. 단점을 쓰려고 점수를 낮추거나 위로하려고 점수를 올리지 마세요. "섬세해서 그렇다", "오히려 장점이다", "노력하면 다 잘된다" 같은 말로 낮은 평가를 덮지 마세요.`;
 }
 
@@ -2459,7 +2555,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
       }
       const parsed = parseAiJsonResponse(result.text);
       let candidate = parsed;
-      if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), contractContext);
+      if (contractType === 'face') candidate = normalizeFaceAppearance(normalizeFaceAiScores(candidate), { ...contractContext, lang: responseLang });
       if (contractType === 'palm') candidate = normalizePalmAiGrade(candidate);
       candidate = normalizeKarmaDisplayResponse(candidate, contractType);
       const contract = getKarmaDisplayIssue(candidate, contractType);
@@ -2955,11 +3051,12 @@ function faceExpertRubric() {
 6. 코/재백궁: 산근(미간 아래 코뿌리), 콧대, 준두(코끝), 난대·정위(콧방울), 정면 콧구멍 노출 여부를 봅니다. 전통적으로 재물 관리, 자존심, 현실 감각과 연결하되 실제 부자/가난 확정처럼 쓰지 마세요.
 7. 입/인중: 입 크기, 입꼬리, 입술 두께와 색감, 인중 길이·선명도·흉터 여부를 봅니다. 전통적으로 언변, 식복, 관계 표현, 자식/후배 복으로 해석하되, 치아 개수처럼 사진에서 보이지 않는 정보는 언급하지 마세요.
 8. 턱/광대/하정: 턱의 길이·폭·안정감, 광대 돌출과 균형, 하관의 힘을 봅니다. 전통적으로 의지력, 중년 이후 기반, 관계 지속력과 연결하세요.
-9. 귀/점/피부/머리카락: 사진에 보이는 경우만 참고하세요. 귀는 초년 기반, 점은 위치별 전통 해석, 피부는 윤택함·탁함·피로감, 머리카락은 정돈감 정도로만 다루세요. 얼굴 점이나 피부색으로 불행·사망·질병을 단정하지 마세요.
-10. 물형/동물형 관상은 전체 인상을 설명하는 보조 비유로만 사용하세요. 특정 동물형을 이유로 인격·운명을 확정하지 마세요.
-11. 관찰→전통 해석→현실 조언 순서로 쓰세요. 관찰 근거 없이 성격이나 운세만 말하면 실패입니다.
-12. 건강은 의학적 진단처럼 쓰지 말고, 얼굴에 보이는 피로감·긴장감·생활관리 주의 정도로만 표현하세요. 특정 질병 확정, 수명, 발병 나이 단정은 금지.
-13. 얼굴 사진으로 실존 인물을 식별하거나 닮은 유명인을 추정하지 마세요. celebrity_resemblance는 항상 빈 문자열로 두세요.`;
+9. 피부/기색: 이마·볼·코·턱 주변 피부의 윤택함, 피부결 매끄러움, 트러블·여드름·붉은기·잡티·모공 요철, 다크서클·안색의 맑고 탁함을 관찰하세요. 전통 관상에서는 얼굴빛과 살결의 윤기를 기색(氣色)이라 하여 현재의 컨디션·생활 리듬·회복력과 연결합니다. 조명·필터·화질 한계가 있으면 구분해 적고, 피부 상태나 점으로 질병·불행·사망을 단정하지 마세요.
+10. 귀/점/머리카락: 사진에 보이는 경우만 참고하세요. 귀는 초년 기반, 점은 위치별 전통 해석, 머리카락은 정돈감 정도로만 다루세요.
+11. 물형/동물형 관상은 전체 인상을 설명하는 보조 비유로만 사용하세요. 특정 동물형을 이유로 인격·운명을 확정하지 마세요.
+12. 관찰→전통 해석→현실 조언 순서로 쓰세요. 관찰 근거 없이 성격이나 운세만 말하면 실패입니다.
+13. 건강은 의학적 진단처럼 쓰지 말고, 얼굴에 보이는 피로감·긴장감·생활관리 주의 정도로만 표현하세요. 특정 질병 확정, 수명, 발병 나이 단정은 금지.
+14. 얼굴 사진으로 실존 인물을 식별하거나 닮은 유명인을 추정하지 마세요. celebrity_resemblance는 항상 빈 문자열로 두세요.`;
 }
 
 function palmExpertRubric() {
@@ -3054,7 +3151,8 @@ ${faceExpertRubric()}
 - 선택한 나이가 20세 미만이거나 나이를 알 수 없으면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열로 두세요.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
 - adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
-- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위만 최대 2개 쓰고, 없으면 빈 배열로 두세요.
+- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 얼굴 부위 최대 2개까지 쓰고, 없으면 빈 배열로 두세요.
+- 피부 상태("피부 (기색)" 항목 점수가 65점 이하이거나 사진에서 여드름·트러블, 심한 붉은기, 거친 피부결, 두드러진 모공·잡티·칙칙함이 뚜렷하게 관찰되는 경우)가 좋지 않다면, cosmetic_consultation에 반드시 피부 관리 항목(한국어 응답 시 area: "피부 관리", 영어 응답 시 area: "Skin care")을 1개 포함하세요. 이 항목의 options에는 관찰된 피부 고민에 맞는 피부과 시술·관리 후보(예: 여드름·모공 스케일링 및 진정 관리, 레이저 토닝, 피코 프락셀, 홍조·혈관 레이저, 스킨부스터, 필링 등) 1~2개를 구체적인 명칭(name), 목적(purpose), 진찰 시 확인 사항(caution)과 함께 제시하세요. 피부 관리 항목이 포함될 때는 얼굴 부위 상담 후보 최대 2개에 피부 관리 1개를 더해 최대 3개까지 작성할 수 있습니다. 조명·화질 문제로 피부만 흐리게 보이는 경우에는 피부 상태를 낮게 단정하지 마세요.
 - cosmetic_consultation과 각 항목의 options는 JSON 배열입니다. 배열 전체를 따옴표로 감싼 문자열로 반환하지 마세요.
 - 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
 - question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.
@@ -3071,14 +3169,14 @@ ${faceExpertRubric()}
 - 먼저 사진에서 실제로 보이는 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
 - JSON의 첫 항목인 \`forehead_observation.observation\`에 양쪽 눈썹과 그 위 피부, 머리카락 또는 천의 경계 위치를 먼저 묘사한 다음 boolean을 작성하세요. \`skin_visible\`은 눈썹 위 이마 피부가 일부라도 보이면 true이며 이마 피부가 전혀 보이지 않을 때만 false입니다. \`hairline_visible\`은 머리카락 시작 경계가 보이는지를 뜻하는 별개 값입니다. \`limitation\`에는 가려진 정확한 위치와 원인만 쓰고 제한이 없으면 빈 문자열을 쓰세요. 두건·모자가 있다는 사실만으로 skin_visible을 false로 정하지 마세요. 일부 노출을 전체 가림으로 표현하면 관찰 오류입니다.
 - \`quality_assessment\`, \`visual_evidence\`, 이마 설명은 이 관찰과 일치해야 합니다. 피부가 보이고 헤어라인만 안 보이면 "이마가 안 보인다"고 쓰거나 이마 전체에 관찰 불가 감점을 적용하지 마세요.
-- \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 얼굴형, 좌우 비대칭, 조명/가림 여부.
+- \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 피부결/트러블/기색, 얼굴형, 좌우 비대칭, 조명/가림 여부.
 - 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
 - 부위의 형태 대부분을 실제로 관찰할 수 없을 때만 해당 부위의 설명에 "사진상 확인 어려움"과 구체 원인을 쓰세요. 부분 가림은 보이는 특징을 먼저 설명하고 확인할 수 없는 특징만 한정하세요.
-- 이마·눈·코·입·턱/광대 순서의 첫 다섯 항목 점수는 각각 관찰한 형태와 균형을 근거로 독립적으로 산정한 0~100 정수입니다. 설명에 점수의 근거를 포함하세요. 잘 보이는 부위는 윤곽·비율·균형을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
+- 이마·눈·코·입·턱/광대·피부(기색) 순서의 첫 여섯 항목 점수는 각각 관찰한 형태·피부 상태와 균형을 근거로 독립적으로 산정한 0~100 정수입니다. 설명에 점수의 근거를 포함하세요. 잘 보이는 부위는 윤곽·비율·균형·기색을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
 - 점수 예시는 제공하지 않습니다. 미리 정한 대표 숫자나 구간에서 고르거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요. 같은 사진의 같은 관찰은 같은 평가를 받아야 합니다.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수도 달라져야 합니다.
 - summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
-- 종합 점수·등급과 여섯 번째 전체 인상 점수는 서버가 첫 다섯 부위 점수의 산술평균을 반올림해서 계산합니다. \`overall_score\`, \`overall_grade\`, 여섯 번째 \`score\`를 생성하지 마세요. 종합 점수를 먼저 정한 뒤 부위 점수를 맞추지 마세요.
+- 종합 점수·등급과 일곱 번째 전체 인상 점수는 서버가 첫 여섯 부위(이마·눈·코·입·턱/광대·피부) 점수의 산술평균을 반올림해서 계산합니다. \`overall_score\`, \`overall_grade\`, 일곱 번째 \`score\`를 생성하지 마세요. 종합 점수를 먼저 정한 뒤 부위 점수를 맞추지 마세요.
 
 ## 정확성 원칙
 - 점수는 사진 품질과 해당 부위의 가시성, 전통 관상 기준의 균형을 요약하는 오락용 지표입니다. 사람의 가치나 능력 점수가 아닙니다.
@@ -3092,9 +3190,10 @@ ${faceExpertRubric()}
 3. 코(준두) - 재물운, 자존심, 돈 모이는지 새는지
 4. 입(입술) - 언변, 식복, 말로 손해 보는지
 5. 턱/광대 - 의지력, 중년~말년운, 말년 고독 여부
-6. 전체 인상 - 종합 관상
+6. 피부(기색) - 피부결, 윤기, 트러블·홍조·잡티 여부, 현재 컨디션과 생활 리듬
+7. 전체 인상 - 종합 관상
 
-반드시 아래 JSON 형식으로만 응답. 첫 다섯 score의 null은 형식 자리표시자이므로 반드시 실제 관찰에 근거한 정수로 바꾸세요. boolean 자리표시자도 사진에 맞게 true 또는 false로 바꾸세요:
+반드시 아래 JSON 형식으로만 응답. 첫 여섯 score의 null은 형식 자리표시자이므로 반드시 실제 관찰에 근거한 정수로 바꾸세요. boolean 자리표시자도 사진에 맞게 true 또는 false로 바꾸세요:
 {
   "forehead_observation": {
     "observation": "(눈썹 위 이마 피부의 실제 노출 범위와 보이는 형태)",
@@ -3111,7 +3210,8 @@ ${faceExpertRubric()}
     {"name": "코 (준두)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
     {"name": "입 (입술)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
     {"name": "턱/광대", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "전체 인상", "desc": "(3~4문장. 첫 다섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
+    {"name": "피부 (기색)", "score": null, "desc": "(3~4문장. 실제 피부결·윤기·트러블·붉은기·잡티·안색 관찰과 점수 근거, 전통 기색 해석의 활력·컨디션 강점 또는 약점, 수면·수분·생활 리듬에서 점검할 행동)", "caution": "(관찰된 피부 상태나 조명·보정 한계에 연결된 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 경우 관찰 한계와 재촬영 방법)"},
+    {"name": "전체 인상", "desc": "(3~4문장. 첫 여섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
   ],
   "fortune": {
     "wealth": "(코·하관 관찰을 근거로 전통 관상에서 말하는 재물 관리 상징과 현실적인 예산 점검 질문 3~4문장. 부·손실·시기 예측 금지)",

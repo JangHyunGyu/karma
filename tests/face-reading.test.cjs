@@ -21,8 +21,12 @@ globalThis.api = { normalizeFaceAiScores, normalizeFaceAppearance, validateKarma
 `, context);
 const api = context.api;
 
-function face(scores = [81, 87, 79, 84, 76], lang = 'en') {
+function face(scores = [81, 87, 79, 84, 76, 80], lang = 'en') {
   const text = lang === 'en' ? 'Visible contour and proportions.' : '윤곽과 비율이 보입니다.';
+  const categoryNames = lang === 'en'
+    ? ['Forehead', 'Eyes', 'Nose', 'Mouth', 'Jaw/Cheek', 'Skin (Complexion)']
+    : ['이마 (천정)', '눈 (눈매)', '코 (준두)', '입 (입술)', '턱/광대', '피부 (기색)'];
+  const summaryName = lang === 'en' ? 'Overall Impression' : '전체 인상';
   return {
     ...appearanceFixture(lang),
     forehead_observation: {
@@ -34,30 +38,33 @@ function face(scores = [81, 87, 79, 84, 76], lang = 'en') {
     quality_assessment: text,
     visual_evidence: Array(8).fill(text),
     summary: text,
-    categories: [...scores.map(score => ({ name: text, score, desc: text, caution: text })), { name: text, desc: text, caution: text }],
+    categories: [
+      ...scores.map((score, index) => ({ name: categoryNames[index] || text, score, desc: text, caution: text })),
+      { name: summaryName, desc: text, caution: text },
+    ],
     fortune: { wealth: text, career: text, love: text, health: text },
     advice: text,
     celebrity_resemblance: '',
   };
 }
 
-test('overall score and grade come from the five features, not a generated overall anchor', () => {
+test('overall score and grade come from the six features including skin condition, not a generated overall anchor', () => {
   for (const [scores, expected, grade] of [
-    [[60, 82, 88, 78, 75], 77, 'A'],
-    [[78, 88, 82, 92, 80], 84, 'A'],
-    [[61, 64, 66, 68, 69], 66, 'B'],
-    [[91, 94, 96, 90, 92], 93, 'S'],
-    [[0, 0, 0, 0, 0], 0, 'D'],
-    [[100, 100, 100, 100, 100], 100, 'S'],
+    [[60, 82, 88, 78, 75, 79], 77, 'A'],
+    [[78, 88, 82, 92, 80, 84], 84, 'A'],
+    [[61, 64, 66, 68, 69, 68], 66, 'B'],
+    [[91, 94, 96, 90, 92, 95], 93, 'S'],
+    [[0, 0, 0, 0, 0, 0], 0, 'D'],
+    [[100, 100, 100, 100, 100, 100], 100, 'S'],
   ]) {
     for (const anchor of [72, 78, 82]) {
       const input = { ...face(scores), overall_score: anchor, overall_grade: 'D' };
-      input.categories[5].score = anchor;
+      input.categories[6].score = anchor;
       const result = api.normalizeFaceAiScores(input);
       assert.equal(result.overall_score, expected);
       assert.equal(result.overall_grade, grade);
-      assert.equal(result.categories[5].score, expected);
-      assert.deepEqual(Array.from(result.categories.slice(0, 5), c => c.score), scores);
+      assert.equal(result.categories[6].score, expected);
+      assert.deepEqual(Array.from(result.categories.slice(0, 6), c => c.score), scores);
       assert.equal(input.overall_score, anchor, 'normalization must not mutate the AI response');
     }
   }
@@ -66,7 +73,7 @@ test('overall score and grade come from the five features, not a generated overa
 test('valid observations are not quantized into a small set of overall scores', () => {
   const results = new Set();
   for (let value = 0; value <= 100; value++) {
-    const result = api.normalizeFaceAiScores(face(Array(5).fill(value)));
+    const result = api.normalizeFaceAiScores(face(Array(6).fill(value)));
     results.add(result.overall_score);
     assert.equal(result.overall_score, value);
   }
@@ -105,7 +112,7 @@ test('invalid feature scores are rejected rather than silently clamped or replac
 
 test('high-scoring first responses display their cautions in both languages without another AI call', async () => {
   for (const lang of ['ko', 'en']) {
-    const complete = face([78, 82, 80, 81, 79], lang);
+    const complete = face([78, 82, 80, 81, 79, 80], lang);
     const warning = lang === 'en'
       ? 'In traditional readings, avoiding conflict may delay stating your view. Say where you disagree early.'
       : '전통 해석에서는 갈등을 피하려다 의견을 늦게 밝히는 상황을 경계합니다. 입장이 다르면 먼저 말해 보세요.';
@@ -120,7 +127,7 @@ test('high-scoring first responses display their cautions in both languages with
     assert.equal(requests.length, 1);
     assert.ok(requests[0].prompt.includes('모든 항목에 caution을 반드시 쓰세요'));
     assert.equal(result.overall_score, 80);
-    assert.deepEqual(Array.from(result.categories.slice(0, 5), item => item.score), [78, 82, 80, 81, 79]);
+    assert.deepEqual(Array.from(result.categories.slice(0, 6), item => item.score), [78, 82, 80, 81, 79, 80]);
     result.categories.forEach((item, index) => {
       assert.equal(item.name, complete.categories[index].name);
       assert.equal(item.caution, warning);
@@ -133,7 +140,7 @@ test('high-scoring first responses display their cautions in both languages with
 
 test('missing or blank feature cautions do not invalidate otherwise complete readings', () => {
   for (const caution of [undefined, null, '', '   ', 82]) {
-    const result = api.normalizeFaceAiScores(face([100, 100, 100, 100, 100]));
+    const result = api.normalizeFaceAiScores(face([100, 100, 100, 100, 100, 100]));
     result.categories[2].caution = caution;
     const contract = api.validateKarmaAiContract('face', result, { lang: 'en' });
     assert.equal(contract.ok, true);
@@ -158,7 +165,7 @@ test('missing forehead metadata preserves visible first-response text and valid 
     'score interpretation rules must survive contract repair retries');
   assert.ok(requests.every(request => request.media[0].url === imageUrl));
   assert.equal(result.overall_score, 81);
-  assert.equal(result.categories[5].score, 81);
+  assert.equal(result.categories[6].score, 81);
   assert.equal(result.forehead_observation, undefined);
   assert.equal(result.summary, complete.summary);
 });
@@ -567,4 +574,49 @@ test('both renderers escape new content, reject CSS injection, gate adult sectio
       assert.equal(elements.get(id).innerHTML, '');
     }
   }
+});
+
+test('poor skin condition includes skin care in adult cosmetic consultation and validates up to three items', async () => {
+  let capturedPrompt = '';
+  const lowSkinReading = face([82, 84, 79, 81, 78, 58], 'ko');
+  lowSkinReading.categories[5].desc = '볼과 이마에 붉은기와 여드름 트러블 자국이 눈에 띄어 기색 점수를 낮게 보았습니다.';
+  const secondItem = {
+    ...lowSkinReading.appearance.cosmetic_consultation[0],
+    area: '중안부·코끝',
+  };
+  lowSkinReading.appearance.cosmetic_consultation = [
+    lowSkinReading.appearance.cosmetic_consultation[0],
+    secondItem,
+  ];
+
+  const response = await api.handleFaceReading(new Request('https://karma.example/face-reading', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image: '/9j/4AAQSkZJRg==',
+      mimeType: 'image/jpeg',
+      gender: '여성',
+      age: '20대',
+      lang: 'ko',
+    }),
+  }), {
+    KARMA_IMAGE_BUCKET: { async put() {} },
+    AI: { async analyze(input) {
+      capturedPrompt = input.prompt;
+      return { text: JSON.stringify(lowSkinReading) };
+    } },
+  });
+  const body = await response.json();
+  assert.ok(capturedPrompt.includes('6. 피부(기색)'));
+  assert.ok(capturedPrompt.includes('피부 관리'));
+  assert.equal(body.overall_score, 77);
+  assert.equal(body.categories[5].name, '피부 (기색)');
+  assert.equal(body.categories[5].score, 58);
+  assert.equal(body.appearance.cosmetic_consultation.length, 3);
+  assert.equal(body.appearance.cosmetic_consultation[2].area, '피부 관리');
+  assert.ok(body.appearance.cosmetic_consultation[2].options.length >= 1);
+  assert.equal(api.validateKarmaAiContract('face', body, { gender: '여성', age: '20대', lang: 'ko' }).ok, true);
+
+  const teenNormalized = api.normalizeFaceAppearance(lowSkinReading, { gender: '여성', age: '10대', lang: 'ko' });
+  assert.equal(teenNormalized.appearance.cosmetic_consultation.length, 0);
 });

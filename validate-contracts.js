@@ -94,7 +94,7 @@ const face = {
   quality_assessment: text,
   visual_evidence: Array(8).fill(text),
   summary: text,
-  categories: Array.from({ length: 6 }, (_, index) => ({ name: `부위 ${index + 1}`, score: 75, desc: text, caution: text })),
+  categories: Array.from({ length: 7 }, (_, index) => ({ name: `부위 ${index + 1}`, score: 75, desc: text, caution: text })),
   fortune: { wealth: text, career: text, love: text, health: text },
   advice: text,
   celebrity_resemblance: '',

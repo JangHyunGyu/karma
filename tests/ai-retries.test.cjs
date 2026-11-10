@@ -93,7 +93,7 @@ function photo(type) {
     ...require('./fixtures/face-appearance.cjs')('en'),
     ...common, celebrity_resemblance: '',
     forehead_observation: { skin_visible: true, hairline_visible: true, observation: text, limitation: '' },
-    categories: Array.from({ length: 6 }, () => ({ name: text, score: 76, desc: text, caution: text })),
+    categories: Array.from({ length: 7 }, () => ({ name: text, score: 76, desc: text, caution: text })),
   } : {
     ...common, overall_score: 76, overall_grade: 'C',
     lines: Array.from({ length: 6 }, () => ({ name: text, score: 76, length: text, desc: text, caution: text })),
