@@ -353,6 +353,50 @@ const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
 const analyzeBtn = document.getElementById('analyzeBtn');
 let imageData = null, imageMime = null;
+let imageSelectSeq = 0, imageSourceHash = '', imagePerceptualHash = '', imageHashPromise = null;
+
+async function computeFileSha256Hex(file) {
+  if (!window.crypto?.subtle || typeof file?.arrayBuffer !== 'function') return '';
+  try {
+    const buffer = await file.arrayBuffer();
+    const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) {
+    return '';
+  }
+}
+
+function computeCanvasDhash256(img) {
+  try {
+    const W = 17, H = 16;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, W, H);
+    const px = g.getImageData(0, 0, W, H).data;
+    let hex = '', nibble = 0, bitCount = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < 16; x++) {
+        const iL = (y * W + x) * 4, iR = (y * W + x + 1) * 4;
+        const lumL = px[iL] * 0.299 + px[iL + 1] * 0.587 + px[iL + 2] * 0.114;
+        const lumR = px[iR] * 0.299 + px[iR + 1] * 0.587 + px[iR + 2] * 0.114;
+        nibble = (nibble << 1) | (lumR > lumL ? 1 : 0);
+        bitCount += 1;
+        if (bitCount === 4) {
+          hex += nibble.toString(16);
+          nibble = 0;
+          bitCount = 0;
+        }
+      }
+    }
+    const iw = img.naturalWidth || img.width || 1;
+    const ih = img.naturalHeight || img.height || 1;
+    const aspect = Math.max(1, Math.min(250, Math.round((iw / ih) * 25)));
+    return hex.length === 64 ? `${aspect}:${hex}` : '';
+  } catch (_) {
+    return '';
+  }
+}
 
 function checkReady() {
   analyzeBtn.disabled = !(imageData && document.getElementById('gender').value && document.getElementById('age').value);
@@ -373,9 +417,17 @@ function handleFile(file) {
     alert(_L('사진 용량이 50MB를 넘습니다. 더 작은 사진을 사용해 주세요.','Image size exceeds 50MB. Please use a smaller photo.'));
     return;
   }
+  const seq = ++imageSelectSeq;
+  imageSourceHash = '';
+  imagePerceptualHash = '';
+  imageHashPromise = computeFileSha256Hex(file).then(hash => {
+    if (seq === imageSelectSeq) imageSourceHash = hash;
+    return hash;
+  });
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
+    if (seq === imageSelectSeq) imagePerceptualHash = computeCanvasDhash256(img);
     const MAX = 2048;
     let w = img.width, h = img.height;
     if (w > MAX || h > MAX) {
@@ -411,12 +463,15 @@ analyzeBtn.addEventListener('click', async () => {
       age: document.getElementById('age').value,
       lang: localStorage.getItem('karma_lang') || 'ko',
     };
+    const sourceHash = imageHashPromise ? await imageHashPromise : imageSourceHash;
     const resp = await fetch(`${API}/api/face-reading`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image: imageData, mimeType: imageMime,
         ...faceInput,
+        ...(sourceHash ? { image_hash: sourceHash } : {}),
+        ...(imagePerceptualHash ? { image_dhash: imagePerceptualHash } : {}),
       }),
     });
     const data = await resp.json().catch(() => ({}));

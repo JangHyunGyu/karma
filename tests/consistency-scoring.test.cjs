@@ -27,6 +27,12 @@ globalThis.__karmaConsistency = {
   validateFaceAiResponse,
   validatePalmAiResponse,
   validateKarmaAiContract,
+  hammingDistanceHex256,
+  extractPhotoDimensions,
+  normalizeKarmaBirthDateKey,
+  normalizeKarmaBirthTimeKey,
+  isCacheableKarmaResult,
+  lookupKarmaPhotoConsistencyCache,
   KARMA_CONSISTENCY_SCHEMA_VERSION,
 };
 `;
@@ -191,8 +197,10 @@ function createStatefulMockEnv() {
             cache_key: args[0],
             analysis_type: args[1],
             schema_version: args[2],
-            result_json: args[3],
-            expires_at: args[4],
+            options_key: args[3],
+            perceptual_hash: args[4],
+            result_json: args[5],
+            expires_at: args[6],
           });
           return { success: true };
         }
@@ -222,7 +230,20 @@ function createStatefulMockEnv() {
               }
               return null;
             },
-            async all() { return { results: [] }; },
+            async all() {
+              if (sql.includes('FROM analysis_consistency_cache')) {
+                const [analysisType, schemaVersion, optionsKey, nowMs] = args;
+                const results = [...cacheRows.values()].filter(row => (
+                  row.analysis_type === analysisType
+                  && row.schema_version === schemaVersion
+                  && row.options_key === optionsKey
+                  && Boolean(row.perceptual_hash)
+                  && row.expires_at > nowMs
+                )).reverse();
+                return { results };
+              }
+              return { results: [] };
+            },
           };
         },
         async run() { return execute([]); },
@@ -511,7 +532,7 @@ test('analysis_consistency_cache reuses identical results while always saving R2
     });
     const res = await worker.handler.fetch(req, env, ctx);
     await Promise.all(waitUntilPromises.splice(0));
-    return { status: res.status, data: await res.json() };
+    return { status: res.status, headers: res.headers, data: await res.json() };
   };
 
   const jpeg1 = makeJpegBase64(0x11);
@@ -582,7 +603,189 @@ test('analysis_consistency_cache reuses identical results while always saving R2
   const tarot1 = await callRoute('/api/tarot', { cards: tarotCards, question: '올해  연애운 어때요?', lang: 'ko' });
   const tarot2 = await callRoute('/api/tarot', { cards: tarotCards, question: '  올해 연애운 어때요? ', lang: 'ko' });
   assert.equal(tarot1.status, 200);
+  assert.equal(tarot1.headers.get('X-Karma-Cache'), 'MISS');
+  assert.equal(tarot2.headers.get('X-Karma-Cache'), 'HIT');
   assert.deepEqual(tarot1.data, tarot2.data);
 
   assert.equal(textCalls, 5);
+});
+
+function makeJpegWithSizeBase64(width, height, seedByte = 0x11) {
+  const bytes = Uint8Array.from([
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+    0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+    0xff, 0xc0, 0x00, 0x11, 0x08, (height >> 8) & 0xff, height & 0xff, (width >> 8) & 0xff, width & 0xff,
+    0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00,
+    seedByte, 0xff, 0xd9,
+  ]);
+  return Buffer.from(bytes).toString('base64');
+}
+
+test('photo 3-tier cache matches Tier 2 source hash and Tier 3 256-bit dHash (<= 8 bits) across re-encoded bytes, and stores partial displayable results', async () => {
+  const mock = createStatefulMockEnv();
+  let visionCalls = 0;
+  let textCalls = 0;
+
+  // Include non-hex personal color string (passes displayable cache check despite strict warning)
+  const faceWithNonFatalHex = makeFaceAiFixture(Array.from({ length: 6 }, () => ({ structure: 4, symmetry: 4, condition: 4, visibility: 3 })), {
+    personal_color: {
+      season: 'autumn',
+      undertone: 'warm',
+      observation: '차분한 중간 명도입니다.',
+      limitation: '자연광 비교를 권장합니다.',
+      colors: [{ name: '따뜻한 카멜', hex: '따뜻한 카멜' }, { name: '올리브 그린', hex: '#6B8E23' }, { name: '코랄 베이지', hex: '#D98A6C' }],
+      styling_tip: '카멜 계열을 비교해 보세요.',
+    },
+  });
+  // Include 7 daeun items (would fail strict length-8 check) + stray key inside lucky
+  const sajuPartialDaeun = {
+    pillar_reading: { year: '초년 흐름', month: '청년 흐름', day: '일간 중심', hour: '말년 흐름' },
+    personality: '원국 성향 설명입니다.',
+    strengths: ['강점 1', '강점 2', '강점 3'],
+    cautions: ['주의 1', '주의 2', '주의 3'],
+    love_style: '관계 설명입니다.',
+    career: '업무 설명입니다.',
+    daeun_reading: Array.from({ length: 7 }, (_, i) => `${i + 1}번째 대운 설명`),
+    advice: '행동 조언입니다.',
+  };
+  const dailyWithStrayKey = {
+    overall: '오늘 총운입니다.',
+    love: '연애 흐름입니다.',
+    money: '재물 흐름입니다.',
+    career: '업무 흐름입니다.',
+    study: '학습 흐름입니다.',
+    social: '대인 흐름입니다.',
+    health: '건강 흐름입니다.',
+    lucky: { ', ': '검정', '::x': '무작위', color: '무작위', number: '999' },
+    advice: '실천 행동입니다.',
+  };
+
+  const env = {
+    ...mock.env,
+    AI: {
+      async analyze() {
+        visionCalls += 1;
+        return { text: JSON.stringify(faceWithNonFatalHex), model: 'google/gemini-3.5-flash-lite', provider: 'test' };
+      },
+      async complete(input) {
+        textCalls += 1;
+        const sys = String(input?.messages?.[0]?.content || '');
+        const payload = sys.includes('일진 해설가') ? dailyWithStrayKey : sajuPartialDaeun;
+        return { text: JSON.stringify(payload), model: 'google/gemma-4-31b-it', provider: 'test' };
+      },
+    },
+  };
+
+  const waitUntilPromises = [];
+  const ctx = { waitUntil: p => waitUntilPromises.push(p) };
+  const callRoute = async (pathname, body) => {
+    const req = new Request(`https://karma.archerlab.dev${pathname}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '9.9.9.9' },
+      body: JSON.stringify(body),
+    });
+    const res = await worker.handler.fetch(req, env, ctx);
+    await Promise.all(waitUntilPromises.splice(0));
+    return { status: res.status, headers: res.headers, data: await res.json() };
+  };
+
+  const dims = worker.extractPhotoDimensions(Buffer.from(makeJpegWithSizeBase64(1536, 2048, 0x01), 'base64'), 'image/jpeg');
+  assert.deepEqual({ ...dims }, { width: 1536, height: 2048 });
+  assert.equal(worker.hammingDistanceHex256('a'.repeat(64), 'a'.repeat(63) + 'b'), 1);
+
+  const sourceShaA = '1'.repeat(64);
+  const dhashBase = '0'.repeat(64);
+  const dhashNear = '0'.repeat(62) + 'ff'; // 8 bits away
+  const dhashFar = 'f'.repeat(64); // 256 bits away
+
+  const upload1 = await callRoute('/api/face-reading', {
+    image: makeJpegWithSizeBase64(1536, 2048, 0x01),
+    mimeType: 'image/jpeg',
+    gender: 'female',
+    age: '20s',
+    lang: 'ko',
+    image_hash: sourceShaA,
+    image_dhash: `19:${dhashBase}`,
+  });
+  assert.equal(upload1.status, 200);
+  assert.equal(upload1.headers.get('X-Karma-Cache'), 'MISS');
+
+  // Different canvas compressed bytes, same original file SHA-256 -> Tier 2 hit
+  const upload2 = await callRoute('/api/face-reading', {
+    image: makeJpegWithSizeBase64(1536, 2048, 0x02),
+    mimeType: 'image/jpeg',
+    gender: '여성',
+    age: '20대',
+    lang: 'ko',
+    image_hash: sourceShaA,
+    image_dhash: `19:${dhashBase}`,
+  });
+  assert.equal(upload2.status, 200);
+  assert.equal(upload2.headers.get('X-Karma-Cache'), 'HIT');
+  assert.deepEqual(upload1.data, upload2.data);
+
+  // Different compressed bytes & different file hash, but near-identical dHash (8 bits <= 8) & same aspect/options -> Tier 3 hit
+  const upload3 = await callRoute('/api/face-reading', {
+    image: makeJpegWithSizeBase64(1536, 2048, 0x03),
+    mimeType: 'image/jpeg',
+    gender: 'female',
+    age: '20s',
+    lang: 'ko',
+    image_hash: '2'.repeat(64),
+    image_dhash: `19:${dhashNear}`,
+  });
+  assert.equal(upload3.status, 200);
+  assert.equal(upload3.headers.get('X-Karma-Cache'), 'HIT');
+  assert.deepEqual(upload1.data, upload3.data);
+  assert.equal(visionCalls, 1);
+  assert.equal(mock.r2Puts.length, 3);
+
+  // Genuinely different photo (256 bits Hamming distance) misses cache
+  const uploadDiff = await callRoute('/api/face-reading', {
+    image: makeJpegWithSizeBase64(1536, 2048, 0x04),
+    mimeType: 'image/jpeg',
+    gender: 'female',
+    age: '20s',
+    lang: 'ko',
+    image_hash: '3'.repeat(64),
+    image_dhash: `19:${dhashFar}`,
+  });
+  assert.equal(uploadDiff.status, 200);
+  assert.equal(uploadDiff.headers.get('X-Karma-Cache'), 'MISS');
+  assert.equal(visionCalls, 2);
+
+  // Canonical birth_date / birth_time helpers and equivalent request normalization + clean lucky keys
+  assert.equal(worker.normalizeKarmaBirthDateKey('1991-2-3'), '1991-02-03');
+  assert.equal(worker.normalizeKarmaBirthTimeKey('7:30'), '07:30');
+  const daily1 = await callRoute('/api/daily', {
+    birth_date: '1991-02-03',
+    birth_time: '07:30',
+    gender: 'female',
+    birth_location: '',
+    yajasi: false,
+    target_date: '2026-11-17',
+    lang: 'ko',
+  });
+  const daily2 = await callRoute('/api/daily', {
+    birth_date: '1991-02-03',
+    birth_time: '07:30',
+    gender: 'FEMALE',
+    birth_location: 'utc+9',
+    target_date: '2026-11-17',
+    lang: 'ko',
+  });
+  assert.equal(daily1.status, 200);
+  assert.equal(daily1.headers.get('X-Karma-Cache'), 'MISS');
+  assert.equal(daily2.headers.get('X-Karma-Cache'), 'HIT');
+  assert.deepEqual(daily1.data, daily2.data);
+  assert.deepEqual(Object.keys(daily1.data.daily.lucky).sort(), ['color', 'number']);
+
+  // Partial displayable saju response (7 daeun items) is cached via isCacheableKarmaResult
+  const saju1 = await callRoute('/api/saju', { birth_date: '1991-02-03', birth_time: '07:30', gender: 'female', yajasi: false, birth_location: '', lang: 'ko' });
+  const saju2 = await callRoute('/api/saju', { birth_date: '1991-02-03', birth_time: '07:30', gender: 'FEMALE', birth_location: 'kr', lang: 'ko' });
+  assert.equal(saju1.status, 200);
+  assert.equal(saju1.headers.get('X-Karma-Cache'), 'MISS');
+  assert.equal(saju2.headers.get('X-Karma-Cache'), 'HIT');
+  assert.deepEqual(saju1.data, saju2.data);
+  assert.equal(textCalls, 2);
 });

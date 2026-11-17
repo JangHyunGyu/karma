@@ -362,8 +362,10 @@ async function testConsistencyContracts() {
                 cacheRows.set(args[0], {
                   analysis_type: args[1],
                   schema_version: args[2],
-                  result_json: args[3],
-                  expires_at: args[4],
+                  options_key: args[3],
+                  perceptual_hash: args[4],
+                  result_json: args[5],
+                  expires_at: args[6],
                 });
               }
               return { success: true };

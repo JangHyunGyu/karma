@@ -2612,15 +2612,17 @@ async function handleTarotReading(request, env) {
       question: normalizedQuestion,
       lang: responseLang,
     });
+    let cacheStatus = 'HIT';
     let ai = await readKarmaConsistencyCache(env, tarotCacheKey);
-    if (!ai) {
+    if (!isCacheableKarmaResult('tarot', ai)) {
+      cacheStatus = 'MISS';
       const prompt = buildTarotPrompt(cards, normalizedQuestion, lang || 'ko');
       ai = await callKarmaTextAi(prompt, 'tarot', env, null, 'tarot');
 
       if (!ai) {
         return json({ error: incompleteAiResponseMessage(lang || 'ko') }, 502);
       }
-      if (validateTarotAiResponse(ai).ok) {
+      if (isCacheableKarmaResult('tarot', ai)) {
         await writeKarmaConsistencyCache(env, 'tarot', tarotCacheKey, ai);
       }
     }
@@ -2637,7 +2639,7 @@ async function handleTarotReading(request, env) {
       overall: ai.overall || '',
       advice: ai.advice || '',
       keywords: ai.keywords || [],
-    });
+    }, 200, { 'X-Karma-Cache': cacheStatus });
   } catch (e) {
     return karmaAiServiceErrorResponse(e)
       || json({ error: getKarmaTextAnalysisMessage(responseLang, 'serverError') }, 500);
@@ -2848,6 +2850,102 @@ async function hashKarmaBytesSha256(bytes) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+const HEX_NIBBLE_POPCOUNT = Object.freeze([0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4]);
+
+// 64자리 16진수 SHA-256 해시 형식 정규화 -> 유효하지 않으면 빈 문자열 반환
+function normalizeHexHash64(value) {
+  const trimmed = String(value || '').trim();
+  return /^[0-9a-f]{64}$/i.test(trimmed) ? trimmed.toLowerCase() : '';
+}
+
+// "<종횡비버킷>:<64자리 dHash>" 또는 "<64자리 dHash>" 문자열 파싱 -> 비율 버킷과 64자리 해시 반환
+function parsePerceptualDhash(value) {
+  const match = String(value || '').trim().match(/^(?:(\d{1,3}):)?([0-9a-f]{64})$/i);
+  if (!match) return null;
+  const aspect = match[1] ? Number(match[1]) : 0;
+  return {
+    aspect: Number.isInteger(aspect) && aspect > 0 && aspect <= 250 ? aspect : 0,
+    hex: match[2].toLowerCase(),
+  };
+}
+
+// 256비트(64자리 16진수) dHash 간 해밍 거리 계산 -> 동일 형식 불가 시 256 반환
+function hammingDistanceHex256(hexA, hexB) {
+  if (!/^[0-9a-f]{64}$/i.test(String(hexA || '')) || !/^[0-9a-f]{64}$/i.test(String(hexB || ''))) {
+    return 256;
+  }
+  const a = hexA.toLowerCase();
+  const b = hexB.toLowerCase();
+  let distance = 0;
+  for (let i = 0; i < 64; i += 1) {
+    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    distance += HEX_NIBBLE_POPCOUNT[xor];
+  }
+  return distance;
+}
+
+// PNG·JPEG·WebP 바이너리 헤더에서 가로·세로 픽셀 크기 추출 -> 판별 불가 시 null 반환
+function extractPhotoDimensions(bytes, mimeType) {
+  if (!ArrayBuffer.isView(bytes) || bytes.length < 24) return null;
+  const mime = String(mimeType || '').toLowerCase();
+
+  if ((mime === 'image/png' || (bytes[0] === 0x89 && bytes[1] === 0x50)) && bytes.length >= 24) {
+    const width = ((bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]) >>> 0;
+    const height = ((bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]) >>> 0;
+    return width > 0 && height > 0 ? { width, height } : null;
+  }
+
+  if ((mime === 'image/jpeg' || (bytes[0] === 0xff && bytes[1] === 0xd8)) && bytes.length >= 4) {
+    let offset = 2;
+    while (offset + 3 < bytes.length) {
+      while (offset < bytes.length && bytes[offset] !== 0xff) offset += 1;
+      while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+      if (offset >= bytes.length) break;
+      const marker = bytes[offset];
+      offset += 1;
+      if (marker === 0xd8 || marker === 0xd9 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+        continue;
+      }
+      if (offset + 1 >= bytes.length) break;
+      const segLength = (bytes[offset] << 8) | bytes[offset + 1];
+      if (segLength < 2 || offset + segLength > bytes.length) break;
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker) && segLength >= 7) {
+        const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
+        const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
+        return width > 0 && height > 0 ? { width, height } : null;
+      }
+      offset += segLength;
+    }
+    return null;
+  }
+
+  if ((mime === 'image/webp' || (bytes[0] === 0x52 && bytes[1] === 0x49)) && bytes.length >= 30) {
+    const chunk = String.fromCharCode(bytes[12], bytes[13], bytes[14], bytes[15]);
+    if (chunk === 'VP8X') {
+      const width = (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16)) + 1;
+      const height = (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16)) + 1;
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+    if (chunk === 'VP8L') {
+      const bits = bytes[21] | (bytes[22] << 8) | (bytes[23] << 16) | (bytes[24] << 24);
+      const width = (bits & 0x3fff) + 1;
+      const height = ((bits >> 14) & 0x3fff) + 1;
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+    if (chunk === 'VP8 ') {
+      const width = (bytes[26] | (bytes[27] << 8)) & 0x3fff;
+      const height = (bytes[28] | (bytes[29] << 8)) & 0x3fff;
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+  }
+  return null;
+}
+
+function computeAspectBucket(width, height) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 0;
+  return Math.max(1, Math.min(250, Math.round((width / height) * 25)));
+}
+
 function normalizeKarmaGenderKey(gender) {
   const value = String(gender || '').trim().toLowerCase();
   if (value === '남성' || value === 'male') return 'male';
@@ -2873,6 +2971,76 @@ function normalizeKarmaLocationKey(location) {
   return (!value || value === 'utc+9' || value === 'kr') ? 'kr' : value;
 }
 
+// YYYY-M-D 표기를 YYYY-MM-DD 형식으로 통일 -> 동일 날짜 캐시 공유
+function normalizeKarmaBirthDateKey(birthDate) {
+  const raw = String(birthDate || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return raw;
+  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+}
+
+// H:MM 표기를 HH:MM 형식으로 통일하고 시간 미입력은 빈 문자열 반환
+function normalizeKarmaBirthTimeKey(birthTime) {
+  const raw = String(birthTime || '').trim();
+  if (raw.length < 4 || !raw.includes(':')) return '';
+  const [hourText, minuteText] = raw.split(':');
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return raw;
+  }
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+// 화면 렌더링 가능한 정상 응답인지 유형별 핵심 필드 확인 -> 부분 비치명 경고는 허용하고 오류·빈 응답만 캐시 제외
+function isCacheableKarmaResult(analysisType, value) {
+  if (!isPlainAiObject(value) || value.error || value._apiError) return false;
+  switch (analysisType) {
+    case 'face':
+      return Number.isInteger(value.overall_score)
+        && isNonEmptyAiText(value.overall_grade)
+        && isNonEmptyAiText(value.summary)
+        && Array.isArray(value.categories)
+        && value.categories.length >= 6
+        && value.categories.every(item => isPlainAiObject(item) && Number.isInteger(item.score) && isNonEmptyAiText(item.desc));
+    case 'palm':
+      return Number.isInteger(value.overall_score)
+        && isNonEmptyAiText(value.overall_grade)
+        && isNonEmptyAiText(value.summary)
+        && Array.isArray(value.lines)
+        && value.lines.length === 6
+        && value.lines.every(item => isPlainAiObject(item) && Number.isInteger(item.score) && isNonEmptyAiText(item.desc));
+    case 'saju':
+      return isPlainAiObject(value.pillar_reading)
+        && isNonEmptyAiText(value.personality)
+        && getKarmaDisplayIssue(value, 'saju').ok;
+    case 'compat':
+    case 'match-detail':
+      return isNonEmptyAiText(value.summary)
+        && isPlainAiObject(value.categories)
+        && ['personality', 'intimacy', 'finance', 'timing'].every(
+          key => isPlainAiObject(value.categories[key])
+            && Number.isInteger(value.categories[key].score)
+            && isNonEmptyAiText(value.categories[key].desc),
+        );
+    case 'fortune':
+      return isNonEmptyAiText(value.year_summary)
+        && isPlainAiObject(value.lucky)
+        && getKarmaDisplayIssue(value, 'fortune').ok;
+    case 'daily':
+      return isNonEmptyAiText(value.overall)
+        && isPlainAiObject(value.lucky)
+        && getKarmaDisplayIssue(value, 'daily').ok;
+    case 'tarot':
+      return Array.isArray(value.cards)
+        && value.cards.length === 3
+        && value.cards.every(card => isPlainAiObject(card) && isNonEmptyAiText(card.interpretation))
+        && isNonEmptyAiText(value.overall);
+    default:
+      return false;
+  }
+}
+
 // 분석 유형과 정규화된 입력 페이로드를 받아 SHA-256 기반 일관성 캐시 키 생성
 async function buildKarmaConsistencyCacheKey(analysisType, payload) {
   const serialized = JSON.stringify({
@@ -2884,6 +3052,40 @@ async function buildKarmaConsistencyCacheKey(analysisType, payload) {
   return `${KARMA_CONSISTENCY_SCHEMA_VERSION}:${analysisType}:${digest}`;
 }
 
+function getKarmaEdgeCacheUrl(cacheKey) {
+  return `https://karma-consistency.internal/${encodeURIComponent(String(cacheKey || ''))}`;
+}
+
+async function readKarmaEdgeCache(cacheKey) {
+  const cache = typeof caches !== 'undefined' && caches?.default ? caches.default : null;
+  if (!cache || !cacheKey) return null;
+  try {
+    const matched = await cache.match(new Request(getKarmaEdgeCacheUrl(cacheKey), { method: 'GET' }));
+    if (!matched) return null;
+    const parsed = await matched.json();
+    return isPlainAiObject(parsed) ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function writeKarmaEdgeCache(analysisType, cacheKey, result) {
+  const cache = typeof caches !== 'undefined' && caches?.default ? caches.default : null;
+  if (!cache || !cacheKey || !isPlainAiObject(result)) return;
+  const ttlSec = Math.max(60, Math.floor((KARMA_CONSISTENCY_TTL_MS[analysisType] || (30 * 24 * 60 * 60 * 1000)) / 1000));
+  try {
+    await cache.put(
+      new Request(getKarmaEdgeCacheUrl(cacheKey), { method: 'GET' }),
+      new Response(JSON.stringify(result), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': `public, max-age=${ttlSec}`,
+        },
+      }),
+    );
+  } catch (_) {}
+}
+
 async function ensureKarmaConsistencyCacheTable(db) {
   if (_karmaConsistencyCacheTableReady) return true;
   const createStmt = db.prepare(`
@@ -2891,6 +3093,8 @@ async function ensureKarmaConsistencyCacheTable(db) {
       cache_key TEXT PRIMARY KEY,
       analysis_type TEXT NOT NULL,
       schema_version TEXT NOT NULL,
+      options_key TEXT NOT NULL DEFAULT '',
+      perceptual_hash TEXT NOT NULL DEFAULT '',
       result_json TEXT NOT NULL,
       expires_at INTEGER NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours'))
@@ -2898,17 +3102,33 @@ async function ensureKarmaConsistencyCacheTable(db) {
   `);
   if (typeof createStmt?.run !== 'function') return false;
   await createStmt.run();
-  const idxStmt = db.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_consistency_cache_expiry ON analysis_consistency_cache(expires_at)');
-  if (typeof idxStmt?.run === 'function') await idxStmt.run();
+  for (const columnSql of [
+    "ALTER TABLE analysis_consistency_cache ADD COLUMN options_key TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE analysis_consistency_cache ADD COLUMN perceptual_hash TEXT NOT NULL DEFAULT ''",
+  ]) {
+    try {
+      const alterStmt = db.prepare(columnSql);
+      if (typeof alterStmt?.run === 'function') await alterStmt.run();
+    } catch (error) {
+      if (!/duplicate column|already exists/i.test(String(error?.message || error))) throw error;
+    }
+  }
+  const idxExpiry = db.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_consistency_cache_expiry ON analysis_consistency_cache(expires_at)');
+  if (typeof idxExpiry?.run === 'function') await idxExpiry.run();
+  const idxLookup = db.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_consistency_cache_lookup ON analysis_consistency_cache(analysis_type, options_key, expires_at DESC)');
+  if (typeof idxLookup?.run === 'function') await idxLookup.run();
   _karmaConsistencyCacheTableReady = true;
   return true;
 }
 
-// D1 일관성 캐시 조회 -> 스키마 버전·만료 시각 확인 후 JSON 파싱 객체 반환 (미스 또는 미지원 DB 스텁 시 null)
-async function readKarmaConsistencyCache(env, cacheKey) {
-  if (!env?.DB?.prepare || !cacheKey) return null;
+// Edge 캐시 -> D1 순으로 일관성 캐시 조회 후 D1 적중 시 Edge 캐시 역채우기 수행
+async function readKarmaConsistencyCache(env, cacheKey, analysisType = '') {
+  if (!cacheKey) return null;
+  const edgeHit = await readKarmaEdgeCache(cacheKey);
+  if (edgeHit) return edgeHit;
+  if (!env?.DB?.prepare) return null;
   try {
-    const selectStmt = env.DB.prepare('SELECT schema_version, result_json FROM analysis_consistency_cache WHERE cache_key = ? AND expires_at > ?');
+    const selectStmt = env.DB.prepare('SELECT analysis_type, schema_version, result_json FROM analysis_consistency_cache WHERE cache_key = ? AND expires_at > ?');
     const bound = selectStmt?.bind?.(cacheKey, Date.now());
     if (typeof bound?.first !== 'function') return null;
     if (!(await ensureKarmaConsistencyCacheTable(env.DB))) return null;
@@ -2917,29 +3137,37 @@ async function readKarmaConsistencyCache(env, cacheKey) {
       return null;
     }
     const parsed = JSON.parse(row.result_json);
-    return isPlainAiObject(parsed) ? parsed : null;
+    if (!isPlainAiObject(parsed)) return null;
+    await writeKarmaEdgeCache(analysisType || row.analysis_type, cacheKey, parsed);
+    return parsed;
   } catch (error) {
     console.warn('[KarmaConsistencyCache] 읽기 오류:', error?.message || error);
     return null;
   }
 }
 
-// 검증 통과한 분석 결과를 D1 일관성 캐시에 저장 -> 실패 시 경고 로그만 남기고 정상 응답 유지
-async function writeKarmaConsistencyCache(env, analysisType, cacheKey, result) {
-  if (!env?.DB?.prepare || !cacheKey || !isPlainAiObject(result)) return;
+// 검증 통과한 분석 결과를 Edge 캐시와 D1에 동시 저장 -> 실패 시 경고 로그만 남기고 정상 응답 유지
+async function writeKarmaConsistencyCache(env, analysisType, cacheKey, result, meta = {}) {
+  if (!cacheKey || !isPlainAiObject(result)) return;
+  await writeKarmaEdgeCache(analysisType, cacheKey, result);
+  if (!env?.DB?.prepare) return;
   try {
     const probeBound = env.DB.prepare('SELECT schema_version FROM analysis_consistency_cache WHERE cache_key = ?')?.bind?.(cacheKey);
     if (typeof probeBound?.first !== 'function') return;
     if (!(await ensureKarmaConsistencyCacheTable(env.DB))) return;
     const ttl = KARMA_CONSISTENCY_TTL_MS[analysisType] || (30 * 24 * 60 * 60 * 1000);
     const expiresAt = Date.now() + ttl;
+    const optionsKey = String(meta.optionsKey || '');
+    const perceptualHash = String(meta.perceptualHash || '');
     const upsertStmt = env.DB.prepare(`
       INSERT INTO analysis_consistency_cache (
-        cache_key, analysis_type, schema_version, result_json, expires_at
-      ) VALUES (?, ?, ?, ?, ?)
+        cache_key, analysis_type, schema_version, options_key, perceptual_hash, result_json, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(cache_key) DO UPDATE SET
         analysis_type = excluded.analysis_type,
         schema_version = excluded.schema_version,
+        options_key = excluded.options_key,
+        perceptual_hash = excluded.perceptual_hash,
         result_json = excluded.result_json,
         expires_at = excluded.expires_at,
         created_at = datetime('now', '+9 hours')
@@ -2948,12 +3176,83 @@ async function writeKarmaConsistencyCache(env, analysisType, cacheKey, result) {
       cacheKey,
       String(analysisType || ''),
       KARMA_CONSISTENCY_SCHEMA_VERSION,
+      optionsKey,
+      perceptualHash,
       JSON.stringify(result),
       expiresAt,
     );
     if (typeof bound?.run === 'function') await bound.run();
   } catch (error) {
     console.warn('[KarmaConsistencyCache] 쓰기 오류:', error?.message || error);
+  }
+}
+
+// 사진 일관성 3단계 조회 -> 인코딩 바이트 해시 -> 원본 파일 해시 -> 같은 종횡비·옵션 내 256비트 dHash 유사 매칭
+async function lookupKarmaPhotoConsistencyCache(env, analysisType, {
+  primaryKey,
+  secondaryKey = '',
+  optionsKey = '',
+  perceptualHash = '',
+}) {
+  const tier1 = await readKarmaConsistencyCache(env, primaryKey, analysisType);
+  if (isCacheableKarmaResult(analysisType, tier1)) return tier1;
+
+  if (secondaryKey && secondaryKey !== primaryKey) {
+    const tier2 = await readKarmaConsistencyCache(env, secondaryKey, analysisType);
+    if (isCacheableKarmaResult(analysisType, tier2)) {
+      await writeKarmaConsistencyCache(env, analysisType, primaryKey, tier2, { optionsKey, perceptualHash });
+      return tier2;
+    }
+  }
+
+  if (perceptualHash && optionsKey && env?.DB?.prepare) {
+    try {
+      const stmt = env.DB.prepare(`
+        SELECT result_json, perceptual_hash
+        FROM analysis_consistency_cache
+        WHERE analysis_type = ?
+          AND schema_version = ?
+          AND options_key = ?
+          AND perceptual_hash != ''
+          AND expires_at > ?
+        ORDER BY created_at DESC
+        LIMIT 40
+      `);
+      const bound = stmt?.bind?.(analysisType, KARMA_CONSISTENCY_SCHEMA_VERSION, optionsKey, Date.now());
+      if (typeof bound?.all === 'function' && await ensureKarmaConsistencyCacheTable(env.DB)) {
+        const res = await bound.all();
+        const rows = Array.isArray(res?.results) ? res.results : [];
+        for (const row of rows) {
+          if (hammingDistanceHex256(perceptualHash, row?.perceptual_hash) > 8) continue;
+          if (typeof row?.result_json !== 'string') continue;
+          const parsed = JSON.parse(row.result_json);
+          if (!isCacheableKarmaResult(analysisType, parsed)) continue;
+          await writeKarmaConsistencyCache(env, analysisType, primaryKey, parsed, { optionsKey, perceptualHash });
+          if (secondaryKey && secondaryKey !== primaryKey) {
+            await writeKarmaConsistencyCache(env, analysisType, secondaryKey, parsed, { optionsKey, perceptualHash });
+          }
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn('[KarmaConsistencyCache] dHash 조회 오류:', error?.message || error);
+    }
+  }
+  return null;
+}
+
+// 사진 분석 캐시 저장 -> 인코딩 해시와 원본 해시 엔트리에 옵션·dHash 메타를 함께 기록
+async function storeKarmaPhotoConsistencyCache(env, analysisType, result, {
+  primaryKey,
+  secondaryKey = '',
+  optionsKey = '',
+  perceptualHash = '',
+}) {
+  if (!isCacheableKarmaResult(analysisType, result)) return;
+  const meta = { optionsKey, perceptualHash };
+  await writeKarmaConsistencyCache(env, analysisType, primaryKey, result, meta);
+  if (secondaryKey && secondaryKey !== primaryKey) {
+    await writeKarmaConsistencyCache(env, analysisType, secondaryKey, result, meta);
   }
 }
 
@@ -3461,7 +3760,7 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
   let body;
   try { body = await request.json(); } catch (_) {}
   if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(/^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko', 'invalidRequest') }, 400);
-  const { image, mimeType, gender, age, lang } = body;
+  const { image, mimeType, gender, age, lang, image_hash, image_dhash } = body;
   const analysisLang = normalizePhotoAnalysisLang(lang);
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
@@ -3515,15 +3814,31 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
   }
 
   const imageHash = await hashKarmaBytesSha256(photoBytes);
-  const faceCacheKey = await buildKarmaConsistencyCacheKey('face', {
-    imageHash,
-    mimeType: photoInput.mimeType,
+  const photoDims = extractPhotoDimensions(photoBytes, photoInput.mimeType);
+  const serverAspect = photoDims ? computeAspectBucket(photoDims.width, photoDims.height) : 0;
+  const parsedDhash = parsePerceptualDhash(image_dhash);
+  const validPerceptualHash = parsedDhash && (!serverAspect || !parsedDhash.aspect || Math.abs(serverAspect - parsedDhash.aspect) <= 2)
+    ? parsedDhash.hex
+    : '';
+  const resolvedAspect = serverAspect || parsedDhash?.aspect || 0;
+  const faceCacheOpts = {
     gender: normalizeKarmaGenderKey(gender),
     age: normalizeKarmaAgeKey(age),
     lang: analysisLang,
+  };
+  const faceOptionsKey = JSON.stringify({ ...faceCacheOpts, aspect: resolvedAspect });
+  const faceCacheKey = await buildKarmaConsistencyCacheKey('face', { imageHash, ...faceCacheOpts });
+  const faceSourceHash = normalizeHexHash64(image_hash);
+  const faceSecondaryKey = faceSourceHash && faceSourceHash !== imageHash
+    ? await buildKarmaConsistencyCacheKey('face', { sourceHash: faceSourceHash, ...faceCacheOpts })
+    : '';
+  const cachedFaceResult = await lookupKarmaPhotoConsistencyCache(env, 'face', {
+    primaryKey: faceCacheKey,
+    secondaryKey: faceSecondaryKey,
+    optionsKey: faceOptionsKey,
+    perceptualHash: validPerceptualHash,
   });
-  const cachedFaceResult = await readKarmaConsistencyCache(env, faceCacheKey);
-  if (cachedFaceResult && !cachedFaceResult.error && validateFaceAiResponse(cachedFaceResult, { gender, age }).ok) {
+  if (cachedFaceResult) {
     analysisContext.aiCalled = true;
     await recordKarmaImageAnalysis(env, {
       requestId,
@@ -3534,7 +3849,7 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
       result: cachedFaceResult,
       errorMessage: '',
     });
-    return json(cachedFaceResult);
+    return json(cachedFaceResult, 200, { 'X-Karma-Cache': 'HIT' });
   }
 
   const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'faceRejected');
@@ -3693,9 +4008,12 @@ ${faceExpertRubric()}
     });
     return json({ error: rejectionMessage }, 400);
   }
-  if (validateFaceAiResponse(result, { gender, age }).ok) {
-    await writeKarmaConsistencyCache(env, 'face', faceCacheKey, result);
-  }
+  await storeKarmaPhotoConsistencyCache(env, 'face', result, {
+    primaryKey: faceCacheKey,
+    secondaryKey: faceSecondaryKey,
+    optionsKey: faceOptionsKey,
+    perceptualHash: validPerceptualHash,
+  });
   await recordKarmaImageAnalysis(env, {
     requestId,
     r2Key,
@@ -3705,7 +4023,7 @@ ${faceExpertRubric()}
     result,
     errorMessage: '',
   });
-  return json(result);
+  return json(result, 200, { 'X-Karma-Cache': 'MISS' });
 }
 
 async function handlePalmReading(request, env, requestId = '', analysisGateError = null, analysisContext = {}) {
@@ -3714,7 +4032,7 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
   let body;
   try { body = await request.json(); } catch (_) {}
   if (!isPlainAiObject(body)) return json({ error: getKarmaTextAnalysisMessage(/^en\b/i.test(request.headers.get('Accept-Language') || '') ? 'en' : 'ko', 'invalidRequest') }, 400);
-  const { image, mimeType, hand, dominant, gender, lang } = body;
+  const { image, mimeType, hand, dominant, gender, lang, image_hash, image_dhash } = body;
   const analysisLang = normalizePhotoAnalysisLang(lang);
   const photoInput = validatePhotoImageInput(image, mimeType, analysisLang);
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
@@ -3772,16 +4090,32 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
     return json({ error: errorMessage }, 503);
   }
   const imageHash = await hashKarmaBytesSha256(photoBytes);
-  const palmCacheKey = await buildKarmaConsistencyCacheKey('palm', {
-    imageHash,
-    mimeType: photoInput.mimeType,
+  const photoDims = extractPhotoDimensions(photoBytes, photoInput.mimeType);
+  const serverAspect = photoDims ? computeAspectBucket(photoDims.width, photoDims.height) : 0;
+  const parsedDhash = parsePerceptualDhash(image_dhash);
+  const validPerceptualHash = parsedDhash && (!serverAspect || !parsedDhash.aspect || Math.abs(serverAspect - parsedDhash.aspect) <= 2)
+    ? parsedDhash.hex
+    : '';
+  const resolvedAspect = serverAspect || parsedDhash?.aspect || 0;
+  const palmCacheOpts = {
     hand: inferHandSide(hand),
     dominant: inferHandSide(dominant),
     gender: normalizeKarmaGenderKey(gender),
     lang: analysisLang,
+  };
+  const palmOptionsKey = JSON.stringify({ ...palmCacheOpts, aspect: resolvedAspect });
+  const palmCacheKey = await buildKarmaConsistencyCacheKey('palm', { imageHash, ...palmCacheOpts });
+  const palmSourceHash = normalizeHexHash64(image_hash);
+  const palmSecondaryKey = palmSourceHash && palmSourceHash !== imageHash
+    ? await buildKarmaConsistencyCacheKey('palm', { sourceHash: palmSourceHash, ...palmCacheOpts })
+    : '';
+  const cachedPalmResult = await lookupKarmaPhotoConsistencyCache(env, 'palm', {
+    primaryKey: palmCacheKey,
+    secondaryKey: palmSecondaryKey,
+    optionsKey: palmOptionsKey,
+    perceptualHash: validPerceptualHash,
   });
-  const cachedPalmResult = await readKarmaConsistencyCache(env, palmCacheKey);
-  if (cachedPalmResult && !cachedPalmResult.error && validatePalmAiResponse(cachedPalmResult).ok) {
+  if (cachedPalmResult) {
     analysisContext.aiCalled = true;
     await recordKarmaImageAnalysis(env, {
       requestId,
@@ -3792,7 +4126,7 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
       result: cachedPalmResult,
       errorMessage: '',
     });
-    return json(cachedPalmResult);
+    return json(cachedPalmResult, 200, { 'X-Karma-Cache': 'HIT' });
   }
   const handContext = buildPalmHandContext(hand, dominant, analysisLang);
 
@@ -3906,9 +4240,12 @@ ${palmExpertRubric()}
     });
     return json({ error: rejectionMessage }, 400);
   }
-  if (validatePalmAiResponse(result).ok) {
-    await writeKarmaConsistencyCache(env, 'palm', palmCacheKey, result);
-  }
+  await storeKarmaPhotoConsistencyCache(env, 'palm', result, {
+    primaryKey: palmCacheKey,
+    secondaryKey: palmSecondaryKey,
+    optionsKey: palmOptionsKey,
+    perceptualHash: validPerceptualHash,
+  });
   await recordKarmaImageAnalysis(env, {
     requestId,
     r2Key,
@@ -3918,7 +4255,7 @@ ${palmExpertRubric()}
     result,
     errorMessage: '',
   });
-  return json(result);
+  return json(result, 200, { 'X-Karma-Cache': 'MISS' });
 }
 
 function getOhangRelations(ohangA, ohangB) {
@@ -4146,15 +4483,17 @@ function calculateFortuneLucky(saju, year, lang) {
   };
 }
 
-// 신년운세 AI 응답 객체에 서버 확정 행운 요소 덮어쓰기 적용 -> 비객체 시 원본 그대로 반환
+// 신년운세 AI 응답 객체에 서버 확정 행운 요소만 깨끗한 구조로 설정 -> 비객체 시 원본 그대로 반환
 function normalizeFortuneLucky(ai, saju, year, lang) {
   if (!isPlainAiObject(ai)) return ai;
   const lucky = calculateFortuneLucky(saju, year, lang);
   return {
     ...ai,
     lucky: {
-      ...(isPlainAiObject(ai.lucky) ? ai.lucky : {}),
-      ...lucky,
+      color: lucky.color,
+      number: lucky.number,
+      direction: lucky.direction,
+      month: lucky.month,
     },
   };
 }
@@ -4175,15 +4514,15 @@ function calculateDailyLucky(saju, todayStr, lang) {
   };
 }
 
-// 오늘의 운세 AI 응답 객체에 서버 확정 행운 요소 덮어쓰기 적용 -> 비객체 시 원본 그대로 반환
+// 오늘의 운세 AI 응답 객체에 서버 확정 행운 요소만 깨끗한 구조로 설정 -> 비객체 시 원본 그대로 반환
 function normalizeDailyLucky(ai, saju, todayStr, lang) {
   if (!isPlainAiObject(ai)) return ai;
   const lucky = calculateDailyLucky(saju, todayStr, lang);
   return {
     ...ai,
     lucky: {
-      ...(isPlainAiObject(ai.lucky) ? ai.lucky : {}),
-      ...lucky,
+      color: lucky.color,
+      number: lucky.number,
     },
   };
 }
@@ -4926,7 +5265,9 @@ async function handleSajuAnalysis(request, env) {
   const responseLang = normalizeKarmaTextAnalysisLang(lang);
   if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
+  const normalizedBirthDate = normalizeKarmaBirthDateKey(birth_date);
+  const normalizedBirthTime = normalizeKarmaBirthTimeKey(birth_time);
+  const saju = calculateSaju(normalizedBirthDate, normalizedBirthTime, gender || '', !!yajasi, birth_location || '');
 
   if (!env?.AI?.complete) return karmaAiServiceErrorResponse(new KarmaAiServiceError(responseLang));
   const sajuValidationCtx = {
@@ -4934,28 +5275,30 @@ async function handleSajuAnalysis(request, env) {
     daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
   };
   const sajuCacheKey = await buildKarmaConsistencyCacheKey('saju', {
-    birthDate: String(birth_date || '').trim(),
-    birthTime: String(birth_time || '').trim(),
+    birthDate: normalizedBirthDate,
+    birthTime: normalizedBirthTime,
     gender: normalizeKarmaGenderKey(gender),
     yajasi: Boolean(yajasi),
     birthLocation: normalizeKarmaLocationKey(birth_location),
-    activeDaeun: formatActiveDaeun(saju, birth_date, karmaTodayKst()),
+    activeDaeun: formatActiveDaeun(saju, normalizedBirthDate, karmaTodayKst()),
     lang: responseLang,
   });
-  let ai = await readKarmaConsistencyCache(env, sajuCacheKey);
-  if (!ai || !validateSajuAiResponse(ai, sajuValidationCtx).ok) {
+  let cacheStatus = 'HIT';
+  let ai = await readKarmaConsistencyCache(env, sajuCacheKey, 'saju');
+  if (!isCacheableKarmaResult('saju', ai)) {
+    cacheStatus = 'MISS';
     ai = await callKarmaTextAi(
-      buildSajuPrompt(saju, gender, responseLang, birth_date),
+      buildSajuPrompt(saju, gender, responseLang, normalizedBirthDate),
       'saju', env, null, 'saju', sajuValidationCtx,
     );
-    if (ai && validateSajuAiResponse(ai, sajuValidationCtx).ok) {
+    if (isCacheableKarmaResult('saju', ai)) {
       await writeKarmaConsistencyCache(env, 'saju', sajuCacheKey, ai);
     }
   }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
 
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
-  return json({ ...out, ai });
+  return json({ ...out, ai }, 200, { 'X-Karma-Cache': cacheStatus });
 }
 
 async function handleCompatQuick(request, env) {
@@ -4965,36 +5308,42 @@ async function handleCompatQuick(request, env) {
     return json({ error: getKarmaTextAnalysisMessage(responseLang, 'bothBirthDatesRequired') }, 400);
   }
 
-  const sajuA = calculateSaju(personA.birth_date, personA.birth_time || '', personA.gender || '', !!personA.yajasi, personA.birth_location || '');
-  const sajuB = calculateSaju(personB.birth_date, personB.birth_time || '', personB.gender || '', !!personB.yajasi, personB.birth_location || '');
+  const birthDateA = normalizeKarmaBirthDateKey(personA.birth_date);
+  const birthTimeA = normalizeKarmaBirthTimeKey(personA.birth_time);
+  const birthDateB = normalizeKarmaBirthDateKey(personB.birth_date);
+  const birthTimeB = normalizeKarmaBirthTimeKey(personB.birth_time);
+  const sajuA = calculateSaju(birthDateA, birthTimeA, personA.gender || '', !!personA.yajasi, personA.birth_location || '');
+  const sajuB = calculateSaju(birthDateB, birthTimeB, personB.gender || '', !!personB.yajasi, personB.birth_location || '');
   const score = ohangCompatibility(sajuA, sajuB);
   const grade = getGrade(score);
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
   if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
-  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, personA.birth_date, personB.birth_date);
-  const normalizeCompatPersonKey = person => ({
-    birthDate: String(person?.birth_date || '').trim(),
-    birthTime: String(person?.birth_time || '').trim(),
+  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, birthDateA, birthDateB);
+  const normalizeCompatPersonKey = (person, normDate, normTime) => ({
+    birthDate: normDate,
+    birthTime: normTime,
     gender: normalizeKarmaGenderKey(person?.gender),
     yajasi: Boolean(person?.yajasi),
     birthLocation: normalizeKarmaLocationKey(person?.birth_location),
   });
   const compatCacheKey = await buildKarmaConsistencyCacheKey('compat', {
-    personA: normalizeCompatPersonKey(personA),
-    personB: normalizeCompatPersonKey(personB),
+    personA: normalizeCompatPersonKey(personA, birthDateA, birthTimeA),
+    personB: normalizeCompatPersonKey(personB, birthDateB, birthTimeB),
     categoryScores,
     lang: responseLang,
   });
-  let ai = await readKarmaConsistencyCache(env, compatCacheKey);
-  if (!ai || !validateCompatAiResponse(ai).ok) {
+  let cacheStatus = 'HIT';
+  let ai = await readKarmaConsistencyCache(env, compatCacheKey, 'compat');
+  if (!isCacheableKarmaResult('compat', ai)) {
+    cacheStatus = 'MISS';
     ai = await callKarmaTextAi(
-      buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, personA.birth_date, personB.birth_date, categoryScores),
+      buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, birthDateA, birthDateB, categoryScores),
       'compat', env, null, 'compat',
     );
     if (ai) {
       ai = normalizeCompatAiScores(ai, categoryScores);
-      if (validateCompatAiResponse(ai).ok) {
+      if (isCacheableKarmaResult('compat', ai)) {
         await writeKarmaConsistencyCache(env, 'compat', compatCacheKey, ai);
       }
     }
@@ -5008,7 +5357,7 @@ async function handleCompatQuick(request, env) {
     sanggeuk: relations.sanggeuk.map(r => r.replace(/[목화토금수]/g, m => OHANG_EN[m]||m)),
     same: relations.same,
   } : relations;
-  return json({ score, grade, saju_a: outA, saju_b: outB, relations: outRelations, ai });
+  return json({ score, grade, saju_a: outA, saju_b: outB, relations: outRelations, ai }, 200, { 'X-Karma-Cache': cacheStatus });
 }
 
 async function handleFortune(request, env) {
@@ -5016,37 +5365,41 @@ async function handleFortune(request, env) {
   const responseLang = normalizeKarmaTextAnalysisLang(lang);
   if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
+  const normalizedBirthDate = normalizeKarmaBirthDateKey(birth_date);
+  const normalizedBirthTime = normalizeKarmaBirthTimeKey(birth_time);
+  const saju = calculateSaju(normalizedBirthDate, normalizedBirthTime, gender || '', !!yajasi, birth_location || '');
   const year = reqYear || Number(karmaTodayKst().slice(0, 4));
 
   if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
   const luckyBaseline = calculateFortuneLucky(saju, year, responseLang);
   const fortuneCacheKey = await buildKarmaConsistencyCacheKey('fortune', {
-    birthDate: String(birth_date || '').trim(),
-    birthTime: String(birth_time || '').trim(),
+    birthDate: normalizedBirthDate,
+    birthTime: normalizedBirthTime,
     gender: normalizeKarmaGenderKey(gender),
     yajasi: Boolean(yajasi),
     birthLocation: normalizeKarmaLocationKey(birth_location),
     year: Number(year),
     lang: responseLang,
   });
-  let ai = await readKarmaConsistencyCache(env, fortuneCacheKey);
-  if (!ai || !validateFortuneAiResponse(ai).ok) {
+  let cacheStatus = 'HIT';
+  let ai = await readKarmaConsistencyCache(env, fortuneCacheKey, 'fortune');
+  if (!isCacheableKarmaResult('fortune', ai)) {
+    cacheStatus = 'MISS';
     ai = await callKarmaTextAi(
-      buildFortunePrompt(saju, gender, year, responseLang, birth_date, luckyBaseline),
+      buildFortunePrompt(saju, gender, year, responseLang, normalizedBirthDate, luckyBaseline),
       'fortune', env, null, 'fortune',
     );
     if (ai) {
       ai = normalizeFortuneLucky(ai, saju, year, responseLang);
-      if (validateFortuneAiResponse(ai).ok) {
+      if (isCacheableKarmaResult('fortune', ai)) {
         await writeKarmaConsistencyCache(env, 'fortune', fortuneCacheKey, ai);
       }
     }
   }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
-  return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
+  return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai }, 200, { 'X-Karma-Cache': cacheStatus });
 }
 
 async function handleDaily(request, env) {
@@ -5054,7 +5407,9 @@ async function handleDaily(request, env) {
   const responseLang = normalizeKarmaTextAnalysisLang(lang);
   if (!birth_date) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'birthDateRequired') }, 400);
 
-  const saju = calculateSaju(birth_date, birth_time || '', gender || '', yajasi || false, birth_location || '');
+  const normalizedBirthDate = normalizeKarmaBirthDateKey(birth_date);
+  const normalizedBirthTime = normalizeKarmaBirthTimeKey(birth_time);
+  const saju = calculateSaju(normalizedBirthDate, normalizedBirthTime, gender || '', yajasi || false, birth_location || '');
   let todayStr;
   if (target_date && /^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
     todayStr = target_date;
@@ -5066,30 +5421,32 @@ async function handleDaily(request, env) {
 
   const luckyBaseline = calculateDailyLucky(saju, todayStr, responseLang);
   const dailyCacheKey = await buildKarmaConsistencyCacheKey('daily', {
-    birthDate: String(birth_date || '').trim(),
-    birthTime: String(birth_time || '').trim(),
+    birthDate: normalizedBirthDate,
+    birthTime: normalizedBirthTime,
     gender: normalizeKarmaGenderKey(gender),
     yajasi: Boolean(yajasi),
     birthLocation: normalizeKarmaLocationKey(birth_location),
     targetDate: todayStr,
     lang: responseLang,
   });
-  let ai = await readKarmaConsistencyCache(env, dailyCacheKey);
-  if (!ai || !validateDailyAiResponse(ai).ok) {
+  let cacheStatus = 'HIT';
+  let ai = await readKarmaConsistencyCache(env, dailyCacheKey, 'daily');
+  if (!isCacheableKarmaResult('daily', ai)) {
+    cacheStatus = 'MISS';
     ai = await callKarmaTextAi(
-      buildDailyPrompt(saju, gender, todayStr, responseLang, birth_date, luckyBaseline),
+      buildDailyPrompt(saju, gender, todayStr, responseLang, normalizedBirthDate, luckyBaseline),
       'daily', env, null, 'daily',
     );
     if (ai) {
       ai = normalizeDailyLucky(ai, saju, todayStr, responseLang);
-      if (validateDailyAiResponse(ai).ok) {
+      if (isCacheableKarmaResult('daily', ai)) {
         await writeKarmaConsistencyCache(env, 'daily', dailyCacheKey, ai);
       }
     }
   }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
-  return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
+  return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai }, 200, { 'X-Karma-Cache': cacheStatus });
 }
 
 async function handleQuickSaju(request, env) {
@@ -5168,31 +5525,37 @@ async function handleMatchDetail(idA, idB, env, lang) {
 
   if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
 
-  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, userA.birth_date, userB.birth_date);
+  const birthDateA = normalizeKarmaBirthDateKey(userA.birth_date);
+  const birthTimeA = normalizeKarmaBirthTimeKey(userA.birth_time);
+  const birthDateB = normalizeKarmaBirthDateKey(userB.birth_date);
+  const birthTimeB = normalizeKarmaBirthTimeKey(userB.birth_time);
+  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, birthDateA, birthDateB);
   const matchCacheKey = await buildKarmaConsistencyCacheKey('match-detail', {
     personA: {
-      birthDate: String(userA.birth_date || '').trim(),
-      birthTime: String(userA.birth_time || '').trim(),
+      birthDate: birthDateA,
+      birthTime: birthTimeA,
       gender: normalizeKarmaGenderKey(userA.gender),
     },
     personB: {
-      birthDate: String(userB.birth_date || '').trim(),
-      birthTime: String(userB.birth_time || '').trim(),
+      birthDate: birthDateB,
+      birthTime: birthTimeB,
       gender: normalizeKarmaGenderKey(userB.gender),
     },
     categoryScores,
     lang: responseLang,
   });
-  let ai = await readKarmaConsistencyCache(env, matchCacheKey);
-  if (!ai || !validateCompatAiResponse(ai).ok) {
+  let cacheStatus = 'HIT';
+  let ai = await readKarmaConsistencyCache(env, matchCacheKey, 'match-detail');
+  if (!isCacheableKarmaResult('match-detail', ai)) {
+    cacheStatus = 'MISS';
     try {
       ai = await callKarmaTextAi(
-        buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date, categoryScores),
+        buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, birthDateA, birthDateB, categoryScores),
         'match-detail', env, null, 'compat',
       );
       if (ai) {
         ai = normalizeCompatAiScores(ai, categoryScores);
-        if (validateCompatAiResponse(ai).ok) {
+        if (isCacheableKarmaResult('match-detail', ai)) {
           await writeKarmaConsistencyCache(env, 'match-detail', matchCacheKey, ai);
         }
       }
@@ -5200,7 +5563,7 @@ async function handleMatchDetail(idA, idB, env, lang) {
       if (!(error instanceof KarmaAiServiceError)) throw error;
     }
   }
-  return json({ ...baseResult, ai });
+  return json({ ...baseResult, ai }, 200, ai ? { 'X-Karma-Cache': cacheStatus } : {});
 }
 
 // --- Social Routes (from routes/social.js) ---
