@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callKarmaTextAi, callKarmaVisionAi, buildKarmaPromptCacheKey };`;
+workerSource += `\nglobalThis.__karmaContracts = { validateKarmaAiContract, callKarmaTextAi, callKarmaVisionAi, buildKarmaPromptCacheKey, sanitizeAiObjectKeys, parseAiJsonResponse, readKarmaConsistencyCache, writeKarmaConsistencyCache, buildKarmaConsistencyCacheKey, KARMA_CONSISTENCY_SCHEMA_VERSION };`;
 
 const context = {
   console,
@@ -335,6 +335,66 @@ async function testConcreteGuidanceOnEveryRoute() {
   }
 }
 
+async function testConsistencyContracts() {
+  check(
+    workerSource.includes('"rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}'),
+    '관상 프롬프트 JSON 템플릿에 구조화 rubric 계약 포함',
+  );
+  check(
+    workerSource.includes('"rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}'),
+    '손금 프롬프트 JSON 템플릿에 구조화 rubric 계약 포함',
+  );
+  check(
+    workerSource.includes('CREATE TABLE IF NOT EXISTS analysis_consistency_cache'),
+    '동일 입력 일관성 캐시 테이블 계약 존재',
+  );
+  const parsedColon = api.parseAiJsonResponse('{":summary":"요약 텍스트",":advice":"행동 조언"}');
+  check(parsedColon?.summary === '요약 텍스트' && parsedColon?.advice === '행동 조언', '선행 콜론이 붙은 JSON 키를 파서 단계에서 복구');
+
+  const cacheRows = new Map();
+  const mockDb = {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async run() {
+              if (sql.includes('INSERT INTO analysis_consistency_cache')) {
+                cacheRows.set(args[0], {
+                  analysis_type: args[1],
+                  schema_version: args[2],
+                  result_json: args[3],
+                  expires_at: args[4],
+                });
+              }
+              return { success: true };
+            },
+            async first() {
+              if (sql.includes('FROM analysis_consistency_cache')) {
+                const row = cacheRows.get(args[0]);
+                if (!row) return null;
+                if (sql.includes('expires_at > ?') && !(row.expires_at > args[1])) return null;
+                return row;
+              }
+              return null;
+            },
+          };
+        },
+        async run() { return { success: true }; },
+      };
+    },
+  };
+  const mockEnv = { DB: mockDb };
+  const keyA = await api.buildKarmaConsistencyCacheKey('saju', { birthDate: '1990-01-01', lang: 'ko' });
+  const keyB = await api.buildKarmaConsistencyCacheKey('saju', { birthDate: '1990-01-02', lang: 'ko' });
+  await api.writeKarmaConsistencyCache(mockEnv, 'saju', keyA, { personality: '테스트' });
+  const hit = await api.readKarmaConsistencyCache(mockEnv, keyA);
+  const miss = await api.readKarmaConsistencyCache(mockEnv, keyB);
+  const stored = cacheRows.get(keyA);
+  if (stored) stored.expires_at = Date.now() - 1000;
+  const expired = await api.readKarmaConsistencyCache(mockEnv, keyA);
+  check(hit?.personality === '테스트' && miss === null && expired === null, '일관성 캐시 저장·조회·키 분리·만료 검증');
+}
+
 Promise.resolve()
   .then(() => testConcreteGuidanceOnEveryRoute())
   .then(() => testContractRetry('fortune', { year_summary: text }, fortune))
@@ -357,6 +417,7 @@ Promise.resolve()
   .then(() => testPersistentContractFailure())
   .then(() => testTextPromptCacheAffinity())
   .then(() => testUnifiedVisionRoute())
+  .then(() => testConsistencyContracts())
   .then(() => {
   console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);
   if (failures.length) process.exit(1);

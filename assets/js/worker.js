@@ -8,6 +8,18 @@
 let _perfStatsTableReady = false;
 let _karmaImageAnalysesTableReady = false;
 let _karmaAnalysesTableReady = false;
+let _karmaConsistencyCacheTableReady = false;
+
+const KARMA_CONSISTENCY_SCHEMA_VERSION = 'karma-consistency-v2';
+const KARMA_CONSISTENCY_TTL_MS = Object.freeze({
+  face: 90 * 24 * 60 * 60 * 1000,
+  palm: 90 * 24 * 60 * 60 * 1000,
+  saju: 30 * 24 * 60 * 60 * 1000,
+  compat: 30 * 24 * 60 * 60 * 1000,
+  fortune: 30 * 24 * 60 * 60 * 1000,
+  daily: 7 * 24 * 60 * 60 * 1000,
+  tarot: 30 * 24 * 60 * 60 * 1000,
+});
 
 async function ensurePerfStatsColumn(env, name, type) {
   try {
@@ -1260,6 +1272,22 @@ function repairMissingAiJsonCommas(value) {
     .replace(/((?:-?\d+(?:\.\d+)?|true|false|null|}|\]))(\s+)(?="(?:\\.|[^"\\])*"\s*:)/g, '$1,$2');
 }
 
+// 모델 응답 키 앞쪽의 잔여 콜론(":score" -> "score")을 제거해 객체 키 정규화 -> 구두점 퇴화 키(":")는 재시도 판정을 위해 유지
+function sanitizeAiObjectKeys(value) {
+  if (Array.isArray(value)) return value.map(sanitizeAiObjectKeys);
+  if (!isPlainAiObject(value)) return value;
+  const sanitized = {};
+  for (const [rawKey, item] of Object.entries(value)) {
+    const match = /^:+([A-Za-z_][A-Za-z0-9_]*)$/.exec(rawKey);
+    const cleanKey = match ? match[1] : rawKey;
+    const cleanValue = sanitizeAiObjectKeys(item);
+    if (!Object.prototype.hasOwnProperty.call(sanitized, cleanKey) || rawKey === cleanKey) {
+      sanitized[cleanKey] = cleanValue;
+    }
+  }
+  return sanitized;
+}
+
 function parseAiJsonResponse(value) {
   const normalized = String(value || '')
     .trim()
@@ -1273,7 +1301,7 @@ function parseAiJsonResponse(value) {
   for (const candidate of candidates) {
     for (const attempt of [candidate, repairMissingAiJsonCommas(candidate)]) {
       try {
-        return JSON.parse(attempt);
+        return sanitizeAiObjectKeys(JSON.parse(attempt));
       } catch (error) {
         lastError = error;
       }
@@ -1413,20 +1441,105 @@ function validateTarotAiResponse(value) {
   return { ok: errors.length === 0, errors };
 }
 
+function clampRubricLevel(value, min, max) {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+// 1~5 루브릭 가중평균과 0~3 가시성 등급을 받아 구간 선형 변환 및 가시성 감점 적용 후 30~96 정수 점수 반환 (가시성 0이면 고정 차단점 반환)
+function scoreFromAnchoredRubric(weighted, visibility, options = {}) {
+  const vis = clampRubricLevel(Number(visibility), 0, 3);
+  const obscuredScore = Number.isFinite(options.obscuredScore) ? options.obscuredScore : 48;
+  const partialPenalty = Number.isFinite(options.partialPenalty) ? options.partialPenalty : 3;
+  const heavyPenalty = Number.isFinite(options.heavyPenalty) ? options.heavyPenalty : 9;
+  const heavyCap = Number.isFinite(options.heavyCap) ? options.heavyCap : 62;
+  if (vis === 0) return obscuredScore;
+
+  const w = Math.max(1.0, Math.min(5.0, Number(weighted)));
+  const raw = w <= 3.0
+    ? 34 + (w - 1.0) * 17
+    : 68 + (w - 3.0) * 13.5;
+
+  if (vis === 1) return Math.max(30, Math.min(heavyCap, Math.round(raw - heavyPenalty)));
+  if (vis === 2) return Math.max(30, Math.min(92, Math.round(raw - partialPenalty)));
+  return Math.max(30, Math.min(96, Math.round(raw)));
+}
+
+// 관상 부위 객체·인덱스·이마 관찰 메타를 받아 유효 rubric 존재 시 가중치와 가시성 보정을 거쳐 확정 score·정제 rubric 반환 (rubric 미존재 시 기존 score 유지)
+function computeFaceCategoryScoreFromRubric(category, index, foreheadObs) {
+  if (!isPlainAiObject(category)) return category;
+  const rubric = category.rubric;
+  const hasValidRubric = isPlainAiObject(rubric)
+    && ['structure', 'symmetry', 'condition', 'visibility'].every(
+      key => typeof rubric[key] === 'number' && Number.isFinite(rubric[key])
+    );
+
+  if (!hasValidRubric) {
+    if (!Object.prototype.hasOwnProperty.call(category, 'rubric')) return category;
+    const { rubric: _ignored, ...rest } = category;
+    return rest;
+  }
+
+  const structure = clampRubricLevel(rubric.structure, 1, 5);
+  const symmetry = clampRubricLevel(rubric.symmetry, 1, 5);
+  const condition = clampRubricLevel(rubric.condition, 1, 5);
+  let vis = clampRubricLevel(rubric.visibility, 0, 3);
+
+  if (/사진상\s*확인\s*어려움|hard\s*to\s*verify|cannot\s*be\s*verified|unreadable/i.test(String(category.desc ?? ''))) {
+    vis = 0;
+  }
+  if (index === 0 && isPlainAiObject(foreheadObs)) {
+    if (foreheadObs.skin_visible === false) {
+      vis = 0;
+    } else if (foreheadObs.skin_visible === true && foreheadObs.hairline_visible === false) {
+      vis = Math.min(Math.max(vis, 1), 2);
+    } else if (foreheadObs.skin_visible === true && foreheadObs.hairline_visible === true) {
+      vis = Math.max(vis, 2);
+    }
+  }
+
+  const weighted = index === 5
+    ? structure * 0.35 + symmetry * 0.25 + condition * 0.40
+    : structure * 0.40 + symmetry * 0.30 + condition * 0.30;
+  const score = scoreFromAnchoredRubric(weighted, vis, {
+    obscuredScore: 48,
+    partialPenalty: 3,
+    heavyPenalty: 9,
+    heavyCap: 62,
+  });
+
+  return {
+    ...category,
+    score,
+    rubric: { structure, symmetry, condition, visibility: vis },
+  };
+}
+
 function normalizeFaceAiScores(value) {
   if (!isPlainAiObject(value) || value.error || !Array.isArray(value.categories)
       || ![6, 7].includes(value.categories.length)) return value;
   // 마지막 전체 인상 항목은 앞선 세부 부위(이마·눈·코·입·턱/광대·피부)의 요약이므로 평균 계산에서 제외
   const summaryIndex = value.categories.length - 1;
-  const scores = value.categories.slice(0, summaryIndex).map(category => category?.score);
-  if (!scores.every(score => Number.isInteger(score) && score >= 0 && score <= 100)) return value;
+  const categories = value.categories.map((category, index) => (
+    index < summaryIndex
+      ? computeFaceCategoryScoreFromRubric(category, index, value.forehead_observation)
+      : category
+  ));
+  const scores = categories.slice(0, summaryIndex).map(category => category?.score);
+  if (!scores.every(score => Number.isInteger(score) && score >= 0 && score <= 100)) {
+    return { ...value, categories };
+  }
   const overallScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
   return {
     ...value,
     overall_score: overallScore,
     overall_grade: getGrade(overallScore),
-    categories: value.categories.map((category, index) => (
-      index === summaryIndex && isPlainAiObject(category) ? { ...category, score: overallScore } : category
+    categories: categories.map((category, index) => (
+      index === summaryIndex && isPlainAiObject(category)
+        ? (() => {
+            const { rubric: _ignored, ...rest } = category;
+            return { ...rest, score: overallScore };
+          })()
+        : category
     )),
   };
 }
@@ -1699,18 +1812,117 @@ function validateFaceAiResponse(value, context = {}) {
   return { ok: errors.length === 0, errors };
 }
 
+const PALM_UNREADABLE_PATTERN = /확인\s*어려움|hard\s*to\s*verify|confirmation\s*difficult|unconfirmed|unreadable/i;
+const PALM_LINE_WEIGHTS = Object.freeze([1.5, 1.5, 1.5, 1.0, 0.7, 0.7]);
+
+// 손금 항목 객체를 받아 유효 rubric과 length 라벨 교차 잠금을 적용해 확정 score·정제 rubric·판독 불가 여부 반환 (rubric 미존재 시 기존 score 유지)
+function computePalmLineScoreFromRubric(line) {
+  if (!isPlainAiObject(line)) return { line, usedRubric: false, unreadable: false };
+  const lengthText = String(line.length ?? '').trim();
+  const isUnreadableLabel = PALM_UNREADABLE_PATTERN.test(lengthText);
+  const rubric = line.rubric;
+  const hasValidRubric = isPlainAiObject(rubric)
+    && ['depth', 'continuity', 'definition', 'visibility'].every(
+      key => typeof rubric[key] === 'number' && Number.isFinite(rubric[key])
+    );
+
+  if (!hasValidRubric) {
+    const cleanLine = Object.prototype.hasOwnProperty.call(line, 'rubric')
+      ? (({ rubric: _ignored, ...rest }) => rest)(line)
+      : line;
+    return { line: cleanLine, usedRubric: false, unreadable: isUnreadableLabel };
+  }
+
+  let d = clampRubricLevel(rubric.depth, 1, 5);
+  let c = clampRubricLevel(rubric.continuity, 1, 5);
+  let f = clampRubricLevel(rubric.definition, 1, 5);
+  let vis = clampRubricLevel(rubric.visibility, 0, 3);
+
+  if (isUnreadableLabel || vis === 0) {
+    return {
+      line: { ...line, score: 50, rubric: { depth: d, continuity: c, definition: f, visibility: 0 } },
+      usedRubric: true,
+      unreadable: true,
+    };
+  }
+
+  if (/^(?:없음|absent|none)$/i.test(lengthText)) {
+    d = Math.min(d, 1);
+    c = Math.min(c, 2);
+    f = Math.min(f, 1);
+  } else if (/^(?:희미|faint|weak)$/i.test(lengthText)) {
+    d = Math.min(d, 2);
+    c = Math.min(c, 3);
+    f = Math.min(f, 2);
+  } else if (/^(?:짧다|short)$/i.test(lengthText)) {
+    f = Math.min(f, 2);
+  } else if (/^(?:뚜렷|clear|strong|vivid)$/i.test(lengthText)) {
+    d = Math.max(d, 4);
+    f = Math.max(f, 4);
+  } else if (/^(?:길다|long)$/i.test(lengthText)) {
+    f = Math.max(f, 4);
+  }
+
+  const weighted = d * 0.40 + c * 0.35 + f * 0.25;
+  const score = scoreFromAnchoredRubric(weighted, vis, {
+    obscuredScore: 50,
+    partialPenalty: 3,
+    heavyPenalty: 8,
+    heavyCap: 62,
+  });
+
+  return {
+    line: { ...line, score, rubric: { depth: d, continuity: c, definition: f, visibility: vis } },
+    usedRubric: true,
+    unreadable: false,
+  };
+}
+
+// 손금 6개 선의 루브릭 또는 기존 점수로 종합 점수(overall_score)와 등급(overall_grade)을 결정적으로 계산
 function normalizePalmAiGrade(value) {
-  if (!isPlainAiObject(value) || value.error || !Number.isInteger(value.overall_score)
-      || value.overall_score < 0 || value.overall_score > 100) return value;
+  if (!isPlainAiObject(value) || value.error) return value;
+  const hasSixLines = Array.isArray(value.lines) && value.lines.length === 6 && value.lines.every(isPlainAiObject);
+
+  if (hasSixLines) {
+    const computed = value.lines.map(computePalmLineScoreFromRubric);
+    const usedRubric = computed.some(item => item.usedRubric);
+    if (usedRubric) {
+      const normalizedLines = computed.map(item => (
+        item.unreadable && !Number.isInteger(item.line?.score)
+          ? { ...item.line, score: 50 }
+          : item.line
+      ));
+      const readableLines = computed
+        .map((item, index) => ({
+          score: normalizedLines[index]?.score,
+          weight: PALM_LINE_WEIGHTS[index] ?? 1.0,
+          unreadable: item.unreadable,
+        }))
+        .filter(item => !item.unreadable);
+      let overallScore = 50;
+      if (readableLines.length > 0) {
+        if (readableLines.every(item => Number.isInteger(item.score) && item.score >= 0 && item.score <= 100)) {
+          const totalWeight = readableLines.reduce((sum, item) => sum + item.weight, 0);
+          const weightedMean = readableLines.reduce((sum, item) => sum + item.score * item.weight, 0) / totalWeight;
+          overallScore = Math.max(0, Math.min(100, Math.round(weightedMean)));
+        } else if (Number.isInteger(value.overall_score) && value.overall_score >= 0 && value.overall_score <= 100) {
+          overallScore = value.overall_score;
+        } else {
+          return { ...value, lines: normalizedLines };
+        }
+      }
+      return { ...value, lines: normalizedLines, overall_score: overallScore, overall_grade: getGrade(overallScore) };
+    }
+  }
+
+  if (!Number.isInteger(value.overall_score) || value.overall_score < 0 || value.overall_score > 100) return value;
   let overallScore = value.overall_score;
   // 정면 손바닥 사진에서 측면 결혼선 등 확인 불가 선의 일괄 저점수가 전체 점수를 60점대로 고정하는 현상 보정
-  if (Array.isArray(value.lines) && value.lines.length === 6
-      && value.lines.every(line => isPlainAiObject(line) && Number.isInteger(line.score) && line.score >= 0 && line.score <= 100)) {
-    const unreadablePattern = /확인\s*어려움|hard\s*to\s*verify|confirmation\s*difficult|unconfirmed|unreadable/i;
-    const hasUnreadableLine = value.lines.some(line => unreadablePattern.test(String(line.length ?? '')));
+  if (hasSixLines && value.lines.every(line => Number.isInteger(line.score) && line.score >= 0 && line.score <= 100)) {
+    const hasUnreadableLine = value.lines.some(line => PALM_UNREADABLE_PATTERN.test(String(line.length ?? '')));
     if (hasUnreadableLine) {
       const readableLines = value.lines
-        .map((line, index) => ({ score: line.score, weight: index < 3 ? 1.4 : 1.0, unreadable: unreadablePattern.test(String(line.length ?? '')) }))
+        .map((line, index) => ({ score: line.score, weight: index < 3 ? 1.4 : 1.0, unreadable: PALM_UNREADABLE_PATTERN.test(String(line.length ?? '')) }))
         .filter(item => !item.unreadable);
       if (readableLines.length > 0) {
         const totalWeight = readableLines.reduce((sum, item) => sum + item.weight, 0);
@@ -1794,8 +2006,9 @@ function validateKarmaAiContract(contractType, value, context = {}) {
 
 // Completeness and language are prompt goals, not reasons to regenerate visible results.
 function normalizeKarmaDisplayResponse(value, contractType) {
-  if (!isPlainAiObject(value)) return value;
-  const result = { ...value };
+  const sanitized = sanitizeAiObjectKeys(value);
+  if (!isPlainAiObject(sanitized)) return value;
+  const result = { ...sanitized };
   for (const key of ['strengths', 'cautions', 'daeun_reading', 'keywords', 'visual_evidence']) {
     if (key in result) result[key] = Array.isArray(result[key]) ? result[key].filter(isNonEmptyAiText) : [];
   }
@@ -1991,6 +2204,7 @@ const KOREAN_NATIVE_PROSE_GUARD = `[한국어 쉬운 원문체]
 - [번역투·피동·명사화 금지] '~되어지다', '~에 의해', '가지고 있습니다', '취하는 것이 좋습니다', '~함에 따라', '~에 있어서', '~라는 점에서'를 쓰지 말고 자연스러운 한국어 능동문과 동사로 풀어 씁니다.
 - [분열문·AI 상투어 금지] '중요한 것은 ~라는 점입니다', '~하는 이유입니다', '단순한 X를 넘어 Y입니다', '운명의 수레바퀴/새로운 지평/잠재력을 꽃피우다/청사진/신호탄/잠식하다' 같은 AI식 상투어를 쓰지 않습니다.
 - [구두점과 어미 변주] 연결어미(-고, -며, -면서, -지만) 뒤에 기계적으로 쉼표(,)를 찍지 않고, '~합니다'만 연속되지 않게 '~하기 쉽습니다', '~할 때입니다', '~하는 편이 유리합니다' 등으로 종결어미 호흡을 자연스럽게 섞습니다.
+- [문체 통일] 본문·요약·조언·주의점의 모든 한국어 문장은 '~다/~한다/~이다' 같은 평서형 반말로 섞어 쓰지 말고, 끝까지 '~습니다/~입니다/~세요' 등 정중한 존댓말로 통일합니다.
 </korean_style_rules>`;
 
 const ENGLISH_PLAIN_PROSE_GUARD = `[Clear, plain English]
@@ -2082,7 +2296,9 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
             : ''].filter(Boolean).join(' ')
         : '';
       // Lower temperature only helps broken JSON syntax; an empty template repeats more often when sampling is narrowed.
-      const narrowRetry = attempt > 0 && contractErrors.length > 0 && !contractErrors.includes('root:no_displayable_text');
+      const isEmptyTextRetry = attempt > 0 && contractErrors.includes('root:no_displayable_text');
+      const narrowRetry = attempt > 0 && contractErrors.length > 0 && !isEmptyTextRetry;
+      const attemptTemperature = isEmptyTextRetry ? 0.5 : (narrowRetry ? 0.2 : 0.1);
       const attemptSystem = [systemText, retryInstruction].filter(Boolean).join('\n\n');
       const attemptPrompt = promptText;
       const messages = attemptSystem
@@ -2100,7 +2316,7 @@ async function callKarmaTextAi(prompt, _caller, _env, _ctx, contractType = '', c
           messages,
           cacheKey,
           responseFormat: 'json_object',
-          temperature: narrowRetry ? 0.2 : 0.5,
+          temperature: attemptTemperature,
           maxTokens: 16384,
           ...(failedModels.length ? { excludeModels: [...new Set(failedModels)] } : {}),
         });
@@ -2296,8 +2512,9 @@ function buildTarotPrompt(cards, question, lang) {
 - Treat the exact three-card order, direction, and question as this reading's fingerprint. Judge strictly by the absolute symbolic criteria of the drawn cards and their directions without artificially balancing good and bad.
 - Do not flatter the querent or soften harsh spreads into generic encouragement. When reversed or conflicting cards appear, directly name the blind spot, avoidance, overreach, or stumbling block that is holding the situation back.
 - Start overall with a clear answer to the question or a priority supported by this spread, then explain the cause-effect link between at least two drawn cards. Do not start with a generic life theme.
+- Prioritize findings in a fixed order so the same spread reaches the same conclusion: (1) core tension shown by the Present card and its direction, (2) cause-and-effect transition from Past to Present, (3) conditional direction and controllable change in the Future card.
 - If there is no question, choose one dominant real-life arena from this exact card combination; do not cover love, career, and personal growth with equal generic weight.
-- Keywords must come from this exact spread, not a reusable tarot keyword list.
+- Keywords must come from this exact spread, not a reusable tarot keyword list: select 1 from Past, 2 from Present, 1 from Future, and 1 from the action linked to the question.
 
 ## Response — JSON only
 {
@@ -2337,8 +2554,9 @@ ${hasQuestion ? `\nIMPORTANT: Every interpretation must relate back to "${questi
 - 뽑힌 3장의 카드명, 순서, 정/역방향, 질문을 이번 리딩의 지문으로 삼으세요. 억지로 긍정과 부정의 비율을 맞추지 말고 카드 상징과 정·역방향의 절대 기준대로 판단하세요.
 - 듣기 좋은 위로로 포장하지 마세요. 역방향 카드나 충돌하는 카드 조합이 나오면 현재 회피하고 있는 문제, 잘못된 집착, 어긋난 기대, 이대로 가면 막히는 걸림돌을 직설적으로 짚으세요.
 - overall 첫 문장은 질문에 대한 답이나 이 배열에서 우선할 행동을 쉬운 말로 제시하고, 뽑힌 카드 2장 이상의 원인→결과 흐름을 근거로 이어 쓰세요. 일반적인 인생 주제로 시작하지 마세요.
+- 같은 배열이면 핵심 결론이 흔들리지 않도록 판단 우선순위를 [1순위: 현재 위치 카드의 정·역방향 핵심 긴장 → 2순위: 과거에서 현재로의 원인-결과 흐름 → 3순위: 미래 카드의 조건부 방향과 바꿀 행동] 순으로 고정하세요.
 - 질문이 없는 경우에도 카드 조합에서 가장 강한 현실 영역 하나를 골라 깊게 파세요. 연애·직업·성장을 같은 비중의 무난한 설명으로 나열하지 마세요.
-- keywords는 이번 카드 조합에서 나온 단어만 고르세요. 재사용 가능한 타로 공통 키워드 목록처럼 만들지 마세요.
+- keywords는 이번 카드 조합에서 나온 단어만 고르세요. 재사용 가능한 타로 공통 키워드 목록처럼 만들지 말고, [과거 핵심 1개, 현재 핵심 2개, 미래 핵심 1개, 질문 연결 행동 1개] 순으로 5개를 뽑으세요.
 
 ## 응답 — JSON만
 {
@@ -2388,11 +2606,23 @@ async function handleTarotReading(request, env) {
       return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
     }
 
-    const prompt = buildTarotPrompt(cards, question || '', lang || 'ko');
-    const ai = await callKarmaTextAi(prompt, 'tarot', env, null, 'tarot');
-
+    const normalizedQuestion = String(question || '').trim().replace(/\s+/g, ' ');
+    const tarotCacheKey = await buildKarmaConsistencyCacheKey('tarot', {
+      cards: cards.map(card => ({ id: card.id, reversed: card.reversed })),
+      question: normalizedQuestion,
+      lang: responseLang,
+    });
+    let ai = await readKarmaConsistencyCache(env, tarotCacheKey);
     if (!ai) {
-      return json({ error: incompleteAiResponseMessage(lang || 'ko') }, 502);
+      const prompt = buildTarotPrompt(cards, normalizedQuestion, lang || 'ko');
+      ai = await callKarmaTextAi(prompt, 'tarot', env, null, 'tarot');
+
+      if (!ai) {
+        return json({ error: incompleteAiResponseMessage(lang || 'ko') }, 502);
+      }
+      if (validateTarotAiResponse(ai).ok) {
+        await writeKarmaConsistencyCache(env, 'tarot', tarotCacheKey, ai);
+      }
     }
 
     return json({
@@ -2519,7 +2749,8 @@ function photoScoreInterpretationGuide(contractType) {
   if (!['face', 'palm'].includes(contractType)) return '';
   const itemPath = contractType === 'face' ? 'categories' : 'lines';
   return `## 점수와 설명 일치 원칙 (전체 인구 대상 절대평가 채점)
-- ${itemPath}의 각 desc는 실제 관찰 → 점수의 이유 → 전통 해석의 강점 또는 약점 → 점검할 행동 순서로 쓰되 3~4문장으로 정리하세요. 낮은 점수를 주고 설명에는 장점만 나열하지 마세요.
+- ${itemPath}의 각 desc는 실제 관찰 → 판단 이유 → 전통 해석의 강점 또는 약점 → 점검할 행동 순서로 쓰되 3~4문장으로 정리하세요. 낮은 점수를 주고 설명에는 장점만 나열하지 마세요.
+- 각 항목의 최종 점수는 사용자가 아니라 서버가 rubric 세부 기준(1~5점·가시성 0~3점)에 따라 계산합니다. desc 본문에는 자의적인 숫자 점수를 적지 말고 눈에 보이는 특징과 약점 근거만 적으세요.
 - 모든 사람을 대상으로 한 절대값(절대평가) 기준으로 채점하세요. 한 사람 안에서 억지로 점수 차이를 벌리거나 평균을 맞추지 마세요. 모든 부위가 실제로 뛰어나면 전 부위에 높은 점수(85~96점)를 주고 모든 부위가 부족하거나 약점이 뚜렷하면 전 부위에 낮은 점수(30~59점)를 주세요. 듣기 좋은 말로 포장하거나 습관적으로 70~80점대에 몰아넣지 마세요. 전체 인구 평균 기준점은 64점(B등급)입니다.
 - 모든 항목에 caution을 반드시 쓰세요. 높은 점수여도 칭찬만 쓰면 불완전한 응답입니다. desc에는 관찰과 점수의 이유를, caution에는 같은 특징의 약점이나 주의점과 대응 행동을 1~2문장으로 쓰세요. 서버가 두 내용을 이어서 표시하므로 desc에 caution 문장을 반복하지 마세요.
 - 88~96점(상위권 최상급)은 전체 사람 기준 비율·대칭·윤곽·기색 또는 선의 깊이·연속성이 사진에서 흠잡을 데 없이 뚜렷한 부위에 부여하세요. 75점 이상도 caution에서 어떤 상황을 조심해야 하는지 밝히세요. 관찰된 아쉬움이 없다면 같은 강점이 지나칠 때 생길 수 있는 걸림돌을 전통 해석 안에서 조건부로 설명하세요. 실제로 보이지 않는 형태의 결함을 만들지 마세요.
@@ -2577,7 +2808,7 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
           type: 'image',
           url: String(imageUrl || ''),
         }],
-        temperature: attempt > 0 ? 0.1 : 0.2,
+        temperature: 0,
         maxTokens: 8000,
       });
       if (!result?.text) {
@@ -2608,8 +2839,127 @@ async function callKarmaVisionAi(prompt, imageUrl, env, lang = 'ko', contractTyp
   return failure;
 }
 
+function decodeBase64Bytes(encoded) {
+  return Uint8Array.from(atob(String(encoded || '')), character => character.charCodeAt(0));
+}
+
+async function hashKarmaBytesSha256(bytes) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function normalizeKarmaGenderKey(gender) {
+  const value = String(gender || '').trim().toLowerCase();
+  if (value === '남성' || value === 'male') return 'male';
+  if (value === '여성' || value === 'female') return 'female';
+  return value;
+}
+
+function normalizeKarmaAgeKey(age) {
+  const value = String(age || '').trim().toLowerCase();
+  const map = {
+    '10대': '10s', teens: '10s',
+    '20대': '20s', '20s': '20s',
+    '30대': '30s', '30s': '30s',
+    '40대': '40s', '40s': '40s',
+    '50대': '50s', '50s': '50s',
+    '60대 이상': '60s+', '60s+': '60s+',
+  };
+  return map[value] || value;
+}
+
+function normalizeKarmaLocationKey(location) {
+  const value = String(location || '').trim().toLowerCase();
+  return (!value || value === 'utc+9' || value === 'kr') ? 'kr' : value;
+}
+
+// 분석 유형과 정규화된 입력 페이로드를 받아 SHA-256 기반 일관성 캐시 키 생성
+async function buildKarmaConsistencyCacheKey(analysisType, payload) {
+  const serialized = JSON.stringify({
+    v: KARMA_CONSISTENCY_SCHEMA_VERSION,
+    type: String(analysisType || ''),
+    payload,
+  });
+  const digest = await hashKarmaBytesSha256(new TextEncoder().encode(serialized));
+  return `${KARMA_CONSISTENCY_SCHEMA_VERSION}:${analysisType}:${digest}`;
+}
+
+async function ensureKarmaConsistencyCacheTable(db) {
+  if (_karmaConsistencyCacheTableReady) return true;
+  const createStmt = db.prepare(`
+    CREATE TABLE IF NOT EXISTS analysis_consistency_cache (
+      cache_key TEXT PRIMARY KEY,
+      analysis_type TEXT NOT NULL,
+      schema_version TEXT NOT NULL,
+      result_json TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', '+9 hours'))
+    )
+  `);
+  if (typeof createStmt?.run !== 'function') return false;
+  await createStmt.run();
+  const idxStmt = db.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_consistency_cache_expiry ON analysis_consistency_cache(expires_at)');
+  if (typeof idxStmt?.run === 'function') await idxStmt.run();
+  _karmaConsistencyCacheTableReady = true;
+  return true;
+}
+
+// D1 일관성 캐시 조회 -> 스키마 버전·만료 시각 확인 후 JSON 파싱 객체 반환 (미스 또는 미지원 DB 스텁 시 null)
+async function readKarmaConsistencyCache(env, cacheKey) {
+  if (!env?.DB?.prepare || !cacheKey) return null;
+  try {
+    const selectStmt = env.DB.prepare('SELECT schema_version, result_json FROM analysis_consistency_cache WHERE cache_key = ? AND expires_at > ?');
+    const bound = selectStmt?.bind?.(cacheKey, Date.now());
+    if (typeof bound?.first !== 'function') return null;
+    if (!(await ensureKarmaConsistencyCacheTable(env.DB))) return null;
+    const row = await bound.first();
+    if (!row || row.schema_version !== KARMA_CONSISTENCY_SCHEMA_VERSION || typeof row.result_json !== 'string') {
+      return null;
+    }
+    const parsed = JSON.parse(row.result_json);
+    return isPlainAiObject(parsed) ? parsed : null;
+  } catch (error) {
+    console.warn('[KarmaConsistencyCache] 읽기 오류:', error?.message || error);
+    return null;
+  }
+}
+
+// 검증 통과한 분석 결과를 D1 일관성 캐시에 저장 -> 실패 시 경고 로그만 남기고 정상 응답 유지
+async function writeKarmaConsistencyCache(env, analysisType, cacheKey, result) {
+  if (!env?.DB?.prepare || !cacheKey || !isPlainAiObject(result)) return;
+  try {
+    const probeBound = env.DB.prepare('SELECT schema_version FROM analysis_consistency_cache WHERE cache_key = ?')?.bind?.(cacheKey);
+    if (typeof probeBound?.first !== 'function') return;
+    if (!(await ensureKarmaConsistencyCacheTable(env.DB))) return;
+    const ttl = KARMA_CONSISTENCY_TTL_MS[analysisType] || (30 * 24 * 60 * 60 * 1000);
+    const expiresAt = Date.now() + ttl;
+    const upsertStmt = env.DB.prepare(`
+      INSERT INTO analysis_consistency_cache (
+        cache_key, analysis_type, schema_version, result_json, expires_at
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(cache_key) DO UPDATE SET
+        analysis_type = excluded.analysis_type,
+        schema_version = excluded.schema_version,
+        result_json = excluded.result_json,
+        expires_at = excluded.expires_at,
+        created_at = datetime('now', '+9 hours')
+    `);
+    const bound = upsertStmt?.bind?.(
+      cacheKey,
+      String(analysisType || ''),
+      KARMA_CONSISTENCY_SCHEMA_VERSION,
+      JSON.stringify(result),
+      expiresAt,
+    );
+    if (typeof bound?.run === 'function') await bound.run();
+  } catch (error) {
+    console.warn('[KarmaConsistencyCache] 쓰기 오류:', error?.message || error);
+  }
+}
+
 async function saveKarmaAnalysisImageToR2(env, {
   image,
+  bytes: providedBytes,
   mimeType,
   analysisType,
   requestId,
@@ -2625,7 +2975,7 @@ async function saveKarmaAnalysisImageToR2(env, {
   const safeRequestId = String(requestId || crypto.randomUUID()).replace(/[^a-zA-Z0-9-]/g, '');
   const key = `karma/${type}/${Date.now()}-${safeRequestId || crypto.randomUUID()}.${extension}`;
 
-  const bytes = Uint8Array.from(atob(String(image || '')), character => character.charCodeAt(0));
+  const bytes = providedBytes || decodeBase64Bytes(image);
   let lastError;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -3117,10 +3467,13 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
   if (photoInput.error) return json({ error: photoInput.error }, photoInput.status || 400);
 
   const analysisInput = { gender: gender || '', age: age || '', lang: analysisLang };
+  let photoBytes;
   let r2Key;
   try {
+    photoBytes = decodeBase64Bytes(photoInput.image);
     r2Key = await saveKarmaAnalysisImageToR2(env, {
       image: photoInput.image,
+      bytes: photoBytes,
       mimeType: photoInput.mimeType,
       analysisType: 'face',
       requestId,
@@ -3159,6 +3512,29 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
       aiService: 'NOT_CALLED',
     });
     return json({ error: errorMessage }, 503);
+  }
+
+  const imageHash = await hashKarmaBytesSha256(photoBytes);
+  const faceCacheKey = await buildKarmaConsistencyCacheKey('face', {
+    imageHash,
+    mimeType: photoInput.mimeType,
+    gender: normalizeKarmaGenderKey(gender),
+    age: normalizeKarmaAgeKey(age),
+    lang: analysisLang,
+  });
+  const cachedFaceResult = await readKarmaConsistencyCache(env, faceCacheKey);
+  if (cachedFaceResult && !cachedFaceResult.error && validateFaceAiResponse(cachedFaceResult, { gender, age }).ok) {
+    analysisContext.aiCalled = true;
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'face',
+      status: 'success',
+      input: analysisInput,
+      result: cachedFaceResult,
+      errorMessage: '',
+    });
+    return json(cachedFaceResult);
   }
 
   const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'faceRejected');
@@ -3203,8 +3579,13 @@ ${faceExpertRubric()}
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 이마 노출/폭, 눈매 방향, 눈썹 간격, 콧대와 코끝, 입술 두께, 턱선, 광대, 피부결/트러블/기색, 얼굴형, 좌우 비대칭, 조명/가림 여부.
 - 각 \`categories.desc\`의 첫 문장은 반드시 해당 부위의 실제 관찰 특징으로 시작하세요. 관찰 없이 성격·운세부터 말하지 마세요.
 - 부위의 형태 대부분을 실제로 관찰할 수 없을 때만 해당 부위의 설명에 "사진상 확인 어려움"과 구체 원인을 쓰세요. 부분 가림은 보이는 특징을 먼저 설명하고 확인할 수 없는 특징만 한정하세요.
-- 이마·눈·코·입·턱/광대·피부(기색) 순서의 첫 여섯 항목 점수는 전체 사람을 대상으로 한 절대값 기준으로 각각 독립 산정한 0~100 정수입니다. 평범한 평균 점수는 64점(B등급)이며 실제 수준에 따라 30~96점 전 구간을 그대로 쓰세요(매우 뛰어남 88~96, 우수함 75~87, 보통·아쉬움 60~74, 뚜렷한 약점·불균형·트러블·가림 30~59). 습관적으로 70점대 후반~80점대 초반을 주거나 한 사람 안에서 억지로 점수 차이를 벌리지 마세요. 여섯 부위가 모두 뛰어나면 모두 높게 주고 모두 부족하면 모두 낮게 있는 그대로 절대평가하세요. 설명에는 점수의 근거와 약점·걸림돌을 직설적으로 포함하세요. 잘 보이는 부위는 윤곽·비율·균형·기색을 평가하고 헤어라인 한 곳이 안 보인다는 이유로 일괄 감점하지 마세요. 부위 대부분이 안 보일 때는 관찰 한계를 반영하세요.
-- 점수 예시는 제공하지 않습니다. 미리 정한 대표 숫자나 구간에서 고르거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요. 같은 사진의 같은 관찰은 같은 평가를 받아야 합니다.
+- 이마·눈·코·입·턱/광대·피부(기색) 순서의 첫 여섯 항목은 반드시 각 부위의 구조화 채점표 \`rubric\`(\`structure\`, \`symmetry\`, \`condition\`, \`visibility\`)을 먼저 관찰 기준으로 판정하세요. 서버가 이 \`rubric\` 값을 가중·보정 공식으로 계산해 첫 여섯 항목의 최종 \`score\`(전체 사람을 대상으로 한 절대값 30~96 정수, 평균 기준 64~68)를 확정·잠금합니다. 임의로 점수를 먼저 정하거나 한 사람 안에서 억지로 점수 차이를 벌리지 마세요. 여섯 부위가 모두 뛰어나면 모두 4~5등급으로 높게, 모두 부족하면 모두 1~2등급으로 낮게 있는 그대로 절대평가하세요.
+  * \`structure\` (1~5 정수): 해당 부위의 골격·비율·폭·길이·입체감 정돈도 (5=매우 반듯하고 이상적인 비율·윤곽, 4=안정적이고 조화로운 형태, 3=평범한 일반 평균 수준, 2=과소·과다·비율 아쉬움 뚜렷, 1=윤곽 함몰·비율 불균형 심함)
+  * \`symmetry\` (1~5 정수): 좌우 대칭과 인접 이목구비와의 간격·위치 균형 (5=좌우 대칭 및 비율 간격 매우 고름, 4=미세 차이 외 전반적으로 균형, 3=일상적인 미세 비대칭 수준, 2=눈·광대·코끝·입꼬리 등 좌우 차이·틀어짐 뚜렷, 1=비대칭·편차 심함)
+  * \`condition\` (1~5 정수): 살결·피부결·윤기·안색·긴장도·생기 (5=매우 맑고 매끈하며 생기가 또렷함, 4=깨끗하고 정돈된 인상, 3=평범한 생활감, 2=다크서클·건조·거친 결·트러블·홍조·잡티·피로감 뚜렷, 1=심한 트러블·염증·흉터·극심한 칙칙함). 특히 피부(기색) 항목에서 여드름·트러블·홍조·거친 모공/결이 보이면 \`condition\`을 2 이하로 평가하세요.
+  * \`visibility\` (0~3 정수): 사진에서 해당 부위가 실제로 관찰 가능한 정도 (3=부위 전체와 경계까지 선명히 보임, 2=핵심 형태·피부는 보이나 헤어라인 일부 가림·가벼운 그림자/보정 한계 있음 — 이마 피부가 보이고 헤어라인만 안 보이면 반드시 2로 두고 일괄 감점하지 마세요, 1=상당 부분 가려졌거나 심한 흐림·역광으로 일부 윤곽만 겨우 추론 가능, 0=완전히 가려져 형태 확인 불가 — 이 경우에만 "사진상 확인 어려움"으로 판정)
+- \`score\`는 위 \`rubric\` 평가 수준과 일치하는 30~96 정수로 함께 제시하세요(매우 뛰어남 88~96, 우수함 75~87, 보통·아쉬움 60~74, 뚜렷한 약점·불균형·트러블·가림 30~59). 설명에는 점수의 근거와 약점·걸림돌을 직설적으로 포함하세요. 같은 사진의 같은 관찰은 항상 동일한 \`rubric\` 단계와 평가를 받아야 합니다.
+- 점수 예시는 제공하지 않습니다. 미리 정한 대표 숫자나 구간에서 고르거나 점수 차이를 만들려고 임의로 흩뜨리지 마세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 사진 특징이 다르면 요약·점수도 달라져야 합니다.
 - summary, fortune, advice는 각각 \`visual_evidence\`의 실제 관찰값 1개 이상과 연결하세요. 관찰값과 연결되지 않는 운세 문장은 삭제하거나 더 구체화하세요.
 - 종합 점수·등급과 일곱 번째 전체 인상 점수는 서버가 첫 여섯 부위(이마·눈·코·입·턱/광대·피부) 점수의 산술평균을 반올림해서 계산합니다. \`overall_score\`, \`overall_grade\`, 일곱 번째 \`score\`를 생성하지 마세요. 종합 점수를 먼저 정한 뒤 부위 점수를 맞추지 마세요.
@@ -3224,7 +3605,7 @@ ${faceExpertRubric()}
 6. 피부(기색) - 피부결, 윤기, 트러블·홍조·잡티 여부, 현재 컨디션과 생활 리듬
 7. 전체 인상 - 종합 관상
 
-반드시 아래 JSON 형식으로만 응답. 첫 여섯 score의 null은 형식 자리표시자이므로 반드시 실제 관찰에 근거한 정수로 바꾸세요. boolean 자리표시자도 사진에 맞게 true 또는 false로 바꾸세요:
+반드시 아래 JSON 형식으로만 응답. 첫 여섯 categories의 rubric과 score에 적힌 null은 형식 자리표시자이므로 반드시 실제 관찰에 근거한 정수로 바꾸세요. boolean 자리표시자도 사진에 맞게 true 또는 false로 바꾸세요:
 {
   "forehead_observation": {
     "observation": "(눈썹 위 이마 피부의 실제 노출 범위와 보이는 형태)",
@@ -3236,12 +3617,12 @@ ${faceExpertRubric()}
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 관찰 2개와 전통적 상징을 구분해 설명. 실제 인생사 단정 금지)",
   "categories": [
-    {"name": "이마 (천정)", "score": null, "desc": "(3~4문장. forehead_observation과 일치하는 실제 형태와 점수 근거, 점수에 맞는 전통 해석의 강점 또는 약점, 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "눈 (눈매)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 관계 표현의 강점 또는 주의점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "코 (준두)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "입 (입술)", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "턱/광대", "score": null, "desc": "(3~4문장. 실제 형태와 점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "피부 (기색)", "score": null, "desc": "(3~4문장. 실제 피부결·윤기·트러블·붉은기·잡티·안색 관찰과 점수 근거, 전통 기색 해석의 활력·컨디션 강점 또는 약점, 수면·수분·생활 리듬에서 점검할 행동)", "caution": "(관찰된 피부 상태나 조명·보정 한계에 연결된 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 경우 관찰 한계와 재촬영 방법)"},
+    {"name": "이마 (천정)", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. forehead_observation과 일치하는 실제 형태와 rubric·점수 근거, 점수에 맞는 전통 해석의 강점 또는 약점, 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "눈 (눈매)", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. 실제 형태와 rubric·점수 근거, 전통적인 관계 표현의 강점 또는 주의점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "코 (준두)", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. 실제 형태와 rubric·점수 근거, 전통적인 재물관리 상징의 강점 또는 약점, 예산을 점검하는 방법)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "입 (입술)", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. 실제 형태와 rubric·점수 근거, 전통적인 의사표현의 강점 또는 주의점, 말할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "턱/광대", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. 실제 형태와 rubric·점수 근거, 전통적인 지속력 상징의 강점 또는 약점, 일을 이어갈 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "피부 (기색)", "rubric": {"structure": null, "symmetry": null, "condition": null, "visibility": null}, "score": null, "desc": "(3~4문장. 실제 피부결·윤기·트러블·붉은기·잡티·안색 관찰과 rubric·점수 근거, 전통 기색 해석의 활력·컨디션 강점 또는 약점, 수면·수분·생활 리듬에서 점검할 행동)", "caution": "(관찰된 피부 상태나 조명·보정 한계에 연결된 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 경우 관찰 한계와 재촬영 방법)"},
     {"name": "전체 인상", "desc": "(3~4문장. 첫 여섯 부위의 강점과 낮은 점수의 약점 또는 관찰 한계를 요약하고 점검할 행동을 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
   ],
   "fortune": {
@@ -3312,6 +3693,9 @@ ${faceExpertRubric()}
     });
     return json({ error: rejectionMessage }, 400);
   }
+  if (validateFaceAiResponse(result, { gender, age }).ok) {
+    await writeKarmaConsistencyCache(env, 'face', faceCacheKey, result);
+  }
   await recordKarmaImageAnalysis(env, {
     requestId,
     r2Key,
@@ -3341,10 +3725,13 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
     gender: gender || '',
     lang: analysisLang,
   };
+  let photoBytes;
   let r2Key;
   try {
+    photoBytes = decodeBase64Bytes(photoInput.image);
     r2Key = await saveKarmaAnalysisImageToR2(env, {
       image: photoInput.image,
+      bytes: photoBytes,
       mimeType: photoInput.mimeType,
       analysisType: 'palm',
       requestId,
@@ -3384,6 +3771,29 @@ async function handlePalmReading(request, env, requestId = '', analysisGateError
     });
     return json({ error: errorMessage }, 503);
   }
+  const imageHash = await hashKarmaBytesSha256(photoBytes);
+  const palmCacheKey = await buildKarmaConsistencyCacheKey('palm', {
+    imageHash,
+    mimeType: photoInput.mimeType,
+    hand: inferHandSide(hand),
+    dominant: inferHandSide(dominant),
+    gender: normalizeKarmaGenderKey(gender),
+    lang: analysisLang,
+  });
+  const cachedPalmResult = await readKarmaConsistencyCache(env, palmCacheKey);
+  if (cachedPalmResult && !cachedPalmResult.error && validatePalmAiResponse(cachedPalmResult).ok) {
+    analysisContext.aiCalled = true;
+    await recordKarmaImageAnalysis(env, {
+      requestId,
+      r2Key,
+      analysisType: 'palm',
+      status: 'success',
+      input: analysisInput,
+      result: cachedPalmResult,
+      errorMessage: '',
+    });
+    return json(cachedPalmResult);
+  }
   const handContext = buildPalmHandContext(hand, dominant, analysisLang);
 
   const rejectionMessage = getPhotoAnalysisMessage(analysisLang, 'palmRejected');
@@ -3401,14 +3811,18 @@ ${palmExpertRubric()}
 - 먼저 사진에서 실제로 보이는 손바닥 특징을 관찰하고, 그 특징을 모든 해석의 근거로 사용하세요.
 - \`visual_evidence\`에는 사진에서 확인한 구체 관찰값을 8개 이상 넣으세요. 예: 손바닥 폭, 손가락 길이/벌어짐, 엄지 각도, 생명선 깊이/끊김, 두뇌선 기울기, 감정선 위치, 운명선 선명도, 태양선 유무, 결혼선 가시성, 굳은살/흉터/조명/흐림 여부.
 - 각 \`lines.desc\`의 첫 문장은 반드시 해당 손금의 실제 관찰 특징으로 시작하세요. 관찰 없이 운세부터 말하지 마세요.
-- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 점수를 45~60 사이로 두되, 정면 사진 특성상 측면 결혼선 하나만 안 보이는 경우에는 그 한 줄 때문에 전체 손금 총점(overall_score)까지 60점대로 일괄 깎지 마세요.
-- 각 점수는 모든 사람을 대상으로 한 절대값 기준으로 30~96 범위에서 실제 관찰대로 독립 산정하세요(깊고 끊김 없이 선명한 최상급 선은 86~96, 뚜렷하고 안정된 선은 75~85, 평범하거나 잔선이 섞인 선은 60~74, 얕거나 끊김·사슬형·섬 모양 등 약점이 뚜렷한 선은 30~59). 습관적으로 68점·78점 같은 고정 점수를 주거나 한 손바닥 안에서 억지로 점수 격차를 만들지 마세요. 모든 선이 깊고 좋으면 모두 높게 주고 모든 선이 얕고 흐리면 모두 낮게 절대평가하세요.
+- 보이지 않는 선은 지어내지 말고 \`length\`를 "확인 어려움"으로 두고 \`rubric.visibility\`를 0으로 설정하세요. 서버가 확인 어려운 선은 50점으로 고정 처리하고, 정면 사진 특성상 측면 결혼선 하나만 안 보이는 경우에는 그 한 줄 때문에 전체 손금 총점(overall_score)까지 일괄 깎이지 않도록 가중평균 계산에서 자동 제외합니다.
+- 6개 손금 각각은 반드시 구조화 채점표 \`rubric\`(\`depth\`, \`continuity\`, \`definition\`, \`visibility\`)을 먼저 관찰 기준으로 판정하세요. 서버가 이 \`rubric\`과 \`length\` 라벨 교차 잠금 규칙을 적용해 각 선의 최종 \`score\`(전체 사람을 대상으로 한 절대값 30~96 범위, 평균 기준 64~68)와 \`overall_score\`·\`overall_grade\`를 확정·잠금합니다. 습관적으로 68점·78점 같은 고정 점수를 주거나 한 손바닥 안에서 억지로 점수 격차를 만들지 마세요. 모든 선이 깊고 좋으면 모두 높게(4~5등급) 주고, 모든 선이 얕고 흐리면 모두 낮게(1~2등급) 있는 그대로 절대평가하세요. 같은 손금 사진의 같은 관찰은 항상 동일한 \`rubric\` 단계와 평가를 받아야 합니다.
+  * \`depth\` (1~5 정수): 주선의 음각 깊이·굵기·존재감 (5=매우 깊고 선명히 패임, 4=또렷하고 안정적인 깊이, 3=평균적인 일반 선, 2=얕고 가늘며 힘이 부족함, 1=매우 희미하거나 흔적만 있음·없음)
+  * \`continuity\` (1~5 정수): 끊김·사슬형·섬 모양·교차 잡선 방해 없이 이어지는 정도 (5=시작부터 끝까지 매끈하고 연속적, 4=미세 잔가지 외 주선 흐름 안정적, 3=일부 약화·작은 갈라짐 있음, 2=중간 끊김·사슬형·섬·장애선 뚜렷, 1=여러 곳 끊기거나 심하게 흩어짐)
+  * \`definition\` (1~5 정수): 시작점·끝점·방향·길이·고유 형태의 완성도 (5=모양과 궤적이 이상적으로 정돈됨, 4=분명하고 균형 잡힌 형태, 3=무난한 일반 형태, 2=짧거나 꺾임·흐트러짐 아쉬움, 1=궤적이 불분명하거나 형성 미약)
+  * \`visibility\` (0~3 정수): 사진에서 해당 손금이 관찰 가능한 정도 (3=선 전체가 선명히 보임, 2=주요 흐름은 보이나 일부 그림자·초점/해상도 한계 있음, 1=흐리거나 빛 반사로 일부만 희미하게 추론 가능, 0=가림·측면 미노출·과노출 등으로 전혀 안 보임 — 이 경우 \`length\`를 "확인 어려움"으로 설정)
+- \`length\` 선택값과 \`rubric\`은 서로 일치해야 합니다(예: \`없음\`이면 depth/definition 낮게, \`희미\`면 depth 2 이하, \`뚜렷\`·\`길다\`는 선명도와 연속성이 뒷받침될 때만 선택, 확인 불가 시 \`확인 어려움\` 및 \`visibility\` 0). \`score\`는 위 \`rubric\` 수준에 맞는 30~96 정수로 함께 제시하세요(최상급 86~96, 우수 75~85, 보통·아쉬움 60~74, 얕거나 끊김 등 약점 뚜렷 30~59).
 - 주 사용 손과 촬영한 손이 같으면 후천운, 다르면 선천운 기준을 반드시 반영하세요.
 - 아래 예시 문구를 그대로 베끼지 마세요. 실제 손금 특징이 다르면 요약·점수·조언도 달라져야 합니다.
 - summary 첫 문장은 손 형태 또는 가장 뚜렷한 손금 1개와, 가장 약하거나 끊긴 손금(또는 확인 어려운 손금) 1개를 함께 언급해 이 손만의 강점과 걸림돌 대비를 직설적으로 만드세요.
 - fortune의 wealth/career/love/health는 각각 관련 손금명 또는 손 형태 관찰값을 하나 이상 근거로 삼고, 약한 선이 시사하는 걸림돌과 주의 행동을 숨기지 말고 구체적으로 쓰세요. 근거 없이 일반 운세처럼 말하지 마세요.
-- overall_score는 실제로 판독된 주요 손금(생명선·두뇌선·감정선·운명선·태양선)의 선명도·깊이·연속성과 손바닥 기세를 종합해 40~95점 전 구간에서 산정하세요. 손금이 전반적으로 깊고 또렷하면 82~94점(A~S등급), 평범하면 64~74점(B등급), 주요 선이 얕고 끊기거나 흐리면 42~59점(C등급)을 주어 사진 간 점수 편차를 확실히 넓히세요. 습관적으로 65~70점이나 78~82점에 고정하지 마세요.
-- overall_grade는 서버가 종합 점수에 맞는 공통 등급 기준으로 계산합니다. 등급을 생성하지 마세요.
+- overall_score는 실제로 판독된 주요 손금(생명선·두뇌선·감정선·운명선·태양선)의 선명도·깊이·연속성과 손바닥 기세를 종합한 40~95점 기준을 따르되, 최종 overall_score와 overall_grade는 서버가 6개 lines의 가중평균(확인 어려움 제외)과 공통 등급 기준으로 확정합니다. 등급을 생성하지 마세요.
 
 ## 직설 모드 원칙
 - 각 손금의 설명은 보이는 선의 위치·깊이·갈라짐 → 전통 해석에서의 강점 또는 약점 → 생활에서 점검할 행동으로 이어집니다. "기운이 좋다", "균형을 잡아라"로 끝내지 마세요. 흐린 선은 관찰 한계이지 불운의 증거가 아닙니다.
@@ -3428,19 +3842,19 @@ ${palmExpertRubric()}
 6. 결혼선 - 측면이 보일 때만 관계 지속 패턴 참고
 7. 손 형태 - 성격 민낯
 
-반드시 아래 JSON 형식으로만 응답. score와 overall_score의 null은 자리표시자이므로 실제 관찰에 근거한 정수로 바꾸세요:
+반드시 아래 JSON 형식으로만 응답. lines의 rubric과 score, overall_score의 null은 자리표시자이므로 실제 관찰에 근거한 정수로 바꾸세요:
 {
   "overall_score": null,
   "quality_assessment": "(사진 품질, 손바닥 전체 노출, 초점, 조명, 손금 선명도, 분석 한계)",
   "visual_evidence": ["(사진에서 확인한 구체 특징 1)", "(사진에서 확인한 구체 특징 2)", "(최소 8개)"],
   "summary": "(한줄 요약. 가장 뚜렷한 선 1개와 약하거나 확인 어려운 선 1개의 실제 관찰 및 전통적 상징. 사건·연령 예측 금지)",
   "lines": [
-    {"name": "생명선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 생명선의 실제 깊이·연속성·호 형태와 점수 이유, 점수에 맞는 강점 또는 약점, 생활 점검 행동. 질병/사고 단정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "두뇌선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 실제 선의 시작·길이·기울기와 점수 이유, 전통 해석의 강점 또는 약점, 판단할 때 점검할 행동. 정신건강 추정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "감정선", "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 감정선의 위치·곡선·끊김과 점수 이유, 전통 해석의 강점 또는 관계에서 주의할 점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "운명선", "score": null, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(3~4문장. 중앙 세로선의 선명도와 점수 이유, 전통 해석의 강점 또는 업무에서 주의할 점, 일할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "태양선", "score": null, "length": "있음/희미/없음/확인 어려움", "desc": "(3~4문장. 실제 가시성과 점수 이유, 전통 해석의 강점 또는 성취 표현의 약점, 성과를 알릴 때 점검할 행동. 성공 예측 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
-    {"name": "결혼선", "score": null, "length": "1개/2개/여러개/확인 어려움", "desc": "(3~4문장. 새끼손가락 아래 측면이 보일 때만 관찰과 점수 이유, 전통 해석의 강점 또는 주의점, 관계 점검 행동. 안 보이면 관찰 한계와 재촬영 방법만 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
+    {"name": "생명선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 생명선의 실제 깊이·연속성·호 형태와 rubric·점수 이유, 점수에 맞는 강점 또는 약점, 생활 점검 행동. 질병/사고 단정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "두뇌선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 실제 선의 시작·길이·기울기와 rubric·점수 이유, 전통 해석의 강점 또는 약점, 판단할 때 점검할 행동. 정신건강 추정 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "감정선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "길다/보통/짧다/확인 어려움", "desc": "(3~4문장. 감정선의 위치·곡선·끊김과 rubric·점수 이유, 전통 해석의 강점 또는 관계에서 주의할 점, 대화할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "운명선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "뚜렷/보통/희미/확인 어려움", "desc": "(3~4문장. 중앙 세로선의 선명도와 rubric·점수 이유, 전통 해석의 강점 또는 업무에서 주의할 점, 일할 때 점검할 행동)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "태양선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "있음/희미/없음/확인 어려움", "desc": "(3~4문장. 실제 가시성과 rubric·점수 이유, 전통 해석의 강점 또는 성취 표현의 약점, 성과를 알릴 때 점검할 행동. 성공 예측 금지)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"},
+    {"name": "결혼선", "rubric": {"depth": null, "continuity": null, "definition": null, "visibility": null}, "score": null, "length": "1개/2개/여러개/확인 어려움", "desc": "(3~4문장. 새끼손가락 아래 측면이 보일 때만 관찰과 rubric·점수 이유, 전통 해석의 강점 또는 주의점, 관계 점검 행동. 안 보이면 관찰 한계와 재촬영 방법만 설명)", "caution": "(관찰 근거에 연결된 약점 또는 주의점과 대응 행동 1~2문장. 높은 점수여도 필수. 확인 어려운 부위는 관찰 한계와 재촬영 방법)"}
   ],
   "hand_shape": {"type": "물형/불형/흙형/금형/나무형", "desc": "(손 형태로 본 성격 민낯 2~3문장)"},
   "fortune": {
@@ -3491,6 +3905,9 @@ ${palmExpertRubric()}
       errorMessage: rejectionMessage,
     });
     return json({ error: rejectionMessage }, 400);
+  }
+  if (validatePalmAiResponse(result).ok) {
+    await writeKarmaConsistencyCache(env, 'palm', palmCacheKey, result);
   }
   await recordKarmaImageAnalysis(env, {
     requestId,
@@ -3650,6 +4067,253 @@ function buildHourlySignals(saju, dayGan) {
   });
 }
 
+const OHANG_LUCKY_MAP = Object.freeze({
+  목: Object.freeze({ color: { ko: '청록색', en: 'Teal' }, direction: { ko: '동쪽', en: 'East' }, numbers: [3, 8] }),
+  화: Object.freeze({ color: { ko: '다홍색', en: 'Coral Red' }, direction: { ko: '남쪽', en: 'South' }, numbers: [2, 7] }),
+  토: Object.freeze({ color: { ko: '황토색', en: 'Warm Ochre' }, direction: { ko: '중앙(남서/북동)', en: 'Center (Southwest/Northeast)' }, numbers: [5, 10] }),
+  금: Object.freeze({ color: { ko: '백색', en: 'Ivory White' }, direction: { ko: '서쪽', en: 'West' }, numbers: [4, 9] }),
+  수: Object.freeze({ color: { ko: '남색', en: 'Deep Navy' }, direction: { ko: '북쪽', en: 'North' }, numbers: [1, 6] }),
+});
+
+const EN_MONTH_NAMES = Object.freeze([
+  '', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]);
+
+// 원국 오행 수에서 가장 부족한 오행 결정적 선택 -> 동률 시 상생·상극·인성·관성·비겁 순 우선순위 적용
+function selectWeakestOhang(saju) {
+  const counts = saju?.ohangCount || {};
+  const ilganOhang = saju?.ilganOhang || '목';
+  const tieOrder = [
+    SANGSAENG[ilganOhang],
+    SANGGEUK[ilganOhang],
+    inverseOhangRelation(SANGSAENG, ilganOhang),
+    inverseOhangRelation(SANGGEUK, ilganOhang),
+    ilganOhang,
+  ].filter(Boolean);
+  const candidates = ['목', '화', '토', '금', '수'];
+  return [...candidates].sort((a, b) => {
+    const diff = (counts[a] || 0) - (counts[b] || 0);
+    if (diff !== 0) return diff;
+    const idxA = tieOrder.indexOf(a);
+    const idxB = tieOrder.indexOf(b);
+    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+  })[0];
+}
+
+// 사주 원국·대상 연도·언어로 신년운세 행운 기준값(색·숫자·방향·최고의 달) 결정적 산출
+function calculateFortuneLucky(saju, year, lang) {
+  const normalizedLang = normalizeKarmaTextAnalysisLang(lang);
+  const weakOhang = selectWeakestOhang(saju);
+  const entry = OHANG_LUCKY_MAP[weakOhang] || OHANG_LUCKY_MAP['목'];
+  const yGan = yearCheongan(year);
+  const yJi = yearJiji(year);
+  const ganIdx = Math.max(0, CHEONGAN.indexOf(yGan));
+  const jiIdx = Math.max(0, JIJI.indexOf(yJi));
+  const number = String(entry.numbers[(ganIdx + jiIdx) % 2]);
+
+  let bestMonth = 1;
+  let bestScore = -Infinity;
+  for (let month = 1; month <= 12; month += 1) {
+    const sajuYear = getSajuYear(year, month, 15, 12, 0);
+    const sajuMonth = getSajuMonth(year, month, 15, 12, 0);
+    const mYGan = yearCheongan(sajuYear);
+    const gan = monthCheongan(CHEONGAN.indexOf(mYGan), sajuMonth);
+    const ji = monthJiji(sajuMonth);
+    const ganOhang = CHEONGAN_OHANG[gan];
+    const jiOhang = JIJI_OHANG[ji];
+    const rel = analyzeSajuRelations([{ name: `${month}월`, gan, ji }], saju.pillars);
+    const ilRel = getOhangRelations(saju.ilganOhang, ganOhang);
+    let score = 0;
+    if (ganOhang === weakOhang) score += 4;
+    if (jiOhang === weakOhang) score += 3;
+    if (rel.ganHap.length) score += rel.ganHap.length * 4;
+    if (rel.jiHap.length) score += rel.jiHap.length * 4;
+    if (rel.jiChung.length) score -= rel.jiChung.length * 5;
+    if (ilRel.sangsaeng.length) score += 3;
+    if (ilRel.sanggeuk.length) score -= 2;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMonth = month;
+    }
+  }
+
+  return {
+    color: entry.color[normalizedLang],
+    number,
+    direction: entry.direction[normalizedLang],
+    month: normalizedLang === 'en' ? EN_MONTH_NAMES[bestMonth] : `${bestMonth}월`,
+  };
+}
+
+// 신년운세 AI 응답 객체에 서버 확정 행운 요소 덮어쓰기 적용 -> 비객체 시 원본 그대로 반환
+function normalizeFortuneLucky(ai, saju, year, lang) {
+  if (!isPlainAiObject(ai)) return ai;
+  const lucky = calculateFortuneLucky(saju, year, lang);
+  return {
+    ...ai,
+    lucky: {
+      ...(isPlainAiObject(ai.lucky) ? ai.lucky : {}),
+      ...lucky,
+    },
+  };
+}
+
+// 사주 원국·대상 날짜·언어로 오늘의 행운 기준값(색·숫자) 결정적 산출
+function calculateDailyLucky(saju, todayStr, lang) {
+  const normalizedLang = normalizeKarmaTextAnalysisLang(lang);
+  const weakOhang = selectWeakestOhang(saju);
+  const entry = OHANG_LUCKY_MAP[weakOhang] || OHANG_LUCKY_MAP['목'];
+  const [tY, tM, tD] = String(todayStr || karmaTodayKst()).split('-').map(Number);
+  const dp = dayPillar(tY, tM, tD);
+  const ganIdx = Math.max(0, CHEONGAN.indexOf(dp.gan));
+  const jiIdx = Math.max(0, JIJI.indexOf(dp.ji));
+  const parity = Math.abs(ganIdx + jiIdx + (Number.isFinite(tD) ? tD : 0)) % 2;
+  return {
+    color: entry.color[normalizedLang],
+    number: String(entry.numbers[parity]),
+  };
+}
+
+// 오늘의 운세 AI 응답 객체에 서버 확정 행운 요소 덮어쓰기 적용 -> 비객체 시 원본 그대로 반환
+function normalizeDailyLucky(ai, saju, todayStr, lang) {
+  if (!isPlainAiObject(ai)) return ai;
+  const lucky = calculateDailyLucky(saju, todayStr, lang);
+  return {
+    ...ai,
+    lucky: {
+      ...(isPlainAiObject(ai.lucky) ? ai.lucky : {}),
+      ...lucky,
+    },
+  };
+}
+
+function clampCompatScore(value) {
+  return Math.max(20, Math.min(96, Math.round(value)));
+}
+
+// 두 사주 원국과 생년월일로 궁합 4개 영역(성격·친밀감·재물·대운 타이밍) 절대점수 결정적 산출 (20~96 정수)
+function calculateCompatCategoryScores(sajuA, sajuB, birthDateA = '', birthDateB = '', targetDate = karmaTodayKst()) {
+  const infoA = CHEONGAN_INFO[sajuA.ilgan] || {};
+  const infoB = CHEONGAN_INFO[sajuB.ilgan] || {};
+  const yinYangDiff = Boolean(infoA.yin) !== Boolean(infoB.yin);
+  const ohA = sajuA.ilganOhang;
+  const ohB = sajuB.ilganOhang;
+  const wholeRel = analyzeSajuRelations(sajuA.pillars, sajuB.pillars);
+
+  let personality = 58;
+  if (SANGSAENG[ohA] === ohB || SANGSAENG[ohB] === ohA) personality += 14;
+  if (SANGGEUK[ohA] === ohB || SANGGEUK[ohB] === ohA) personality -= 14;
+  if (ohA === ohB) personality -= 4;
+  personality += yinYangDiff ? 6 : -5;
+  personality += Math.min(14, wholeRel.ganHap.length * 6);
+  personality += Math.min(12, wholeRel.jiHap.length * 5);
+  personality -= Math.min(22, wholeRel.jiChung.length * 9);
+  for (const key of Object.keys(OHANG)) {
+    if ((sajuA.ohangCount[key] || 0) >= 3 && (sajuB.ohangCount[key] || 0) >= 3) {
+      personality -= 6;
+    }
+  }
+
+  let intimacy = 58;
+  const dayA = sajuA.pillars.find(p => p.name === '일주');
+  const dayB = sajuB.pillars.find(p => p.name === '일주');
+  if (dayA && dayB) {
+    const dayRel = analyzeSajuRelations([dayA], [dayB]);
+    if (dayRel.ganHap.length) intimacy += 10;
+    if (dayRel.jiHap.length) intimacy += 16;
+    if (dayRel.jiChung.length) intimacy -= 20;
+    const dayOhA = JIJI_OHANG[dayA.ji];
+    const dayOhB = JIJI_OHANG[dayB.ji];
+    if (dayOhA && dayOhB) {
+      if (SANGSAENG[dayOhA] === dayOhB || SANGSAENG[dayOhB] === dayOhA) intimacy += 10;
+      if (SANGGEUK[dayOhA] === dayOhB || SANGGEUK[dayOhB] === dayOhA) intimacy -= 10;
+      if (dayOhA === dayOhB) intimacy += 2;
+    }
+  }
+  intimacy += yinYangDiff ? 5 : -4;
+  for (const elem of ['수', '화']) {
+    const cntA = sajuA.ohangCount[elem] || 0;
+    const cntB = sajuB.ohangCount[elem] || 0;
+    if ((cntA === 0 && cntB >= 2) || (cntB === 0 && cntA >= 2)) intimacy += 5;
+    if (cntA >= 3 && cntB >= 3) intimacy -= 6;
+  }
+
+  let finance = 58;
+  const wealthA = SANGGEUK[ohA];
+  const wealthB = SANGGEUK[ohB];
+  const bSupportWealthA = sajuB.ohangCount[wealthA] || 0;
+  const aSupportWealthB = sajuA.ohangCount[wealthB] || 0;
+  if (bSupportWealthA >= 2) finance += 6;
+  else if (bSupportWealthA === 0) finance -= 4;
+  if (aSupportWealthB >= 2) finance += 6;
+  else if (aSupportWealthB === 0) finance -= 4;
+  const earthMetalSum = (sajuA.ohangCount['토'] || 0) + (sajuA.ohangCount['금'] || 0)
+    + (sajuB.ohangCount['토'] || 0) + (sajuB.ohangCount['금'] || 0);
+  if (earthMetalSum >= 3 && earthMetalSum <= 6) finance += 6;
+  else if (earthMetalSum <= 1) finance -= 8;
+  else if (earthMetalSum >= 8) finance -= 6;
+  finance += Math.min(8, wholeRel.jiHap.length * 4);
+  finance -= Math.min(16, wholeRel.jiChung.length * 7);
+
+  let timing = 58;
+  const activeA = getActiveDaeun(sajuA, birthDateA, targetDate).daeun;
+  const activeB = getActiveDaeun(sajuB, birthDateB, targetDate).daeun;
+  const scoreOwnActiveDaeun = (saju, daeun) => {
+    if (!daeun) return 0;
+    let delta = 0;
+    for (const elem of [daeun.ohang, daeun.jiOhang].filter(Boolean)) {
+      const count = saju.ohangCount[elem] || 0;
+      if (count === 0) delta += 6;
+      else if (count >= 3) delta -= 6;
+    }
+    const selfRel = analyzeSajuRelations([{ name: '대운', gan: daeun.gan, ji: daeun.ji }], saju.pillars);
+    if (selfRel.jiChung.length) delta -= 7;
+    return delta;
+  };
+  timing += scoreOwnActiveDaeun(sajuA, activeA);
+  timing += scoreOwnActiveDaeun(sajuB, activeB);
+  if (activeA && activeB) {
+    const daeunRel = analyzeSajuRelations(
+      [{ name: 'A대운', gan: activeA.gan, ji: activeA.ji }],
+      [{ name: 'B대운', gan: activeB.gan, ji: activeB.ji }],
+    );
+    if (daeunRel.ganHap.length || daeunRel.jiHap.length) timing += 8;
+    if (daeunRel.jiChung.length) timing -= 12;
+    if (SANGSAENG[activeA.ohang] === activeB.ohang || SANGSAENG[activeB.ohang] === activeA.ohang) timing += 5;
+    if (SANGGEUK[activeA.ohang] === activeB.ohang || SANGGEUK[activeB.ohang] === activeA.ohang) timing -= 5;
+  }
+  let complementBonus = 0;
+  for (const key of Object.keys(OHANG)) {
+    const cntA = sajuA.ohangCount[key] || 0;
+    const cntB = sajuB.ohangCount[key] || 0;
+    if ((cntA === 0 && cntB >= 2) || (cntB === 0 && cntA >= 2)) {
+      complementBonus += 4;
+    }
+  }
+  timing += Math.min(8, complementBonus);
+  timing -= Math.min(12, wholeRel.jiChung.length * 4);
+
+  return {
+    personality: clampCompatScore(personality),
+    intimacy: clampCompatScore(intimacy),
+    finance: clampCompatScore(finance),
+    timing: clampCompatScore(timing),
+  };
+}
+
+// 궁합 AI 응답의 categories 4개 영역 점수에 서버 확정 점수를 강제 잠금
+function normalizeCompatAiScores(ai, categoryScores) {
+  if (!isPlainAiObject(ai) || !isPlainAiObject(categoryScores) || !isPlainAiObject(ai.categories)) return ai;
+  const nextCategories = { ...ai.categories };
+  for (const key of ['personality', 'intimacy', 'finance', 'timing']) {
+    if (isPlainAiObject(nextCategories[key]) && Number.isInteger(categoryScores[key])) {
+      nextCategories[key] = { ...nextCategories[key], score: categoryScores[key] };
+    }
+  }
+  return { ...ai, categories: nextCategories };
+}
+
 function langInstruction(lang) {
   if (normalizeKarmaTextAnalysisLang(lang) === 'en') return '\n\nIMPORTANT: You MUST respond entirely in English. Every text value in the JSON must contain English and romanized Saju names only. Never include Hangul, Chinese characters, Korean labels, or untranslated Korean/Chinese terms.';
   return '';
@@ -3682,6 +4346,7 @@ ${OHANG_RELATIONS}
 - 듣기 좋은 칭찬으로 포장하지 마세요. 과다 오행(3개 이상)·결핍 오행(0개)·지지충·역할 편중이 만드는 성격적 약점, 인간관계 마찰, 금전·업무상의 걸림돌을 피하지 말고 각 항목에서 직설적으로 짚으세요.
 - pillar_reading, personality, love_style, career, daeun_reading, advice는 각각 최소 하나 이상의 입력 근거(특정 주柱, 일간, 과다/부족 오행, 합/충, 대운 구간)를 직접 반영해야 합니다.
 - strengths와 cautions는 같은 말을 긍정/부정으로 바꾼 목록이 아니어야 합니다. 서로 다른 근거에서 나온 강점 3개와 실제 발목을 잡는 치명적 약점·걸림돌 3개를 명확히 골라야 합니다.
+- 항목 선택 우선순위(동일 원국 일관성 유지): strengths 3개는 천간합/지지육합→최다·우세 오행 강점→일간 고유의 강점 순서로, cautions 3개는 지지충→부족/결핍 오행→과다 오행 편중(또는 대운 충돌) 순서로 고정 선정하세요.
 - daeun_reading에서도 8개 대운을 습관적으로 무난하거나 좋게 쓰지 마세요. 각 대운이 원국과 만나는 절대 기준대로 판단하여 과다 오행을 더 키우거나 일지·월지를 충하는 대운은 소모·갈등·정체가 커지는 시기로, 부족한 오행을 채우는 대운은 확장·전환 시기로 있는 그대로 구분하세요.
 - 단순히 0개/4개 이상일 때만 차이를 찾지 마세요. 매번 제공된 우세·희소 오행과 십성 역할 수를 비교해 이 원국만의 대비를 잡으세요.
 - 첫 문단은 원국 지문의 특정 두 신호가 함께 만드는 강점과 걸림돌을 쉬운 생활 언어로 먼저 말하고 근거를 이어 쓰세요. 다른 사주에 그대로 붙일 수 있는 문장은 삭제하세요.
@@ -3746,13 +4411,14 @@ ${saju.daeun.map(du => `- ${du.label}: ${du.gan}${du.ji} (${du.ohang}/${du.jiOha
   return { system, user, lang };
 }
 
-function buildFortunePrompt(saju, gender, year, lang, birthDate) {
+function buildFortunePrompt(saju, gender, year, lang, birthDate, luckyOverride = null) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
   const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
   const evidence = buildSajuEvidence(saju);
   const activeDaeun = formatActiveDaeun(saju, birthDate, `${year}-07-01`);
   const monthlySignals = buildMonthlySignals(saju, year);
+  const luckyBaseline = luckyOverride || calculateFortuneLucky(saju, year, lang);
   const yGan = yearCheongan(year);
   const yJi = yearJiji(year);
   const yOhang = CHEONGAN_OHANG[yGan];
@@ -3865,18 +4531,25 @@ ${monthlySignals.map(line => `- ${line}`).join('\n')}
 - 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
 - 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
 - 세운 키: ${year}-${yGan}${yJi}-${String(yearCycleIndex + 1).padStart(2, '0')}/60
-- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${yearRel.ganHap.concat(yearRel.jiHap, yearRel.jiChung).join('/') || '없음'}`;
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${yearRel.ganHap.concat(yearRel.jiHap, yearRel.jiChung).join('/') || '없음'}
+
+## 서버 확정 행운 기준값 (아래 4개 값을 그대로 lucky 객체에 반영)
+- color: ${luckyBaseline.color}
+- number: ${luckyBaseline.number}
+- direction: ${luckyBaseline.direction}
+- month: ${luckyBaseline.month}`;
 
   return { system, user, lang };
 }
 
-function buildDailyPrompt(saju, gender, todayStr, lang, birthDate) {
+function buildDailyPrompt(saju, gender, todayStr, lang, birthDate, luckyOverride = null) {
   const ilganInfo = CHEONGAN_INFO[saju.ilgan] || {};
   const genderText = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '';
   const { excess, lack, dominant, sparse } = getOhangAnalysis(saju.ohangCount);
   const evidence = buildSajuEvidence(saju);
   const activeDaeun = formatActiveDaeun(saju, birthDate, todayStr);
   const ilOhang = saju.ilganOhang;
+  const luckyBaseline = luckyOverride || calculateDailyLucky(saju, todayStr, lang);
 
   const [tY, tM, tD] = todayStr.split('-').map(Number);
   const yGan = yearCheongan(tY);
@@ -4004,12 +4677,16 @@ ${hourlySignals.map(line => `- ${line}`).join('\n')}
 - 원국 키: ${saju.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
 - 오행 키: 목${saju.ohangCount.목}-화${saju.ohangCount.화}-토${saju.ohangCount.토}-금${saju.ohangCount.금}-수${saju.ohangCount.수}
 - 일진 키: ${todayStr}-${todayGan}${todayJi}-${String(dayCycleIndex + 1).padStart(2, '0')}/60-${weekday}
-- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${dailyRel.ganHap.concat(dailyRel.jiHap, dailyRel.jiChung).join('/') || '없음'}`;
+- 관계 키: 일간관계=${relDesc.length ? relDesc.join('/') : '없음'}; 일지관계=${branchRelDesc.length ? branchRelDesc.join('/') : '없음'}; 합충=${dailyRel.ganHap.concat(dailyRel.jiHap, dailyRel.jiChung).join('/') || '없음'}
+
+## 서버 확정 오늘의 행운 기준값 (아래 2개 값을 그대로 lucky 객체에 반영)
+- color: ${luckyBaseline.color}
+- number: ${luckyBaseline.number}`;
 
   return { system, user, lang };
 }
 
-function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, birthDateA, birthDateB) {
+function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, birthDateA, birthDateB, categoryScores = null) {
   const genderTextA = genderA === 'male' ? '남성' : genderA === 'female' ? '여성' : '';
   const genderTextB = genderB === 'male' ? '남성' : genderB === 'female' ? '여성' : '';
   const ilganA = CHEONGAN_INFO[sajuA.ilgan] || {};
@@ -4021,6 +4698,7 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, b
   const today = karmaTodayKst();
   const activeDaeunA = formatActiveDaeun(sajuA, birthDateA, today);
   const activeDaeunB = formatActiveDaeun(sajuB, birthDateB, today);
+  const resolvedCategoryScores = categoryScores || calculateCompatCategoryScores(sajuA, sajuB, birthDateA, birthDateB, today);
 
   // 보완 관계 (완화: 차이 3 이상이면 보완으로 판정)
   const complementary = [];
@@ -4062,7 +4740,7 @@ function buildCompatPrompt(sajuA, sajuB, score, grade, genderA, genderB, lang, b
 
 ## 조합별 차별화 및 절대평가 채점 필수
 - summary 첫 문장은 두 사람이 실제 대화나 결정에서 맞아떨어지거나 정면으로 부딪힐 수 있는 지점을 쉬운 말로 직설적으로 짚고, A와 B의 정확한 일간/오행 관계 또는 가장 큰 합·충 하나를 근거로 이어 쓰세요. "잘 맞지만 노력 필요" 같은 관계 공통문으로 시작하면 실패입니다.
-- categories의 4개 점수(personality, intimacy, finance, timing)는 모든 커플을 대상으로 한 절대값(20~96점) 기준으로 각각 채점하세요. 습관적으로 60~80점대에 몰아주거나 한 커플 안에서 억지로 점수 격차를 만들지 마세요. 네 영역 모두 합·상생·보완이 뛰어나면 네 영역 모두 80~96점을 주고 네 영역 모두 상극·지지충·과다 오행 겹침이면 네 영역 모두 20~55점을 주어 실제 궁합의 절대 수준이 그대로 드러나게 하세요.
+- categories의 4개 점수(personality, intimacy, finance, timing)는 모든 커플을 대상으로 한 절대값(20~96점) 기준으로 서버가 조합 계산식으로 확정한 값입니다. user의 서버 확정 영역별 점수를 그대로 score에 넣고, 각 영역의 desc 서술 톤과 강점·갈등 수위도 해당 확정 점수에 맞춰 일관되게 작성하세요. 네 영역 모두 합·상생·보완이 뛰어나면 네 영역 모두 80~96점, 상극·지지충·과다 오행 겹침이면 20~55점 수준으로 서술 수위를 맞추세요.
 - 상극·지지충·과다 오행 겹침으로 점수가 낮은 영역(60점 미만)은 좋은 말로 포장하지 마세요. 누가 누구를 어떤 방식으로 지치게 하는지, 어떤 상황에서 갈등과 걸림돌이 터지는지를 가감 없이 서술하세요.
 - personality, intimacy, finance, timing은 각각 서로 다른 계산 근거를 써야 합니다. 같은 충돌을 네 항목에 복사하지 말고, 일간 관계·일지/수화 비율·재성/토금 비율·현재 대운을 나눠 반영하세요.
 - strengths와 cautions는 반드시 실제 조합 신호에서 뽑으세요. 오행 보완이 없는데 "서로 보완"이라고 쓰거나, 지지충이 없는데 큰 충돌처럼 꾸미지 마세요.
@@ -4149,6 +4827,7 @@ ${complementary.length ? `- 오행 보완: ${complementary.join(', ')}` : '- 오
 
 ## 궁합 점수
 - ${score}/100 (${grade}급)
+- 서버 확정 영역별 점수 (변경 금지): personality=${resolvedCategoryScores.personality}, intimacy=${resolvedCategoryScores.intimacy}, finance=${resolvedCategoryScores.finance}, timing=${resolvedCategoryScores.timing}
 
 ## 조합 키 (반복 방지 기준)
 - A 원국 키: ${sajuA.pillars.map(p => `${p.name}:${p.gan}${p.ji}`).join('|')}
@@ -4250,13 +4929,29 @@ async function handleSajuAnalysis(request, env) {
   const saju = calculateSaju(birth_date, birth_time || '', gender || '', !!yajasi, birth_location || '');
 
   if (!env?.AI?.complete) return karmaAiServiceErrorResponse(new KarmaAiServiceError(responseLang));
-  const ai = await callKarmaTextAi(
-    buildSajuPrompt(saju, gender, responseLang, birth_date),
-    'saju', env, null, 'saju', {
-      hasTime: saju.hasTime,
-      daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
+  const sajuValidationCtx = {
+    hasTime: saju.hasTime,
+    daeunCount: Array.isArray(saju.daeun) ? saju.daeun.length : 0,
+  };
+  const sajuCacheKey = await buildKarmaConsistencyCacheKey('saju', {
+    birthDate: String(birth_date || '').trim(),
+    birthTime: String(birth_time || '').trim(),
+    gender: normalizeKarmaGenderKey(gender),
+    yajasi: Boolean(yajasi),
+    birthLocation: normalizeKarmaLocationKey(birth_location),
+    activeDaeun: formatActiveDaeun(saju, birth_date, karmaTodayKst()),
+    lang: responseLang,
+  });
+  let ai = await readKarmaConsistencyCache(env, sajuCacheKey);
+  if (!ai || !validateSajuAiResponse(ai, sajuValidationCtx).ok) {
+    ai = await callKarmaTextAi(
+      buildSajuPrompt(saju, gender, responseLang, birth_date),
+      'saju', env, null, 'saju', sajuValidationCtx,
+    );
+    if (ai && validateSajuAiResponse(ai, sajuValidationCtx).ok) {
+      await writeKarmaConsistencyCache(env, 'saju', sajuCacheKey, ai);
     }
-  );
+  }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
 
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
@@ -4277,10 +4972,33 @@ async function handleCompatQuick(request, env) {
   const relations = getOhangRelations(sajuA.ilganOhang, sajuB.ilganOhang);
 
   if (!env?.AI?.complete) return json({ error: incompleteAiResponseMessage(responseLang) }, 503);
-  const ai = await callKarmaTextAi(
-    buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, personA.birth_date, personB.birth_date),
-    'compat', env, null, 'compat'
-  );
+  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, personA.birth_date, personB.birth_date);
+  const normalizeCompatPersonKey = person => ({
+    birthDate: String(person?.birth_date || '').trim(),
+    birthTime: String(person?.birth_time || '').trim(),
+    gender: normalizeKarmaGenderKey(person?.gender),
+    yajasi: Boolean(person?.yajasi),
+    birthLocation: normalizeKarmaLocationKey(person?.birth_location),
+  });
+  const compatCacheKey = await buildKarmaConsistencyCacheKey('compat', {
+    personA: normalizeCompatPersonKey(personA),
+    personB: normalizeCompatPersonKey(personB),
+    categoryScores,
+    lang: responseLang,
+  });
+  let ai = await readKarmaConsistencyCache(env, compatCacheKey);
+  if (!ai || !validateCompatAiResponse(ai).ok) {
+    ai = await callKarmaTextAi(
+      buildCompatPrompt(sajuA, sajuB, score, grade, personA.gender, personB.gender, responseLang, personA.birth_date, personB.birth_date, categoryScores),
+      'compat', env, null, 'compat',
+    );
+    if (ai) {
+      ai = normalizeCompatAiScores(ai, categoryScores);
+      if (validateCompatAiResponse(ai).ok) {
+        await writeKarmaConsistencyCache(env, 'compat', compatCacheKey, ai);
+      }
+    }
+  }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
 
   const outA = responseLang === 'en' ? translateSajuToEn(sajuA) : sajuA;
@@ -4303,7 +5021,29 @@ async function handleFortune(request, env) {
 
   if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
-  const ai = await callKarmaTextAi(buildFortunePrompt(saju, gender, year, responseLang, birth_date), 'fortune', env, null, 'fortune');
+  const luckyBaseline = calculateFortuneLucky(saju, year, responseLang);
+  const fortuneCacheKey = await buildKarmaConsistencyCacheKey('fortune', {
+    birthDate: String(birth_date || '').trim(),
+    birthTime: String(birth_time || '').trim(),
+    gender: normalizeKarmaGenderKey(gender),
+    yajasi: Boolean(yajasi),
+    birthLocation: normalizeKarmaLocationKey(birth_location),
+    year: Number(year),
+    lang: responseLang,
+  });
+  let ai = await readKarmaConsistencyCache(env, fortuneCacheKey);
+  if (!ai || !validateFortuneAiResponse(ai).ok) {
+    ai = await callKarmaTextAi(
+      buildFortunePrompt(saju, gender, year, responseLang, birth_date, luckyBaseline),
+      'fortune', env, null, 'fortune',
+    );
+    if (ai) {
+      ai = normalizeFortuneLucky(ai, saju, year, responseLang);
+      if (validateFortuneAiResponse(ai).ok) {
+        await writeKarmaConsistencyCache(env, 'fortune', fortuneCacheKey, ai);
+      }
+    }
+  }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ year, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, fortune: ai });
@@ -4324,7 +5064,29 @@ async function handleDaily(request, env) {
 
   if (!env?.AI?.complete) return json({ error: getKarmaTextAnalysisMessage(responseLang, 'aiUnavailable') }, 503);
 
-  const ai = await callKarmaTextAi(buildDailyPrompt(saju, gender, todayStr, responseLang, birth_date), 'daily', env, null, 'daily');
+  const luckyBaseline = calculateDailyLucky(saju, todayStr, responseLang);
+  const dailyCacheKey = await buildKarmaConsistencyCacheKey('daily', {
+    birthDate: String(birth_date || '').trim(),
+    birthTime: String(birth_time || '').trim(),
+    gender: normalizeKarmaGenderKey(gender),
+    yajasi: Boolean(yajasi),
+    birthLocation: normalizeKarmaLocationKey(birth_location),
+    targetDate: todayStr,
+    lang: responseLang,
+  });
+  let ai = await readKarmaConsistencyCache(env, dailyCacheKey);
+  if (!ai || !validateDailyAiResponse(ai).ok) {
+    ai = await callKarmaTextAi(
+      buildDailyPrompt(saju, gender, todayStr, responseLang, birth_date, luckyBaseline),
+      'daily', env, null, 'daily',
+    );
+    if (ai) {
+      ai = normalizeDailyLucky(ai, saju, todayStr, responseLang);
+      if (validateDailyAiResponse(ai).ok) {
+        await writeKarmaConsistencyCache(env, 'daily', dailyCacheKey, ai);
+      }
+    }
+  }
   if (!ai) return json({ error: incompleteAiResponseMessage(responseLang) }, 502);
   const out = responseLang === 'en' ? translateSajuToEn(saju) : saju;
   return json({ date: todayStr, saju_summary: out.summary, ilgan: out.ilgan, ilganEn: out.ilganEn, ilganOhang: out.ilganOhang, daily: ai });
@@ -4406,14 +5168,37 @@ async function handleMatchDetail(idA, idB, env, lang) {
 
   if (!env?.AI?.complete) return json({ ...baseResult, ai: null });
 
-  let ai = null;
-  try {
-    ai = await callKarmaTextAi(
-      buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date),
-      'match-detail', env, null, 'compat'
-    );
-  } catch (error) {
-    if (!(error instanceof KarmaAiServiceError)) throw error;
+  const categoryScores = calculateCompatCategoryScores(sajuA, sajuB, userA.birth_date, userB.birth_date);
+  const matchCacheKey = await buildKarmaConsistencyCacheKey('match-detail', {
+    personA: {
+      birthDate: String(userA.birth_date || '').trim(),
+      birthTime: String(userA.birth_time || '').trim(),
+      gender: normalizeKarmaGenderKey(userA.gender),
+    },
+    personB: {
+      birthDate: String(userB.birth_date || '').trim(),
+      birthTime: String(userB.birth_time || '').trim(),
+      gender: normalizeKarmaGenderKey(userB.gender),
+    },
+    categoryScores,
+    lang: responseLang,
+  });
+  let ai = await readKarmaConsistencyCache(env, matchCacheKey);
+  if (!ai || !validateCompatAiResponse(ai).ok) {
+    try {
+      ai = await callKarmaTextAi(
+        buildCompatPrompt(sajuA, sajuB, score, grade, userA.gender, userB.gender, responseLang, userA.birth_date, userB.birth_date, categoryScores),
+        'match-detail', env, null, 'compat',
+      );
+      if (ai) {
+        ai = normalizeCompatAiScores(ai, categoryScores);
+        if (validateCompatAiResponse(ai).ok) {
+          await writeKarmaConsistencyCache(env, 'match-detail', matchCacheKey, ai);
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof KarmaAiServiceError)) throw error;
+    }
   }
   return json({ ...baseResult, ai });
 }

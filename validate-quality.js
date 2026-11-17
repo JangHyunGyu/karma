@@ -6,7 +6,7 @@ const root = __dirname;
 const workerPath = path.join(root, 'assets', 'js', 'worker.js');
 let workerSource = fs.readFileSync(workerPath, 'utf8');
 workerSource = workerSource.replace('export default {', 'const __workerExport = {');
-workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, karmaResponseStyleGuide, karmaAiLanguageInstruction, validateKarmaAiContract, sanitizeKarmaAnalysisInput };`;
+workerSource += `\nglobalThis.__karmaTest = { calculateSaju, buildTarotPrompt, buildSajuPrompt, buildFortunePrompt, buildDailyPrompt, buildCompatPrompt, ohangCompatibility, getGrade, parseAiJsonResponse, normalizePhotoAnalysisLang, getPhotoAnalysisMessage, getKarmaTextAnalysisMessage, karmaResponseStyleGuide, karmaAiLanguageInstruction, validateKarmaAiContract, sanitizeKarmaAnalysisInput, normalizeFaceAiScores, normalizePalmAiGrade, calculateCompatCategoryScores, normalizeCompatAiScores, calculateFortuneLucky, normalizeFortuneLucky, calculateDailyLucky, normalizeDailyLucky, sanitizeAiObjectKeys };`;
 
 const context = {
   console,
@@ -244,6 +244,24 @@ const sanitizedImageInput = api.sanitizeKarmaAnalysisInput({
 check(/^\[image omitted:/.test(sanitizedImageInput.image), '원본 이미지 base64를 D1 입력 JSON에서 제거');
 check(/^\[image omitted:/.test(sanitizedImageInput.nested.image_data), '중첩 이미지 base64도 D1 입력 JSON에서 제거');
 check(sanitizedImageInput.nested.note === 'keep this', '이미지가 아닌 입력 데이터는 D1 기록에 보존');
+
+console.log('\n🎯 일관성 채점 및 키 정제 기준');
+const sanitizedColons = api.sanitizeAiObjectKeys({ ':personality': { ':score': 74, ':desc': '설명' } });
+check(sanitizedColons.personality?.score === 74 && sanitizedColons.personality?.desc === '설명', 'AI 응답 키 선행 콜론 제거');
+const preservedDegenerate = api.sanitizeAiObjectKeys({ ':': { ': ': '' } });
+check(Object.keys(preservedDegenerate)[0] === ':', '구두점 전용 퇴화 키는 재시도 감지를 위해 유지');
+const compatCategoryA = api.calculateCompatCategoryScores(first.saju, second.saju, first.sample.birth, second.sample.birth, '2026-11-17');
+const compatCategoryB = api.calculateCompatCategoryScores(first.saju, second.saju, first.sample.birth, second.sample.birth, '2026-11-17');
+check(
+  ['personality', 'intimacy', 'finance', 'timing'].every(
+    key => Number.isInteger(compatCategoryA[key]) && compatCategoryA[key] >= 20 && compatCategoryA[key] <= 96 && compatCategoryA[key] === compatCategoryB[key]
+  ),
+  '궁합 4개 영역 점수를 20~96 구간에서 결정적으로 산출',
+);
+check(fortune.user.includes('서버 확정 행운 기준값'), '신년운세 프롬프트에 서버 확정 행운 기준값 전달');
+check(daily.user.includes('서버 확정 오늘의 행운 기준값'), '오늘운세 프롬프트에 서버 확정 행운 기준값 전달');
+check(compat.user.includes('서버 확정 영역별 점수'), '궁합 프롬프트에 서버 확정 영역별 점수 전달');
+check(koreanStyleGuide.includes('[문체 통일]'), '한국어 문체 가드에 종결어미 통일 지침 포함');
 
 console.log(`\n결과: ${passed}개 통과, ${failures.length}개 실패`);
 if (failures.length) process.exit(1);
