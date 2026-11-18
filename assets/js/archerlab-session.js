@@ -13,32 +13,38 @@
   const ready = new Promise(resolve => { resolveReady = resolve; });
 
   async function api(base, path, body) {
-    const response = await fetch(base + path, {
-      credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(8000),
-      ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
-    });
-    if (!response.ok) throw new Error('session_unavailable');
-    return response.json();
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+        try {
+          const response = await fetch(base + path, {
+            credentials: 'include', cache: 'no-store', ...(controller ? { signal: controller.signal } : {}),
+            ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
+          });
+          if (!response.ok) throw new Error('session_unavailable');
+          return await response.json();
+        } finally {
+          if (timer !== null) clearTimeout(timer);
+        }
   }
   function publish(member) {
     // Display identity is not a permission check. Servers must validate the HttpOnly session.
     user = member ? Object.freeze({ id: member.id, name: member.name }) : null;
     window.dispatchEvent(new CustomEvent('archerlab:session', { detail: user }));
   }
-  async function synchronize() {
+  async function synchronize() { var __oc0;
     try {
       // Guests need one background request and no service cookie or redirect.
       const central = await api(account, '/api/status', {});
       if (!central.user) { publish(null); return; }
       const local = await api(sessionApi, '/_account/session', {});
-      if (local.user?.id === central.user.id) { publish(local.user); return; }
+      if ((((__oc0 = local.user) === null || __oc0 === void 0 ? void 0 : __oc0.id)) === central.user.id) { publish(local.user); return; }
       const prepared = await api(sessionApi, '/_account/prepare', {
         csrf: local.csrf, returnPath: location.pathname + location.search + location.hash
       });
       const ticket = await api(account, '/api/sso', { csrf: central.csrf, request: prepared.request });
       await api(sessionApi, '/_account/complete', { csrf: local.csrf, request: prepared.request, code: ticket.code });
       publish((await api(sessionApi, '/_account/session', {})).user);
-    } catch { publish(null); }
+    } catch (_err) { publish(null); }
     finally {
       resolveReady(user);
       // Packed apps can clear listeners with document.open() during startup.

@@ -335,8 +335,8 @@ const analyzeBtn = document.getElementById('analyzeBtn');
 let imageData = null, imageMime = null;
 let imageSelectSeq = 0, imageSourceHash = '', imagePerceptualHash = '', imageHashPromise = null;
 
-async function computeFileSha256Hex(file) {
-  if (!window.crypto?.subtle || typeof file?.arrayBuffer !== 'function') return '';
+async function computeFileSha256Hex(file) { var __oc0;
+  if (!(((__oc0 = window.crypto) === null || __oc0 === void 0 ? void 0 : __oc0.subtle)) || typeof ((file === null || file === void 0 ? void 0 : file.arrayBuffer)) !== 'function') return '';
   try {
     const buffer = await file.arrayBuffer();
     const digest = await window.crypto.subtle.digest('SHA-256', buffer);

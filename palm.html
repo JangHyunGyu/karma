@@ -345,8 +345,8 @@ const analyzeBtn = document.getElementById('analyzeBtn');
 let imageData = null, imageMime = null;
 let imageSelectSeq = 0, imageSourceHash = '', imagePerceptualHash = '', imageHashPromise = null;
 
-async function computeFileSha256Hex(file) {
-  if (!window.crypto?.subtle || typeof file?.arrayBuffer !== 'function') return '';
+async function computeFileSha256Hex(file) { var __oc0;
+  if (!(((__oc0 = window.crypto) === null || __oc0 === void 0 ? void 0 : __oc0.subtle)) || typeof ((file === null || file === void 0 ? void 0 : file.arrayBuffer)) !== 'function') return '';
   try {
     const buffer = await file.arrayBuffer();
     const digest = await window.crypto.subtle.digest('SHA-256', buffer);
@@ -411,8 +411,8 @@ function updateHandLabels() {
   leftEl.textContent = leftEl.dataset[lang];
   rightEl.textContent = rightEl.dataset[lang];
   // 콤보 드롭다운도 동기화
-  [leftEl, rightEl].forEach(optEl => {
-    const combo = optEl.closest('.combo') || optEl.closest('select')?.closest('.combo');
+  [leftEl, rightEl].forEach(optEl => { var __oc1;
+    const combo = optEl.closest('.combo') || (((__oc1 = optEl.closest('select')) === null || __oc1 === void 0 ? void 0 : __oc1.closest('.combo')));
     if (!combo) return;
     const comboOpt = combo.querySelector(`.combo-option[data-value="${optEl.value}"]`);
     if (comboOpt) {

@@ -342,7 +342,7 @@ const OHANG_LACK = {
   '수': ['상황에 맞춰 유연하게 돌아가는 여유가 부족해지기 쉬움','May lack flexibility and adaptability'],
 };
 
-async function doAnalyze() {
+async function doAnalyze() { var __oc0, __oc1;
   const btn = document.getElementById('analyzeBtn');
   const loading = document.getElementById('loading');
   const result = document.getElementById('result');
@@ -356,8 +356,8 @@ async function doAnalyze() {
       birth_time: document.getElementById('birthTime').value,
       gender: document.getElementById('gender').value,
       lang: 'ko',
-      yajasi: document.getElementById('yajasiToggle')?.checked || false,
-      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+      yajasi: (((__oc0 = document.getElementById('yajasiToggle')) === null || __oc0 === void 0 ? void 0 : __oc0.checked)) || false,
+      birth_location: (((__oc1 = document.getElementById('birthLocation')) === null || __oc1 === void 0 ? void 0 : __oc1.value)) || 'kr',
     };
     const resp = await fetch(API_BASE + '/api/saju', {
       method: 'POST',
@@ -377,7 +377,7 @@ async function doAnalyze() {
   }
 }
 
-function renderResult(d) {
+function renderResult(d) { var __oc2, __oc3;
   document.getElementById('result').style.display = 'grid';
   document.getElementById('ilganText').textContent = d.ilgan;
   const info = ILGAN_INFO[d.ilgan] || {};
@@ -421,10 +421,10 @@ function renderResult(d) {
   if (d.daeun && d.daeun.length) {
     document.getElementById('daeunSection').style.display = 'block';
     const now = new Date();
-    const by = parseInt(document.getElementById('birthYear')?.value || 1995);
+    const by = parseInt((((__oc2 = document.getElementById('birthYear')) === null || __oc2 === void 0 ? void 0 : __oc2.value)) || 1995);
     const currentAge = now.getFullYear() - by;
 
-    const daeunReadings = d.ai?.daeun_reading || [];
+    const daeunReadings = (((__oc3 = d.ai) === null || __oc3 === void 0 ? void 0 : __oc3.daeun_reading)) || [];
     // 전역 저장 (팝업에서 사용)
     window._daeunData = d.daeun.map((du, i) => ({ ...du, reading: daeunReadings[i] || '', isCurrent: currentAge >= du.fromAge && currentAge <= du.toAge }));
 

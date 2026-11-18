@@ -324,11 +324,11 @@ function setCompatCalType(btn, prefix, type) {
   updateDaysFor(prefix);
   saveCompatInputs();
 }
-function updateMonthsFor(prefix) {
+function updateMonthsFor(prefix) { var __oc0, __oc1;
   const monthSelect = document.getElementById(prefix+'Month');
   if (!monthSelect) return;
   const curVal = monthSelect.value;
-  const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
+  const y = parseInt((((__oc0 = document.getElementById(prefix + 'Year')) === null || __oc0 === void 0 ? void 0 : __oc0.value)) || 2000);
   monthSelect.innerHTML = '';
   for (let m = 1; m <= 12; m++) {
     const opt = document.createElement('option');
@@ -345,13 +345,13 @@ function updateMonthsFor(prefix) {
   if (monthSelect.querySelector('option[value="'+curVal+'"]')) {
     monthSelect.value = curVal;
   } else {
-    monthSelect.value = monthSelect.options[0]?.value || '1';
+    monthSelect.value = (((__oc1 = monthSelect.options[0]) === null || __oc1 === void 0 ? void 0 : __oc1.value)) || '1';
   }
   if (typeof syncComboFromSelect === 'function') syncComboFromSelect(monthSelect);
 }
-function updateDaysFor(prefix) {
-  const y = parseInt(document.getElementById(prefix+'Year')?.value || 2000);
-  const mVal = document.getElementById(prefix+'Month')?.value || '1';
+function updateDaysFor(prefix) { var __oc2, __oc3;
+  const y = parseInt((((__oc2 = document.getElementById(prefix + 'Year')) === null || __oc2 === void 0 ? void 0 : __oc2.value)) || 2000);
+  const mVal = (((__oc3 = document.getElementById(prefix + 'Month')) === null || __oc3 === void 0 ? void 0 : __oc3.value)) || '1';
   const sel = document.getElementById(prefix+'Day');
   if (!sel) return;
   const cur = parseInt(sel.value) || 1;
@@ -364,10 +364,10 @@ function updateDaysFor(prefix) {
   sel.innerHTML = html;
   if (typeof syncComboFromSelect === 'function') syncComboFromSelect(sel);
 }
-function getDateFor(prefix) {
-  const y = document.getElementById(prefix+'Year')?.value;
-  const mVal = document.getElementById(prefix+'Month')?.value;
-  const d = document.getElementById(prefix+'Day')?.value;
+function getDateFor(prefix) { var __oc4, __oc5, __oc6;
+  const y = (((__oc4 = document.getElementById(prefix + 'Year')) === null || __oc4 === void 0 ? void 0 : __oc4.value));
+  const mVal = (((__oc5 = document.getElementById(prefix + 'Month')) === null || __oc5 === void 0 ? void 0 : __oc5.value));
+  const d = (((__oc6 = document.getElementById(prefix + 'Day')) === null || __oc6 === void 0 ? void 0 : __oc6.value));
   if (!y || !mVal || !d) return '';
   if (_compatCalType[prefix] === 'lunar' && typeof lunarToSolar === 'function') {
     const isLeap = mVal.startsWith('leap_');
@@ -394,7 +394,7 @@ function saveCompatInputs() {
 function restoreCompatCalendar(prefix, type) {
   if (type !== 'lunar' && type !== 'solar') return;
   const root = document.getElementById(prefix === 'a' ? 'dateSelectsA' : 'dateSelectsB');
-  const btn = root?.querySelector('.cal-btn[data-cal="' + type + '"]');
+  const btn = ((root === null || root === void 0 ? void 0 : root.querySelector('.cal-btn[data-cal="' + type + '"]')));
   if (btn) setCompatCalType(btn, prefix, type);
 }
 function restoreCompatInputs() {
@@ -417,7 +417,7 @@ function restoreCompatInputs() {
     });
     saveCompatInputs();
     return true;
-  } catch { return false; }
+  } catch (_err) { return false; }
 }
 
 const _isSharedLink = new URLSearchParams(window.location.search).has('id');
@@ -432,7 +432,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('.combo-option')) setTimeout(saveCompatInputs, 50);
 });
 
-async function doCompat() {
+async function doCompat() { var __oc7, __oc8, __oc9, __oc10;
   const btn = document.getElementById('compatBtn');
   const loading = document.getElementById('loading');
   const result = document.getElementById('result');
@@ -442,8 +442,8 @@ async function doCompat() {
 
   try {
     const compatInput = {
-      personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: document.getElementById('yajasiA')?.checked || false, birth_location: document.getElementById('birthLocationA')?.value || 'kr' },
-      personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: document.getElementById('yajasiB')?.checked || false, birth_location: document.getElementById('birthLocationB')?.value || 'kr' },
+      personA: { birth_date: getDateFor('a'), birth_time: document.getElementById('timeA').value, gender: document.getElementById('genderA').value, yajasi: (((__oc7 = document.getElementById('yajasiA')) === null || __oc7 === void 0 ? void 0 : __oc7.checked)) || false, birth_location: (((__oc8 = document.getElementById('birthLocationA')) === null || __oc8 === void 0 ? void 0 : __oc8.value)) || 'kr' },
+      personB: { birth_date: getDateFor('b'), birth_time: document.getElementById('timeB').value, gender: document.getElementById('genderB').value, yajasi: (((__oc9 = document.getElementById('yajasiB')) === null || __oc9 === void 0 ? void 0 : __oc9.checked)) || false, birth_location: (((__oc10 = document.getElementById('birthLocationB')) === null || __oc10 === void 0 ? void 0 : __oc10.value)) || 'kr' },
       lang: 'en',
     };
     const resp = await fetch(API_BASE + '/api/compat-quick', {

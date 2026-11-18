@@ -29,7 +29,7 @@ function shouldIgnoreClientError(message, source, stack) {
 if (!window.__karmaErrorReporterInstalled) {
   window.__karmaErrorReporterInstalled = true;
   window.onerror = function(message, source, line, col, error) {
-    const stack = error?.stack || '';
+    const stack = ((error === null || error === void 0 ? void 0 : error.stack)) || '';
     if (shouldIgnoreClientError(message, source, stack)) return;
     try {
       navigator.sendBeacon(API_BASE + '/api/error-log', JSON.stringify({
@@ -41,10 +41,10 @@ if (!window.__karmaErrorReporterInstalled) {
         page: location.pathname,
         userAgent: navigator.userAgent,
       }));
-    } catch {}
+    } catch (_err) {}
   };
-  window.addEventListener('unhandledrejection', function(e) {
-    const stack = e.reason?.stack || '';
+  window.addEventListener('unhandledrejection', function(e) { var __oc0;
+    const stack = (((__oc0 = e.reason) === null || __oc0 === void 0 ? void 0 : __oc0.stack)) || '';
     const message = 'Unhandled Promise: ' + String(e.reason);
     if (shouldIgnoreClientError(message, '', stack)) return;
     try {
@@ -57,7 +57,7 @@ if (!window.__karmaErrorReporterInstalled) {
         page: location.pathname,
         userAgent: navigator.userAgent,
       }));
-    } catch {}
+    } catch (_err) {}
   });
 }
 
@@ -217,7 +217,7 @@ function restoreInputs() {
     if (data.birthTime) setComboValue('birthTime', data.birthTime);
     if (data.birthLocation) setComboValue('birthLocation', data.birthLocation);
     saveInputs();
-  } catch {}
+  } catch (_err) {}
 }
 
 function setComboValue(id, value) {
@@ -237,10 +237,10 @@ function setComboValue(id, value) {
   }
 }
 
-function getBirthDate() {
-  const y = document.getElementById('birthYear')?.value;
-  const mVal = document.getElementById('birthMonth')?.value;
-  const d = document.getElementById('birthDay')?.value;
+function getBirthDate() { var __oc1, __oc2, __oc3;
+  const y = (((__oc1 = document.getElementById('birthYear')) === null || __oc1 === void 0 ? void 0 : __oc1.value));
+  const mVal = (((__oc2 = document.getElementById('birthMonth')) === null || __oc2 === void 0 ? void 0 : __oc2.value));
+  const d = (((__oc3 = document.getElementById('birthDay')) === null || __oc3 === void 0 ? void 0 : __oc3.value));
   if (!y || !mVal || !d) return '';
   if (_calendarType === 'lunar' && typeof lunarToSolar === 'function') {
     const isLeap = mVal.startsWith('leap_');
@@ -269,7 +269,7 @@ function setComboLayerState(combo, active) {
   }
 }
 
-function createCombo(selectEl) {
+function createCombo(selectEl) { var __oc4;
   if (!selectEl || selectEl.dataset.comboInit) return;
   selectEl.dataset.comboInit = '1';
 
@@ -286,7 +286,7 @@ function createCombo(selectEl) {
   trigger.setAttribute('role', 'combobox');
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
-  const label = selectEl.labels?.[0] || selectEl.parentElement.querySelector('label');
+  const label = (((__oc4 = selectEl.labels) === null || __oc4 === void 0 ? void 0 : __oc4[0])) || selectEl.parentElement.querySelector('label');
   if (label) trigger.setAttribute('aria-label', label.textContent.trim());
   const _initLang = document.documentElement.lang || 'ko';
   const _initText = selectedOpt ? (selectedOpt.dataset[_initLang] || selectedOpt.textContent) : '';
@@ -423,7 +423,9 @@ function syncComboFromSelect(selectEl) {
   const trigger = combo.querySelector('.combo-trigger span:first-child');
   if (!dropdown) return;
   const lang = document.documentElement.lang || 'ko';
-  const labelOf = (el) => el?.dataset?.[lang] || el?.dataset?.ko || el?.textContent || '';
+  const labelOf = (el) => { var __oc5, __oc6; return (
+(((__oc5 = el === null || el === void 0 ? void 0 : el.dataset) === null || __oc5 === void 0 ? void 0 : __oc5[lang])) || (((__oc6 = el === null || el === void 0 ? void 0 : el.dataset) === null || __oc6 === void 0 ? void 0 : __oc6.ko)) || ((el === null || el === void 0 ? void 0 : el.textContent)) || ''
+); };
   dropdown.innerHTML = '';
   Array.from(selectEl.options).forEach(opt => {
     const div = document.createElement('div');
@@ -508,11 +510,11 @@ function setCalendarType(btn, type) {
 }
 
 // 음력일 때 윤달을 월 드롭다운에 자동 추가
-function updateMonths() {
+function updateMonths() { var __oc7, __oc8;
   const monthSelect = document.getElementById('birthMonth');
   if (!monthSelect) return;
   const curVal = monthSelect.value;
-  const y = parseInt(document.getElementById('birthYear')?.value || 2000);
+  const y = parseInt((((__oc7 = document.getElementById('birthYear')) === null || __oc7 === void 0 ? void 0 : __oc7.value)) || 2000);
 
   monthSelect.innerHTML = '';
   for (let m = 1; m <= 12; m++) {
@@ -534,21 +536,21 @@ function updateMonths() {
   if (monthSelect.querySelector(`option[value="${curVal}"]`)) {
     monthSelect.value = curVal;
   } else {
-    monthSelect.value = monthSelect.options[0]?.value || '1';
+    monthSelect.value = (((__oc8 = monthSelect.options[0]) === null || __oc8 === void 0 ? void 0 : __oc8.value)) || '1';
   }
 
   syncComboFromSelect(monthSelect);
 }
 
-function updateDays() {
-  const y = parseInt(document.getElementById('birthYear')?.value || 2000);
-  const m = parseInt(document.getElementById('birthMonth')?.value || 1);
-  const dayCombo = document.getElementById('birthDay')?.closest('.combo');
+function updateDays() { var __oc9, __oc10, __oc11, __oc12;
+  const y = parseInt((((__oc9 = document.getElementById('birthYear')) === null || __oc9 === void 0 ? void 0 : __oc9.value)) || 2000);
+  const m = parseInt((((__oc10 = document.getElementById('birthMonth')) === null || __oc10 === void 0 ? void 0 : __oc10.value)) || 1);
+  const dayCombo = (((__oc11 = document.getElementById('birthDay')) === null || __oc11 === void 0 ? void 0 : __oc11.closest('.combo')));
   const daySelect = document.getElementById('birthDay');
   if (!daySelect) return;
 
   const curDay = parseInt(daySelect.value) || 1;
-  const monthValue = document.getElementById('birthMonth')?.value || '1';
+  const monthValue = (((__oc12 = document.getElementById('birthMonth')) === null || __oc12 === void 0 ? void 0 : __oc12.value)) || '1';
   const daysInMonth = typeof daysInCalendarMonth === 'function'
     ? daysInCalendarMonth(_calendarType, y, monthValue)
     : (_calendarType === 'lunar' ? 30 : new Date(y, m, 0).getDate());
@@ -566,7 +568,7 @@ function updateDays() {
     daySelect.appendChild(opt);
   }
 
-  if (dayCombo?.classList.contains('open')) {
+  if (((dayCombo === null || dayCombo === void 0 ? void 0 : dayCombo.classList.contains('open')))) {
     dayCombo.classList.remove('open');
     setComboLayerState(dayCombo, false);
   }
@@ -599,11 +601,11 @@ function initAllCombos() {
 
 // Fixed-position lists must be dismissed when their viewport or anchor moves.
 function closeOpenCombos() {
-  document.querySelectorAll('.combo.open').forEach(c => {
+  document.querySelectorAll('.combo.open').forEach(c => { var __oc13;
     const restoreFocus = c.contains(document.activeElement);
     c.classList.remove('open');
     setComboLayerState(c, false);
-    if (restoreFocus) c.querySelector('.combo-trigger')?.focus({ preventScroll: true });
+    if (restoreFocus) (((__oc13 = c.querySelector('.combo-trigger')) === null || __oc13 === void 0 ? void 0 : __oc13.focus({ preventScroll: true })));
   });
 }
 document.addEventListener('click', closeOpenCombos);
@@ -748,13 +750,13 @@ function createLocationSelect(containerId, selectId, onChangeFn) {
 
 // ===== 공유용 폼 입력 augment / restore =====
 // 공유 저장 시 양력/음력 + 원본 연월일을 포함시키기 위한 헬퍼
-function augmentShareInput(base) {
+function augmentShareInput(base) { var __oc14, __oc15, __oc16;
   return {
     ...base,
     calendar_type: (typeof _calendarType !== 'undefined') ? _calendarType : 'solar',
-    _y: document.getElementById('birthYear')?.value,
-    _m: document.getElementById('birthMonth')?.value,
-    _d: document.getElementById('birthDay')?.value,
+    _y: (((__oc14 = document.getElementById('birthYear')) === null || __oc14 === void 0 ? void 0 : __oc14.value)),
+    _m: (((__oc15 = document.getElementById('birthMonth')) === null || __oc15 === void 0 ? void 0 : __oc15.value)),
+    _d: (((__oc16 = document.getElementById('birthDay')) === null || __oc16 === void 0 ? void 0 : __oc16.value)),
   };
 }
 
@@ -790,8 +792,8 @@ function restoreShareInput(input) {
 }
 
 // 초기화
-function enableKarmaClickBursts() {
-  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+function enableKarmaClickBursts() { var __oc17, __oc18;
+  const reduceMotion = (((__oc18 = (__oc17 = window.matchMedia) === null || __oc17 === void 0 ? void 0 : __oc17.call(window, '(prefers-reduced-motion: reduce)')) === null || __oc18 === void 0 ? void 0 : __oc18.matches));
   if (reduceMotion) return;
 
   const interactiveSelector = [

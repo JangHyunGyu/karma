@@ -250,7 +250,7 @@ for (let y = thisYear - 5; y <= thisYear + 4; y++) {
   yearSelect.appendChild(opt);
 }
 
-async function doFortune() {
+async function doFortune() { var __oc0, __oc1;
   const btn = document.getElementById('fortuneBtn');
   const loading = document.getElementById('loading');
   const result = document.getElementById('result');
@@ -265,8 +265,8 @@ async function doFortune() {
       gender: document.getElementById('gender').value,
       year: parseInt(document.getElementById('fortuneYear').value),
       lang: 'en',
-      yajasi: document.getElementById('yajasiToggle')?.checked || false,
-      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+      yajasi: (((__oc0 = document.getElementById('yajasiToggle')) === null || __oc0 === void 0 ? void 0 : __oc0.checked)) || false,
+      birth_location: (((__oc1 = document.getElementById('birthLocation')) === null || __oc1 === void 0 ? void 0 : __oc1.value)) || 'kr',
     };
     const resp = await fetch(API_BASE + '/api/fortune', {
       method: 'POST',

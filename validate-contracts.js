@@ -167,7 +167,10 @@ const pageContracts = {
 for (const [page, tokens] of Object.entries(pageContracts)) {
   for (const localePage of [`${page}.html`, `${page}-en.html`]) {
     const html = fs.readFileSync(path.join(root, localePage), 'utf8');
-    for (const token of tokens) check(html.includes(token), `${localePage}가 ${token} 필드를 소비`);
+    for (const token of tokens) {
+      const ok = html.includes(token) || (token === 'd.ai?.daeun_reading' && /\(__oc\d+ = d\.ai\) === null \|\| __oc\d+ === void 0 \? void 0 : __oc\d+\.daeun_reading/.test(html));
+      check(ok, `${localePage}가 ${token} 필드를 소비`);
+    }
   }
 }
 

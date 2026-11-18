@@ -767,7 +767,9 @@ if (typeof window.gsap === 'undefined') {
   // ===== 결과 표시 =====
   function showResult(data) {
     const cards = (Array.isArray(data.cards) ? data.cards : []).map(card => {
-      const definition = MAJOR_ARCANA.find(item => item.id === card?.id);
+      const definition = MAJOR_ARCANA.find(item => { return (
+item.id === ((card === null || card === void 0 ? void 0 : card.id))
+); });
       return definition ? { ...card, ...definition } : null;
     }).filter(Boolean);
     phase = 'result';

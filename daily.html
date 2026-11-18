@@ -282,7 +282,7 @@ createDateSelects('dateSelects');
   }
 })();
 
-async function doDaily() {
+async function doDaily() { var __oc0, __oc1;
   const btn = document.getElementById('dailyBtn');
   const loading = document.getElementById('loading');
   const result = document.getElementById('result');
@@ -297,8 +297,8 @@ async function doDaily() {
       gender: document.getElementById('gender').value,
       target_date: document.getElementById('targetDate').value,
       lang: 'ko',
-      yajasi: document.getElementById('yajasiToggle')?.checked || false,
-      birth_location: document.getElementById('birthLocation')?.value || 'kr',
+      yajasi: (((__oc0 = document.getElementById('yajasiToggle')) === null || __oc0 === void 0 ? void 0 : __oc0.checked)) || false,
+      birth_location: (((__oc1 = document.getElementById('birthLocation')) === null || __oc1 === void 0 ? void 0 : __oc1.value)) || 'kr',
     };
     const resp = await fetch(API_BASE + '/api/daily', {
       method: 'POST',
