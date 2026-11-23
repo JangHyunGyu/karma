@@ -1582,7 +1582,13 @@ function isSkinCosmeticConsultationItem(item) {
   return /피부|기색|모공|여드름|트러블|잡티|홍조|안색|결\s*관리|토닝|필링|스킨부스터|스케일링|skin\s*care|skin\s*condition|complexion|pore|acne|blemish|redness|peel|laser\s*toning|skin\s*booster|dermatolog/i.test(`${area} ${optionNames}`);
 }
 
-// 관상 카테고리 배열을 받아 피부(기색) 항목의 점수가 65점 이하이고 가림 한계가 아닌 경우 해당 항목 반환, 조건 미충족 시 null 반환
+// 성형 상담 후보 항목 객체를 받아 부위명(area) 자체가 피부 관리인지 판별해 불리언 반환, 시술명만 피부 계열인 얼굴 부위 항목(예: 눈가 탄력)은 false 반환
+function isSkinAreaCosmeticConsultationItem(item) {
+  if (!isPlainAiObject(item)) return false;
+  return /피부|기색|안색|모공|skin|complexion|pore/i.test(String(item.area ?? ''));
+}
+
+// 관상 카테고리 배열을 받아 피부(기색) 항목의 점수가 65점 이하이고 가림 한계가 아니며 채점표 condition이 2 이하(채점표가 없으면 점수만)인 경우 해당 항목 반환, 조건 미충족 시 null 반환
 function findLowScoreSkinCategory(categories) {
   if (!Array.isArray(categories)) return null;
   const skinCategory = categories.find(category => (
@@ -1590,6 +1596,9 @@ function findLowScoreSkinCategory(categories) {
     && /피부|기색|skin|complexion/i.test(String(category.name ?? ''))
   ));
   if (!skinCategory || !Number.isInteger(skinCategory.score) || skinCategory.score > 65) return null;
+  // 가림·화질 감점만으로 65점 이하가 된 경우는 피부 상태가 나쁜 것이 아니다. 채점표가 있으면 condition 2 이하만 인정한다.
+  const condition = skinCategory.rubric?.condition;
+  if (typeof condition === 'number' && Number.isFinite(condition) && condition > 2) return null;
   const desc = String(skinCategory.desc ?? '').trim();
   if (/사진상\s*확인\s*어려움|hard\s*to\s*verify|cannot\s*be\s*verified|unreadable/i.test(desc)) return null;
   return skinCategory;
@@ -1681,6 +1690,11 @@ function normalizeFaceAppearance(value, context = {}) {
         ...appearance.cosmetic_consultation,
         buildFallbackSkinCosmeticConsultation(lowSkinCategory, fallbackLang),
       ];
+    }
+    // 피부 점수가 낮지 않은데 붙은 피부 관리 항목은 뺀다. 성형 상담의 중심은 얼굴 부위(형태·비율)이고,
+    // 피부 관리는 피부(기색) 점수가 65점 이하일 때만 맨 뒤에 덧붙이는 보조 항목이다.
+    if (!lowSkinCategory) {
+      appearance.cosmetic_consultation = appearance.cosmetic_consultation.filter(item => !isSkinAreaCosmeticConsultationItem(item));
     }
     const skinItems = appearance.cosmetic_consultation.filter(isSkinCosmeticConsultationItem);
     const nonSkinItems = appearance.cosmetic_consultation.filter(item => !isSkinCosmeticConsultationItem(item));
@@ -3873,8 +3887,8 @@ ${faceExpertRubric()}
 - 선택한 나이가 20세 미만이거나 나이를 알 수 없으면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열로 두세요.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
 - adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
-- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 얼굴 부위 최대 2개까지 쓰고, 없으면 빈 배열로 두세요.
-- 피부 상태("피부 (기색)" 항목 점수가 65점 이하이거나 사진에서 여드름·트러블, 심한 붉은기, 거친 피부결, 두드러진 모공·잡티·칙칙함이 뚜렷하게 관찰되는 경우)가 좋지 않다면, cosmetic_consultation에 반드시 피부 관리 항목(한국어 응답 시 area: "피부 관리", 영어 응답 시 area: "Skin care")을 1개 포함하세요. 이 항목의 options에는 관찰된 피부 고민에 맞는 피부과 시술·관리 후보(예: 여드름·모공 스케일링 및 진정 관리, 레이저 토닝, 피코 프락셀, 홍조·혈관 레이저, 스킨부스터, 필링 등) 1~2개를 구체적인 명칭(name), 목적(purpose), 진찰 시 확인 사항(caution)과 함께 제시하세요. 피부 관리 항목이 포함될 때는 얼굴 부위 상담 후보 최대 2개에 피부 관리 1개를 더해 최대 3개까지 작성할 수 있습니다. 조명·화질 문제로 피부만 흐리게 보이는 경우에는 피부 상태를 낮게 단정하지 마세요.
+- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 중심은 눈·눈썹·코·입술·턱선·광대·이마·얼굴 윤곽처럼 형태와 비율이 드러나는 얼굴 부위입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 얼굴 부위를 최대 2개까지 배열의 앞쪽에 쓰고, 그런 부위가 없으면 빈 배열로 두세요. 얼굴 부위 후보를 피부 항목으로 대신하지 마세요.
+- 피부 관리 항목은 얼굴 부위 후보에 덧붙이는 보조 항목입니다. "피부 (기색)" 항목의 rubric에서 condition을 2 이하로 판정했고 사진에서 여드름·트러블, 심한 붉은기, 거친 피부결, 두드러진 모공·잡티가 뚜렷하게 보일 때만 cosmetic_consultation의 마지막에 피부 관리 항목(한국어 응답 시 area: "피부 관리", 영어 응답 시 area: "Skin care")을 1개 추가하세요. condition이 3 이상이거나 피부가 대체로 깨끗하다고 서술했다면 피부 관리 항목을 쓰지 마세요. 탄력 유지·톤 정돈·예방 같은 일반 관리 목적, 조명·화질 때문에 피부만 흐리게 보이는 경우도 쓰지 않습니다. 이 항목의 options에는 관찰된 피부 고민에 맞는 피부과 시술·관리 후보(예: 여드름·모공 스케일링 및 진정 관리, 레이저 토닝, 피코 프락셀, 홍조·혈관 레이저, 스킨부스터, 필링 등) 1~2개를 구체적인 명칭(name), 목적(purpose), 진찰 시 확인 사항(caution)과 함께 제시하세요. 피부 관리 항목이 포함될 때는 얼굴 부위 상담 후보 최대 2개에 피부 관리 1개를 더해 최대 3개까지 작성할 수 있으며, 피부 관리 항목은 2개 이상 쓰지 않습니다.
 - cosmetic_consultation과 각 항목의 options는 JSON 배열입니다. 배열 전체를 따옴표로 감싼 문자열로 반환하지 마세요.
 - 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
 - question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.

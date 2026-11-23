@@ -620,3 +620,40 @@ test('poor skin condition includes skin care in adult cosmetic consultation and 
   const teenNormalized = api.normalizeFaceAppearance(lowSkinReading, { gender: '여성', age: '10대', lang: 'ko' });
   assert.equal(teenNormalized.appearance.cosmetic_consultation.length, 0);
 });
+
+test('cosmetic consultation stays centred on facial features; skin care is only a trailing extra for poor skin', () => {
+  const ctx = { gender: '여성', age: '20대', lang: 'ko' };
+  const base = face([82, 84, 79, 81, 78, 82], 'ko');
+  const featureItem = { ...base.appearance.cosmetic_consultation[0], area: '콧대와 코끝' };
+  const skinItem = { ...featureItem, area: '피부 관리', options: [{ name: '레이저 토닝', purpose: '톤 정돈', caution: '시술 간격 확인' }] };
+  const areas = value => Array.from(api.normalizeFaceAppearance(value, ctx).appearance.cosmetic_consultation, item => item.area);
+
+  // 피부 점수가 낮지 않으면(82점) 모델이 붙인 피부 관리 항목은 빠지고 얼굴 부위만 남는다.
+  const goodSkin = structuredClone(base);
+  goodSkin.appearance.cosmetic_consultation = [skinItem, featureItem];
+  assert.deepEqual(areas(goodSkin), ['콧대와 코끝']);
+
+  // 피부 항목만 온 경우에도 피부가 좋으면 남기지 않는다.
+  const goodSkinOnly = structuredClone(base);
+  goodSkinOnly.appearance.cosmetic_consultation = [skinItem];
+  assert.deepEqual(areas(goodSkinOnly), []);
+
+  // 시술명만 피부 계열인 얼굴 부위 항목(눈가 탄력 + 스킨부스터)은 얼굴 부위 후보로 유지한다.
+  const featureWithSkinOption = structuredClone(base);
+  featureWithSkinOption.appearance.cosmetic_consultation = [{ ...featureItem, area: '눈가 탄력', options: skinItem.options }];
+  assert.deepEqual(areas(featureWithSkinOption), ['눈가 탄력']);
+
+  // 피부가 실제로 나쁘면(58점) 얼굴 부위가 앞, 피부 관리는 맨 뒤 1개.
+  const poorSkin = face([82, 84, 79, 81, 78, 58], 'ko');
+  poorSkin.appearance.cosmetic_consultation = [skinItem, skinItem, featureItem];
+  assert.deepEqual(areas(poorSkin), ['콧대와 코끝', '피부 관리']);
+
+  // 가림·화질 감점으로만 65점 이하가 된 경우(condition 3)는 피부 관리 항목을 넣지도 남기지도 않는다.
+  const penalised = face([82, 84, 79, 81, 78, 65], 'ko');
+  penalised.categories[5].rubric = { structure: 3, symmetry: 3, condition: 3, visibility: 2 };
+  penalised.appearance.cosmetic_consultation = [featureItem, skinItem];
+  assert.deepEqual(areas(penalised), ['콧대와 코끝']);
+  const poorCondition = structuredClone(penalised);
+  poorCondition.categories[5].rubric.condition = 2;
+  assert.deepEqual(areas(poorCondition), ['콧대와 코끝', '피부 관리']);
+});
