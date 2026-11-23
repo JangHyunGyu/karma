@@ -11,6 +11,8 @@ let _karmaAnalysesTableReady = false;
 let _karmaConsistencyCacheTableReady = false;
 
 const KARMA_CONSISTENCY_SCHEMA_VERSION = 'karma-consistency-v2';
+// 2: 성형 상담 포인트를 얼굴 부위 중심으로 바꾸고 피부 관리는 보조 항목으로 제한 (2026-11-23)
+const KARMA_FACE_RESULT_REVISION = 2;
 const KARMA_CONSISTENCY_TTL_MS = Object.freeze({
   face: 90 * 24 * 60 * 60 * 1000,
   palm: 90 * 24 * 60 * 60 * 1000,
@@ -3839,6 +3841,8 @@ async function handleFaceReading(request, env, requestId = '', analysisGateError
     gender: normalizeKarmaGenderKey(gender),
     age: normalizeKarmaAgeKey(age),
     lang: analysisLang,
+    // 관상 프롬프트·후처리 규칙이 바뀌어 예전 캐시 결과를 다시 쓰면 안 될 때 올린다(관상 캐시만 새로 만든다).
+    rev: KARMA_FACE_RESULT_REVISION,
   };
   const faceOptionsKey = JSON.stringify({ ...faceCacheOpts, aspect: resolvedAspect });
   const faceCacheKey = await buildKarmaConsistencyCacheKey('face', { imageHash, ...faceCacheOpts });
