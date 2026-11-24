@@ -12,7 +12,8 @@ let _karmaConsistencyCacheTableReady = false;
 
 const KARMA_CONSISTENCY_SCHEMA_VERSION = 'karma-consistency-v2';
 // 2: 성형 상담 포인트를 얼굴 부위 중심으로 바꾸고 피부 관리는 보조 항목으로 제한 (2026-11-23)
-const KARMA_FACE_RESULT_REVISION = 2;
+// 3: 성형 상담 포인트를 눈·코·입술·턱선·광대·이마·피부 중 하나로 제한 (2026-11-24)
+const KARMA_FACE_RESULT_REVISION = 3;
 const KARMA_CONSISTENCY_TTL_MS = Object.freeze({
   face: 90 * 24 * 60 * 60 * 1000,
   palm: 90 * 24 * 60 * 60 * 1000,
@@ -1574,16 +1575,6 @@ function coerceCosmeticConsultation(value) {
   });
 }
 
-// 성형 상담 후보 항목 객체를 받아 부위명·시술명에서 피부 관리 항목 여부를 판별해 불리언 반환, 객체가 아니면 false 반환
-function isSkinCosmeticConsultationItem(item) {
-  if (!isPlainAiObject(item)) return false;
-  const area = String(item.area ?? '').trim();
-  const optionNames = Array.isArray(item.options)
-    ? item.options.map(opt => String(opt?.name ?? '')).join(' ')
-    : '';
-  return /피부|기색|모공|여드름|트러블|잡티|홍조|안색|결\s*관리|토닝|필링|스킨부스터|스케일링|skin\s*care|skin\s*condition|complexion|pore|acne|blemish|redness|peel|laser\s*toning|skin\s*booster|dermatolog/i.test(`${area} ${optionNames}`);
-}
-
 // 성형 상담 후보 항목 객체를 받아 부위명(area) 자체가 피부 관리인지 판별해 불리언 반환, 시술명만 피부 계열인 얼굴 부위 항목(예: 눈가 탄력)은 false 반환
 function isSkinAreaCosmeticConsultationItem(item) {
   if (!isPlainAiObject(item)) return false;
@@ -1604,58 +1595,6 @@ function findLowScoreSkinCategory(categories) {
   const desc = String(skinCategory.desc ?? '').trim();
   if (/사진상\s*확인\s*어려움|hard\s*to\s*verify|cannot\s*be\s*verified|unreadable/i.test(desc)) return null;
   return skinCategory;
-}
-
-// 저점수 피부 카테고리와 언어 코드를 받아 성형 상담용 피부 관리 기본 항목 객체를 생성해 반환
-function buildFallbackSkinCosmeticConsultation(skinCategory, lang = 'ko') {
-  const rawDesc = String(skinCategory?.desc ?? '').trim();
-  const firstSentence = rawDesc.split(/(?<=[.!?])\s+/)[0]?.trim() || '';
-  if (lang === 'en') {
-    const observation = firstSentence && !/[가-힣]/.test(firstSentence)
-      ? firstSentence
-      : 'Uneven skin texture, visible pores, or redness and dullness appear across the cheeks and forehead under the current lighting.';
-    return {
-      area: 'Skin care',
-      observation,
-      goal: 'Calm visible skin trouble or redness and smooth uneven pore and surface texture for a clearer complexion.',
-      options: [
-        {
-          name: 'Medical skin scaling and calming barrier care',
-          purpose: 'Clears excess sebum and dead skin buildup while soothing redness and surface irritation.',
-          caution: 'Check skin sensitivity, active inflammation, and post-care sun protection requirements during consultation.',
-        },
-        {
-          name: 'Laser toning or skin booster treatment',
-          purpose: 'Helps even out blotchy tone, residual marks, and rough pore texture across the cheeks and forehead.',
-          caution: 'Confirm suitable wavelength, session intervals, and temporary dryness or redness risks for your skin type.',
-        },
-      ],
-      question: 'Which dermatological care should come first between calming active trouble and improving pore or tone texture for my current skin barrier?',
-      alternative: 'Use soft front natural light when taking photos and apply a thin color-correcting base rather than heavy matte coverage.',
-    };
-  }
-  const observation = firstSentence && /[가-힣]/.test(firstSentence) && !/[A-Za-z]{2,}/.test(firstSentence)
-    ? firstSentence
-    : '볼과 이마 주변에 피부결 거칠기나 모공·붉은기·트러블 흔적이 함께 드러나 전체 기색이 다소 칙칙해 보입니다.';
-  return {
-    area: '피부 관리',
-    observation,
-    goal: '트러블 흔적과 붉은기를 가라앉히고 거친 피부결과 모공 요철을 정돈해 한결 맑고 매끈한 인상을 만듭니다.',
-    options: [
-      {
-        name: '여드름·모공 스케일링 및 진정 관리',
-        purpose: '모공 속 피지와 각질을 정돈하고 붉은기나 반복되는 트러블 부위의 자극을 완화해 피부결을 정돈합니다.',
-        caution: '현재 염증 진행 여부와 피부 민감도, 시술 후 자외선 차단 및 보습 관리 조건을 진찰에서 확인해야 합니다.',
-      },
-      {
-        name: '레이저 토닝 및 스킨부스터 시술',
-        purpose: '얼룩덜룩한 색소 침착과 칙칙한 안색을 밝히고 속건조로 거칠어진 피부결의 수분감과 결을 보완합니다.',
-        caution: '피부 장벽 상태에 맞는 에너지 강도와 시술 간격, 일시적인 붉은기나 건조감 가능성을 먼저 확인해야 합니다.',
-      },
-    ],
-    question: '현재 피부 장벽 상태에서 염증·붉은기 진정 관리와 모공·색소 레이저 시술 중 무엇을 먼저 진행하는 것이 안전할까요?',
-    alternative: '정면의 부드러운 자연광에서 촬영 각도를 잡고 두꺼운 커버 대신 붉은기와 요철만 얇게 보정하는 베이스 메이크업을 활용하세요.',
-  };
 }
 
 function isAdultFaceAge(age) {
@@ -1681,30 +1620,12 @@ function normalizeFaceAppearance(value, context = {}) {
     appearance.sex_appeal = '';
     appearance.cosmetic_consultation = [];
   } else {
-    const lowSkinCategory = findLowScoreSkinCategory(value.categories);
-    const hasSkinItem = appearance.cosmetic_consultation.some(isSkinCosmeticConsultationItem);
-    if (lowSkinCategory && !hasSkinItem) {
-      const fallbackLang = context.lang === 'en'
-        || (!context.lang && /^[A-Za-z\s()/]+$/.test(String(lowSkinCategory.name ?? '')))
-        ? 'en'
-        : 'ko';
-      appearance.cosmetic_consultation = [
-        ...appearance.cosmetic_consultation,
-        buildFallbackSkinCosmeticConsultation(lowSkinCategory, fallbackLang),
-      ];
-    }
-    // 피부 점수가 낮지 않은데 붙은 피부 관리 항목은 뺀다. 성형 상담의 중심은 얼굴 부위(형태·비율)이고,
-    // 피부 관리는 피부(기색) 점수가 65점 이하일 때만 맨 뒤에 덧붙이는 보조 항목이다.
-    if (!lowSkinCategory) {
+    // 성형 상담 포인트는 눈·코·입술·턱선·광대·이마·피부 중 하나만 보여 준다.
+    // 피부는 피부(기색) 점수가 65점 이하이고 채점표 condition이 2 이하일 때만 인정하고, 그 외에 붙은 피부 항목은 뺀다.
+    if (!findLowScoreSkinCategory(value.categories)) {
       appearance.cosmetic_consultation = appearance.cosmetic_consultation.filter(item => !isSkinAreaCosmeticConsultationItem(item));
     }
-    const skinItems = appearance.cosmetic_consultation.filter(isSkinCosmeticConsultationItem);
-    const nonSkinItems = appearance.cosmetic_consultation.filter(item => !isSkinCosmeticConsultationItem(item));
-    if (skinItems.length > 0) {
-      appearance.cosmetic_consultation = [...nonSkinItems.slice(0, 2), skinItems[0]];
-    } else if (appearance.cosmetic_consultation.length > 2) {
-      appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 2);
-    }
+    appearance.cosmetic_consultation = appearance.cosmetic_consultation.slice(0, 1);
   }
 
   return { ...value, appearance };
@@ -1741,12 +1662,8 @@ function validateFaceAppearance(value, errors, context) {
     }
     if (typeof appearance.adult_subject !== 'boolean') errors.push('appearance.adult_subject:boolean');
     if (typeof appearance.sex_appeal !== 'string') errors.push('appearance.sex_appeal:string');
-    const maxCosmeticItems = Array.isArray(appearance.cosmetic_consultation)
-      && appearance.cosmetic_consultation.some(isSkinCosmeticConsultationItem)
-      ? 3
-      : 2;
-    if (!Array.isArray(appearance.cosmetic_consultation) || appearance.cosmetic_consultation.length > maxCosmeticItems) {
-      errors.push('appearance.cosmetic_consultation:array_max_2');
+    if (!Array.isArray(appearance.cosmetic_consultation) || appearance.cosmetic_consultation.length > 1) {
+      errors.push('appearance.cosmetic_consultation:array_max_1');
     } else {
       appearance.cosmetic_consultation.forEach((item, index) => {
         if (!isPlainAiObject(item)) errors.push(`appearance.cosmetic_consultation[${index}]:object`);
@@ -3891,8 +3808,8 @@ ${faceExpertRubric()}
 - 선택한 나이가 20세 미만이거나 나이를 알 수 없으면 adult_subject는 false, sex_appeal은 빈 문자열, cosmetic_consultation은 빈 배열로 두세요.
 - 성인 조건을 충족해도 사진 속 인물이 미성년자로 보이거나 성인인지 불확실하면 adult_subject는 false로 두고 두 성인 항목을 비우세요. 확실한 성인일 때만 true입니다.
 - adult_subject가 true일 때 sex_appeal은 가장 눈에 띄는 눈빛·눈매·입술선·미소 중 실제로 보이는 1~2개를 골라, 그 형태가 만드는 인상과 그 부위를 살릴 표정·시선·각도를 2~3문장으로 씁니다. 첫 문장은 눈꼬리 방향, 눈의 가로 길이, 입술의 볼륨, 입꼬리 곡선처럼 보이는 형태를 짚습니다. 형태 없이 "우아하다", "분위기가 좋다"만 쓰지 마세요. 노골적인 묘사, 행동·경험·취향 추정, 점수나 상대의 호감 단정은 하지 마세요.
-- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 중심은 눈·눈썹·코·입술·턱선·광대·이마·얼굴 윤곽처럼 형태와 비율이 드러나는 얼굴 부위입니다. 먼저 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 얼굴 부위를 최대 2개까지 배열의 앞쪽에 쓰고, 그런 부위가 없으면 빈 배열로 두세요. 얼굴 부위 후보를 피부 항목으로 대신하지 마세요.
-- 피부 관리 항목은 얼굴 부위 후보에 덧붙이는 보조 항목입니다. "피부 (기색)" 항목의 rubric에서 condition을 2 이하로 판정했고 사진에서 여드름·트러블, 심한 붉은기, 거친 피부결, 두드러진 모공·잡티가 뚜렷하게 보일 때만 cosmetic_consultation의 마지막에 피부 관리 항목(한국어 응답 시 area: "피부 관리", 영어 응답 시 area: "Skin care")을 1개 추가하세요. condition이 3 이상이거나 피부가 대체로 깨끗하다고 서술했다면 피부 관리 항목을 쓰지 마세요. 탄력 유지·톤 정돈·예방 같은 일반 관리 목적, 조명·화질 때문에 피부만 흐리게 보이는 경우도 쓰지 않습니다. 이 항목의 options에는 관찰된 피부 고민에 맞는 피부과 시술·관리 후보(예: 여드름·모공 스케일링 및 진정 관리, 레이저 토닝, 피코 프락셀, 홍조·혈관 레이저, 스킨부스터, 필링 등) 1~2개를 구체적인 명칭(name), 목적(purpose), 진찰 시 확인 사항(caution)과 함께 제시하세요. 피부 관리 항목이 포함될 때는 얼굴 부위 상담 후보 최대 2개에 피부 관리 1개를 더해 최대 3개까지 작성할 수 있으며, 피부 관리 항목은 2개 이상 쓰지 않습니다.
+- cosmetic_consultation은 얼굴 인상을 바꾸고 싶을 때 비교할 성형·시술 상담 후보입니다. 눈·코·입술·턱선·광대·이마·피부 일곱 가지 중에서 이 사진에서 원하는 인상과의 차이가 가장 뚜렷하게 보이는 한 가지만 골라 항목 1개로 작성하세요. area에는 고른 부위 이름 하나만 씁니다(한국어 응답: "눈", "코", "입술", "턱선", "광대", "이마", "피부" 중 하나, 영어 응답: "Eyes", "Nose", "Lips", "Jawline", "Cheekbones", "Forehead", "Skin" 중 하나). 두 부위를 묶거나 일곱 가지 밖의 부위를 쓰지 말고, 항목을 2개 이상 만들지 마세요. 사진에서 상대적으로 덜 드러나거나 비율상 아쉬울 수 있는 지점을 정확히 짚고, 어떤 인상을 원할 때 바꿔 볼 부분인지 goal에 명시하세요. 사진에 보이지 않는 피부 탄력·근육 기능·조직 두께를 진단하거나 현재 모습을 결함으로 규정하지 마세요. 관찰 근거와 구체적인 조정 목표가 있는 부위가 하나도 없으면 빈 배열로 두세요.
+- 일곱 부위는 같은 기준으로 비교합니다. 피부를 기본값으로 고르지 마세요. 피부는 "피부 (기색)" 항목의 rubric에서 condition을 2 이하로 판정했고 사진에서 여드름·트러블, 심한 붉은기, 거친 피부결, 두드러진 모공·잡티가 다른 여섯 부위의 형태·비율 차이보다 더 뚜렷하게 보일 때만 고릅니다. condition이 3 이상이거나 피부가 대체로 깨끗하다고 서술했다면, 또는 탄력 유지·톤 정돈·예방 같은 일반 관리 목적이거나 조명·화질 때문에 피부만 흐리게 보이는 경우라면 피부가 아닌 여섯 부위 중에서 고르세요. 피부를 골랐을 때 options에는 관찰된 피부 고민에 맞는 피부과 시술·관리 후보(예: 여드름·모공 스케일링 및 진정 관리, 레이저 토닝, 피코 프락셀, 홍조·혈관 레이저, 스킨부스터, 필링 등)를 씁니다.
 - cosmetic_consultation과 각 항목의 options는 JSON 배열입니다. 배열 전체를 따옴표로 감싼 문자열로 반환하지 마세요.
 - 각 항목의 options에는 실제 수술·시술 명칭(name), 그 방법이 목표 부위의 어느 모양·비율을 바꾸기 위한 것인지(purpose), 진찰에서 확인할 조건 또는 핵심 위험(caution)을 가진 후보 1~2개를 적으세요. "어떤 시술이 가능한가요" 같은 질문만 쓰면 불완전한 결과입니다. 명칭 없이 "눈가 개선", "탄력 시술"로 뭉뚱그리지 마세요. 후보는 정보 제공을 위한 비교 대상이며 이 사진의 사람에게 적합하거나 필요하다고 판정하거나 결과·회복 기간을 보장하지 마세요. 보이는 특징만으로 질환이나 수술 적응증을 추정하지 마세요.
 - question은 제시한 후보와 원하는 변화에 대해 전문의에게 확인할 한 가지 구체적인 질문입니다. observation에는 실제 보이는 폭·길이·선·비율, goal에는 원하는 변화, options에는 방법과 목적을 나눠 적고 같은 말을 반복하지 마세요. 안내 문구는 화면에서 한 번 보여주므로 각 문장을 "전문의에게 상담하세요"로 끝내지 마세요.
@@ -3974,7 +3891,7 @@ ${faceExpertRubric()}
     "style": {"hair": "(가르마·기장·볼륨 위치와 얼굴 비율상의 이유)", "accessories": "(어울리는 액세서리의 종류·크기·형태와 이유. 안경은 어울릴 때만 포함. 제안 근거가 없으면 빈 문자열)", "photo": "(시선·턱 방향·입매 중 바꿔 볼 행동과 강조되는 특징)", "makeup": "(여성 선택 시 메이크업 제안, 해당 없으면 빈 문자열)", "grooming": "(남성 선택 시 눈썹·수염선 등 제안, 해당 없으면 빈 문자열)"},
     "adult_subject": null,
     "sex_appeal": "(항상 작성: 가장 눈에 띄는 부위 하나의 실제 형태, 그 형태가 만드는 인상, 그 부위를 살릴 표정·시선·각도를 2~3문장으로.)",
-    "cosmetic_consultation": [{"area": "(관찰한 얼굴 부위)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]
+    "cosmetic_consultation": [{"area": "(눈·코·입술·턱선·광대·이마·피부 중 하나)", "observation": "(덜 드러나는 선이나 상대적인 폭·길이·비율과 사진의 한계)", "goal": "(어떤 인상을 원할 때 어느 부분을 어떻게 바꾸려는지)", "options": [{"name": "(비교할 실제 수술·시술 명칭)", "purpose": "(해당 방법으로 바꾸려는 구체적인 모양·비율. 개인의 결과 보장 금지)", "caution": "(이 후보를 비교할 때 진찰에서 확인할 조건 또는 핵심 위험)"}], "question": "(이 후보와 원하는 변화에 대해 진찰에서 확인할 구체적인 질문)", "alternative": "(같은 부위의 인상을 달리 보여 줄 헤어·메이크업·액세서리·촬영 각도 중 하나, 홈케어 금지)"}]
   },
   "personal_color": {
     "season": "(spring/summer/autumn/winter/undetermined 중 하나)",

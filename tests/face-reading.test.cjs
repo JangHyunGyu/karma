@@ -371,12 +371,12 @@ test('a quoted cosmetic consultation is shown without another model call', async
   assert.equal(result.appearance.cosmetic_consultation[0].options[0].name, name);
 });
 
-test('more than two cosmetic suggestions are trimmed instead of failing the reading', () => {
+test('more than one cosmetic suggestion is trimmed instead of failing the reading', () => {
   const value = face(undefined, 'ko');
   const item = value.appearance.cosmetic_consultation[0];
   value.appearance.cosmetic_consultation = [item, item, item];
   const normalized = api.normalizeFaceAppearance(api.normalizeFaceAiScores(value), { gender: '여성', age: '30대' });
-  assert.equal(normalized.appearance.cosmetic_consultation.length, 2);
+  assert.equal(normalized.appearance.cosmetic_consultation.length, 1);
   assert.equal(api.validateKarmaAiContract('face', normalized, { lang: 'ko', gender: '여성', age: '30대' }).ok, true);
 });
 
@@ -576,18 +576,16 @@ test('both renderers escape new content, reject CSS injection, gate adult sectio
   }
 });
 
-test('poor skin condition includes skin care in adult cosmetic consultation and validates up to three items', async () => {
+test('cosmetic consultation shows exactly one of eyes, nose, lips, jawline, cheekbones, forehead or skin', async () => {
   let capturedPrompt = '';
   const lowSkinReading = face([82, 84, 79, 81, 78, 58], 'ko');
   lowSkinReading.categories[5].desc = '볼과 이마에 붉은기와 여드름 트러블 자국이 눈에 띄어 기색 점수를 낮게 보았습니다.';
-  const secondItem = {
+  const skinItem = {
     ...lowSkinReading.appearance.cosmetic_consultation[0],
-    area: '중안부·코끝',
+    area: '피부',
+    options: [{ name: '레이저 토닝', purpose: '붉은기와 색소 자국 정돈', caution: '시술 간격 확인' }],
   };
-  lowSkinReading.appearance.cosmetic_consultation = [
-    lowSkinReading.appearance.cosmetic_consultation[0],
-    secondItem,
-  ];
+  lowSkinReading.appearance.cosmetic_consultation = [skinItem];
 
   const response = await api.handleFaceReading(new Request('https://karma.example/face-reading', {
     method: 'POST',
@@ -608,52 +606,57 @@ test('poor skin condition includes skin care in adult cosmetic consultation and 
   });
   const body = await response.json();
   assert.ok(capturedPrompt.includes('6. 피부(기색)'));
-  assert.ok(capturedPrompt.includes('피부 관리'));
-  assert.equal(body.overall_score, 77);
-  assert.equal(body.categories[5].name, '피부 (기색)');
+  assert.ok(capturedPrompt.includes('눈·코·입술·턱선·광대·이마·피부 일곱 가지 중에서'));
+  assert.ok(capturedPrompt.includes('"눈", "코", "입술", "턱선", "광대", "이마", "피부" 중 하나'));
+  assert.ok(capturedPrompt.includes('"Eyes", "Nose", "Lips", "Jawline", "Cheekbones", "Forehead", "Skin" 중 하나'));
+  assert.ok(capturedPrompt.includes('피부를 기본값으로 고르지 마세요'));
+  assert.ok(!capturedPrompt.includes('최대 3개'));
   assert.equal(body.categories[5].score, 58);
-  assert.equal(body.appearance.cosmetic_consultation.length, 3);
-  assert.equal(body.appearance.cosmetic_consultation[2].area, '피부 관리');
-  assert.ok(body.appearance.cosmetic_consultation[2].options.length >= 1);
+  assert.equal(body.appearance.cosmetic_consultation.length, 1);
+  assert.equal(body.appearance.cosmetic_consultation[0].area, '피부');
   assert.equal(api.validateKarmaAiContract('face', body, { gender: '여성', age: '20대', lang: 'ko' }).ok, true);
+
+  const two = structuredClone(body);
+  two.appearance.cosmetic_consultation = [skinItem, skinItem];
+  assert.equal(api.validateKarmaAiContract('face', two, { gender: '여성', age: '20대', lang: 'ko' }).ok, false);
 
   const teenNormalized = api.normalizeFaceAppearance(lowSkinReading, { gender: '여성', age: '10대', lang: 'ko' });
   assert.equal(teenNormalized.appearance.cosmetic_consultation.length, 0);
 });
 
-test('cosmetic consultation stays centred on facial features; skin care is only a trailing extra for poor skin', () => {
+test('skin is shown as the one consultation point only when the skin itself scored poorly', () => {
   const ctx = { gender: '여성', age: '20대', lang: 'ko' };
   const base = face([82, 84, 79, 81, 78, 82], 'ko');
-  const featureItem = { ...base.appearance.cosmetic_consultation[0], area: '콧대와 코끝' };
-  const skinItem = { ...featureItem, area: '피부 관리', options: [{ name: '레이저 토닝', purpose: '톤 정돈', caution: '시술 간격 확인' }] };
+  const featureItem = { ...base.appearance.cosmetic_consultation[0], area: '코' };
+  const skinItem = { ...featureItem, area: '피부', options: [{ name: '레이저 토닝', purpose: '톤 정돈', caution: '시술 간격 확인' }] };
   const areas = value => Array.from(api.normalizeFaceAppearance(value, ctx).appearance.cosmetic_consultation, item => item.area);
 
-  // 피부 점수가 낮지 않으면(82점) 모델이 붙인 피부 관리 항목은 빠지고 얼굴 부위만 남는다.
+  // 피부 점수가 낮지 않으면(82점) 피부 항목은 빠지고 얼굴 부위 하나만 남는다.
   const goodSkin = structuredClone(base);
   goodSkin.appearance.cosmetic_consultation = [skinItem, featureItem];
-  assert.deepEqual(areas(goodSkin), ['콧대와 코끝']);
-
-  // 피부 항목만 온 경우에도 피부가 좋으면 남기지 않는다.
+  assert.deepEqual(areas(goodSkin), ['코']);
   const goodSkinOnly = structuredClone(base);
   goodSkinOnly.appearance.cosmetic_consultation = [skinItem];
   assert.deepEqual(areas(goodSkinOnly), []);
 
-  // 시술명만 피부 계열인 얼굴 부위 항목(눈가 탄력 + 스킨부스터)은 얼굴 부위 후보로 유지한다.
+  // 시술명만 피부 계열인 얼굴 부위 항목(눈 + 스킨부스터)은 그대로 유지한다.
   const featureWithSkinOption = structuredClone(base);
-  featureWithSkinOption.appearance.cosmetic_consultation = [{ ...featureItem, area: '눈가 탄력', options: skinItem.options }];
-  assert.deepEqual(areas(featureWithSkinOption), ['눈가 탄력']);
+  featureWithSkinOption.appearance.cosmetic_consultation = [{ ...featureItem, area: '눈', options: skinItem.options }];
+  assert.deepEqual(areas(featureWithSkinOption), ['눈']);
 
-  // 피부가 실제로 나쁘면(58점) 얼굴 부위가 앞, 피부 관리는 맨 뒤 1개.
+  // 피부가 실제로 나빠도(58점) 서버가 피부 항목을 끼워 넣지 않고, 모델이 고른 한 가지만 보여 준다.
   const poorSkin = face([82, 84, 79, 81, 78, 58], 'ko');
-  poorSkin.appearance.cosmetic_consultation = [skinItem, skinItem, featureItem];
-  assert.deepEqual(areas(poorSkin), ['콧대와 코끝', '피부 관리']);
+  poorSkin.appearance.cosmetic_consultation = [featureItem];
+  assert.deepEqual(areas(poorSkin), ['코']);
+  poorSkin.appearance.cosmetic_consultation = [skinItem, featureItem];
+  assert.deepEqual(areas(poorSkin), ['피부']);
 
-  // 가림·화질 감점으로만 65점 이하가 된 경우(condition 3)는 피부 관리 항목을 넣지도 남기지도 않는다.
+  // 가림·화질 감점으로만 65점 이하가 된 경우(condition 3)는 피부를 인정하지 않는다.
   const penalised = face([82, 84, 79, 81, 78, 65], 'ko');
   penalised.categories[5].rubric = { structure: 3, symmetry: 3, condition: 3, visibility: 2 };
-  penalised.appearance.cosmetic_consultation = [featureItem, skinItem];
-  assert.deepEqual(areas(penalised), ['콧대와 코끝']);
+  penalised.appearance.cosmetic_consultation = [skinItem, featureItem];
+  assert.deepEqual(areas(penalised), ['코']);
   const poorCondition = structuredClone(penalised);
   poorCondition.categories[5].rubric.condition = 2;
-  assert.deepEqual(areas(poorCondition), ['콧대와 코끝', '피부 관리']);
+  assert.deepEqual(areas(poorCondition), ['피부']);
 });
